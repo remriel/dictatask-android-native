@@ -1,16 +1,15 @@
 # DictaTask for Android
 
-DictaTask is a standalone, native Android task-capture app. It does not embed, load, synchronize with, or otherwise communicate with the DictaTask site.
+DictaTask for Android is a standalone Android package containing the exact compiled DictaTask interface and client-side behavior from the website. It does not load, synchronize with, or otherwise communicate with the DictaTask site at runtime.
 
 ## What it does
 
-- Captures a spoken thought using Android's on-device speech-recognition provider.
-- Lets the user refine the transcript before saving it as a task.
-- Stores tasks locally on the device using `SharedPreferences`.
-- Marks tasks complete or removes them.
-- Uses a dark, colorful neo-brutalist visual system with a custom generated launcher icon.
+- Bundles the same DictaTask UI, copy, starter data, task parser, filters, completion flow, XP/combo behavior, confetti, and local persistence as the website.
+- Uses Android's native speech-recognition service through a small bridge that feeds live transcripts into the original DictaTask voice-input flow.
+- Stores task state locally within the app's bundled interface.
+- Blocks external page navigation and has no `INTERNET` permission.
 
-The app itself requests microphone access only when the user starts dictation. It has no `INTERNET` permission and makes no app-owned network requests. Availability of speech recognition depends on the Android recognition provider configured on the device.
+The app requests microphone access only when the user starts a voice note. Availability of speech recognition depends on the Android recognition provider configured on the device.
 
 ## Build
 
@@ -21,4 +20,3 @@ Open the project in Android Studio or run:
 ```
 
 The installable debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. The packaged delivery copy is at `dist/DictaTask.apk` after a release build.
-
