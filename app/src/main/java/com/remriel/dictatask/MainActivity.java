@@ -1,314 +1,341 @@
 package com.remriel.dictatask;
 
 import android.Manifest;
-import android.content.Intent;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
-import android.view.View;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.webkit.WebViewAssetLoader;
 
-import com.google.android.material.snackbar.Snackbar;
-import com.remriel.dictatask.databinding.ActivityMainBinding;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.List;
 
+/**
+ * Hosts the locally bundled DictaTask application. All web assets are served by
+ * WebViewAssetLoader from this APK; no remote URL is loaded at runtime.
+ */
 public final class MainActivity extends AppCompatActivity {
-    private ActivityMainBinding binding;
-    private TaskStore taskStore;
-    private TaskAdapter taskAdapter;
+    private static final String ASSET_HOST = "appassets.androidplatform.net";
+    private static final String LOCAL_ENTRYPOINT =
+            "https://" + ASSET_HOST + "/assets/index.html";
+    private static final String NOTIFICATION_PROMPT_SHOWN = "notification_prompt_shown";
+
+    private WebView webView;
     private SpeechRecognizer speechRecognizer;
     private ActivityResultLauncher<String> microphonePermissionLauncher;
-    private List<Task> tasks = new ArrayList<>();
-    private boolean isListening;
+    private boolean awaitingMicrophonePermission;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
-
-        taskStore = new TaskStore(this);
-        tasks = taskStore.load();
-        configureTaskList();
-        configurePermissionRequest();
-        configureSpeechRecognition();
-        configureActions();
-        renderTasks();
-        updateVoiceState(getString(R.string.voice_status_ready));
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        configureMicrophonePermission();
+        configureHourlyReminder();
+        configureWebView();
     }
 
-    private void configureTaskList() {
-        taskAdapter = new TaskAdapter(new TaskAdapter.Listener() {
-            @Override
-            public void onCompletionChanged(Task task, boolean completed) {
-                task.setCompleted(completed);
-                persistAndRender();
-            }
+    private void configureHourlyReminder() {
+        ReminderScheduler.ensureNotificationChannel(this);
+        ReminderScheduler.schedule(this);
 
-            @Override
-            public void onRemoveRequested(Task task) {
-                tasks.remove(task);
-                persistAndRender();
-                Snackbar.make(binding.getRoot(), R.string.task_removed, Snackbar.LENGTH_SHORT).show();
-            }
-        });
-
-        binding.taskList.setLayoutManager(new LinearLayoutManager(this));
-        binding.taskList.setAdapter(taskAdapter);
-        binding.taskList.setNestedScrollingEnabled(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+                && !getPreferences(MODE_PRIVATE).getBoolean(NOTIFICATION_PROMPT_SHOWN, false)) {
+            getPreferences(MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(NOTIFICATION_PROMPT_SHOWN, true)
+                    .apply();
+            requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    9101
+            );
+        }
     }
 
-    private void configurePermissionRequest() {
+    private void configureMicrophonePermission() {
         microphonePermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 granted -> {
-                    if (granted) {
-                        startListening();
-                    } else {
-                        updateVoiceState(getString(R.string.voice_status_permission_denied));
-                        Snackbar.make(
-                                binding.getRoot(),
-                                R.string.microphone_permission_needed,
-                                Snackbar.LENGTH_LONG
-                        ).show();
+                    if (granted && awaitingMicrophonePermission) {
+                        startNativeRecognition();
+                    } else if (!granted) {
+                        emitSpeechError("not-allowed");
+                        emitSpeechEnd();
                     }
                 }
         );
     }
 
-    private void configureSpeechRecognition() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            binding.dictateButton.setEnabled(false);
-            updateVoiceState(getString(R.string.voice_status_unavailable));
-            return;
-        }
+    @SuppressLint("SetJavaScriptEnabled")
+    private void configureWebView() {
+        webView = new WebView(this);
+        webView.setBackgroundColor(Color.rgb(21, 18, 28));
+        ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
+            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            view.setPadding(
+                    systemBars.left,
+                    systemBars.top,
+                    systemBars.right,
+                    systemBars.bottom
+            );
+            return windowInsets;
+        });
+        setContentView(webView);
+        ViewCompat.requestApplyInsets(webView);
 
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setJavaScriptCanOpenWindowsAutomatically(false);
+        settings.setSupportMultipleWindows(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+
+        WebViewAssetLoader assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
+
+        webView.addJavascriptInterface(new NativeSpeechBridge(), "DictaTaskAndroid");
+        webView.setWebViewClient(new WebViewClient() {
             @Override
-            public void onReadyForSpeech(Bundle params) {
-                isListening = true;
-                updateVoiceState(getString(R.string.voice_status_listening));
-                updateDictationButton();
+            public WebResourceResponse shouldInterceptRequest(
+                    WebView view,
+                    WebResourceRequest request
+            ) {
+                return assetLoader.shouldInterceptRequest(request.getUrl());
             }
 
             @Override
-            public void onBeginningOfSpeech() {
-                updateVoiceState(getString(R.string.voice_status_hearing));
-            }
-
-            @Override
-            public void onRmsChanged(float rmsdB) {
-                // The status text carries the listening feedback without visual noise.
-            }
-
-            @Override
-            public void onBufferReceived(byte[] buffer) {
-                // No raw audio is retained by this app.
-            }
-
-            @Override
-            public void onEndOfSpeech() {
-                isListening = false;
-                updateVoiceState(getString(R.string.voice_status_finishing));
-                updateDictationButton();
-            }
-
-            @Override
-            public void onError(int error) {
-                isListening = false;
-                updateVoiceState(speechErrorMessage(error));
-                updateDictationButton();
-            }
-
-            @Override
-            public void onResults(Bundle results) {
-                applySpeechResults(results, false);
-                isListening = false;
-                updateVoiceState(getString(R.string.voice_status_captured));
-                updateDictationButton();
-            }
-
-            @Override
-            public void onPartialResults(Bundle partialResults) {
-                applySpeechResults(partialResults, true);
-            }
-
-            @Override
-            public void onEvent(int eventType, Bundle params) {
-                // No additional event handling is needed for one-shot dictation.
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String host = request.getUrl().getHost();
+                return host == null || !ASSET_HOST.equals(host);
             }
         });
+        webView.loadUrl(LOCAL_ENTRYPOINT);
     }
 
-    private void configureActions() {
-        binding.dictateButton.setOnClickListener(view -> toggleDictation());
-        binding.saveTaskButton.setOnClickListener(view -> saveDraft());
-        binding.clearDraftButton.setOnClickListener(view -> {
-            binding.transcriptInput.setText("");
-            updateVoiceState(getString(R.string.voice_status_ready));
-        });
-    }
-
-    private void toggleDictation() {
-        if (isListening) {
-            if (speechRecognizer != null) {
-                speechRecognizer.stopListening();
-            }
-            return;
-        }
-
+    private void startNativeRecognition() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED) {
-            startListening();
-        } else {
+                != PackageManager.PERMISSION_GRANTED) {
+            awaitingMicrophonePermission = true;
             microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO);
-        }
-    }
-
-    private void startListening() {
-        if (speechRecognizer == null) {
-            updateVoiceState(getString(R.string.voice_status_unavailable));
             return;
         }
 
-        Intent recognitionIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        recognitionIntent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-        );
-        recognitionIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-        recognitionIntent.putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                getString(R.string.dictation_prompt)
-        );
+        awaitingMicrophonePermission = false;
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            emitSpeechError("audio-capture");
+            emitSpeechEnd();
+            return;
+        }
+
+        if (speechRecognizer == null) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override
+                public void onReadyForSpeech(Bundle params) {
+                    // The bundled app already changes its visible recording state.
+                }
+
+                @Override
+                public void onBeginningOfSpeech() {
+                    // Transcription feedback is delivered through partial results.
+                }
+
+                @Override
+                public void onRmsChanged(float rmsdB) {
+                    // The site’s animated voice wave remains the visual feedback.
+                }
+
+                @Override
+                public void onBufferReceived(byte[] buffer) {
+                    // Raw microphone samples are never retained.
+                }
+
+                @Override
+                public void onEndOfSpeech() {
+                    // Wait for final results before ending this recognition segment.
+                }
+
+                @Override
+                public void onError(int error) {
+                    emitSpeechError(mapSpeechError(error));
+                    emitSpeechEnd();
+                }
+
+                @Override
+                public void onResults(Bundle results) {
+                    emitSpeechResult(firstRecognitionResult(results), true);
+                    emitSpeechEnd();
+                }
+
+                @Override
+                public void onPartialResults(Bundle partialResults) {
+                    emitSpeechResult(firstRecognitionResult(partialResults), false);
+                }
+
+                @Override
+                public void onEvent(int eventType, Bundle params) {
+                    // No additional events are required by DictaTask’s recognition bridge.
+                }
+            });
+        }
 
         try {
-            speechRecognizer.startListening(recognitionIntent);
+            android.content.Intent recognizerIntent =
+                    new android.content.Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            recognizerIntent.putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            );
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+            recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
+            speechRecognizer.startListening(recognizerIntent);
         } catch (SecurityException exception) {
-            updateVoiceState(getString(R.string.voice_status_permission_denied));
+            emitSpeechError("not-allowed");
+            emitSpeechEnd();
+        } catch (RuntimeException exception) {
+            emitSpeechError("audio-capture");
+            emitSpeechEnd();
         }
     }
 
-    private void applySpeechResults(Bundle results, boolean partial) {
+    private void stopNativeRecognition() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.stopListening();
+            } catch (RuntimeException exception) {
+                emitSpeechEnd();
+            }
+        }
+    }
+
+    private void abortNativeRecognition() {
+        if (speechRecognizer != null) {
+            try {
+                speechRecognizer.cancel();
+            } catch (RuntimeException ignored) {
+                // The web side is explicitly closed below either way.
+            }
+        }
+        emitSpeechEnd();
+    }
+
+    private String firstRecognitionResult(Bundle results) {
         if (results == null) {
-            return;
+            return "";
         }
 
         ArrayList<String> candidates = results.getStringArrayList(
                 SpeechRecognizer.RESULTS_RECOGNITION
         );
         if (candidates == null || candidates.isEmpty()) {
-            return;
+            return "";
         }
-
-        String transcript = candidates.get(0).trim();
-        if (transcript.isEmpty()) {
-            return;
-        }
-
-        binding.transcriptInput.setText(transcript);
-        binding.transcriptInput.setSelection(transcript.length());
-        if (partial) {
-            updateVoiceState(getString(R.string.voice_status_hearing));
-        }
-    }
-
-    private void saveDraft() {
-        String title = binding.transcriptInput.getText() == null
-                ? ""
-                : binding.transcriptInput.getText().toString().trim();
-
-        if (title.isEmpty()) {
-            binding.transcriptLayout.setError(getString(R.string.task_required));
-            binding.transcriptInput.requestFocus();
-            return;
-        }
-
-        binding.transcriptLayout.setError(null);
-        long timestamp = System.currentTimeMillis();
-        tasks.add(0, new Task(timestamp, title, timestamp, false));
-        binding.transcriptInput.setText("");
-        persistAndRender();
-        updateVoiceState(getString(R.string.voice_status_saved));
-        Snackbar.make(binding.getRoot(), R.string.task_saved, Snackbar.LENGTH_SHORT).show();
-    }
-
-    private void persistAndRender() {
-        taskStore.save(tasks);
-        renderTasks();
-    }
-
-    private void renderTasks() {
-        taskAdapter.submit(tasks);
-        int completedCount = 0;
-        for (Task task : tasks) {
-            if (task.isCompleted()) {
-                completedCount++;
-            }
-        }
-
-        int openCount = tasks.size() - completedCount;
-        binding.taskSummary.setText(getString(R.string.task_summary, openCount, completedCount));
-        boolean isEmpty = tasks.isEmpty();
-        binding.emptyState.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
-        binding.taskList.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
-    }
-
-    private void updateVoiceState(String message) {
-        binding.voiceStatus.setText(message);
-    }
-
-    private void updateDictationButton() {
-        boolean listening = isListening;
-        binding.dictateButton.setText(
-                listening ? R.string.stop_dictation : R.string.start_dictation
-        );
-        int color = ContextCompat.getColor(
-                this,
-                listening ? R.color.dt_magenta : R.color.dt_lime
-        );
-        binding.dictateButton.setBackgroundTintList(ColorStateList.valueOf(color));
+        return candidates.get(0).trim();
     }
 
     @NonNull
-    private String speechErrorMessage(int errorCode) {
-        switch (errorCode) {
-            case SpeechRecognizer.ERROR_AUDIO:
-                return getString(R.string.voice_status_audio_error);
-            case SpeechRecognizer.ERROR_NO_MATCH:
-            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                return getString(R.string.voice_status_no_match);
+    private String mapSpeechError(int error) {
+        switch (error) {
             case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                return getString(R.string.voice_status_permission_denied);
+                return "not-allowed";
             case SpeechRecognizer.ERROR_NETWORK:
             case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                return getString(R.string.voice_status_network_error);
+                return "network";
+            case SpeechRecognizer.ERROR_AUDIO:
+                return "audio-capture";
+            case SpeechRecognizer.ERROR_CLIENT:
+                return "aborted";
             default:
-                return getString(R.string.voice_status_try_again);
+                return "no-speech";
         }
+    }
+
+    private void emitSpeechResult(String transcript, boolean isFinal) {
+        if (transcript.isEmpty()) {
+            return;
+        }
+        evaluateJavascript(
+                "window.__dictaSpeechResult && window.__dictaSpeechResult("
+                        + JSONObject.quote(transcript)
+                        + ", "
+                        + isFinal
+                        + ");"
+        );
+    }
+
+    private void emitSpeechError(String error) {
+        evaluateJavascript(
+                "window.__dictaSpeechError && window.__dictaSpeechError("
+                        + JSONObject.quote(error)
+                        + ");"
+        );
+    }
+
+    private void emitSpeechEnd() {
+        evaluateJavascript("window.__dictaSpeechEnd && window.__dictaSpeechEnd();");
+    }
+
+    private void evaluateJavascript(String script) {
+        if (webView == null) {
+            return;
+        }
+        webView.post(() -> webView.evaluateJavascript(script, null));
     }
 
     @Override
     protected void onDestroy() {
         if (speechRecognizer != null) {
-            speechRecognizer.cancel();
             speechRecognizer.destroy();
             speechRecognizer = null;
         }
+        if (webView != null) {
+            webView.removeJavascriptInterface("DictaTaskAndroid");
+            webView.destroy();
+            webView = null;
+        }
         super.onDestroy();
     }
-}
 
+    private final class NativeSpeechBridge {
+        @JavascriptInterface
+        public void startRecognition() {
+            runOnUiThread(MainActivity.this::startNativeRecognition);
+        }
+
+        @JavascriptInterface
+        public void stopRecognition() {
+            runOnUiThread(MainActivity.this::stopNativeRecognition);
+        }
+
+        @JavascriptInterface
+        public void abortRecognition() {
+            runOnUiThread(MainActivity.this::abortNativeRecognition);
+        }
+    }
+}

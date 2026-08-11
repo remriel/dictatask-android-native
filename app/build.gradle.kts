@@ -14,8 +14,8 @@ android {
         applicationId = "com.remriel.dictatask"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     buildFeatures {
@@ -34,6 +34,6 @@ dependencies {
     implementation("androidx.core:core:1.17.0")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.3.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
+    implementation("androidx.webkit:webkit:1.13.0")
     implementation("com.google.android.material:material:1.13.0")
 }
-

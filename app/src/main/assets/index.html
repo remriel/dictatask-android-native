@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111111" />
+    <title>DictaTask — Task Combat Mode</title>
+    <script>
+      (() => {
+        let activeRecognition = null;
+
+        class AndroidSpeechRecognition {
+          constructor() {
+            this.continuous = false;
+            this.interimResults = false;
+            this.lang = "en-US";
+            this.onresult = null;
+            this.onend = null;
+            this.onerror = null;
+          }
+
+          start() {
+            activeRecognition = this;
+            if (window.DictaTaskAndroid && typeof window.DictaTaskAndroid.startRecognition === "function") {
+              window.DictaTaskAndroid.startRecognition();
+              return;
+            }
+            this._emitError("audio-capture");
+            this._emitEnd();
+          }
+
+          stop() {
+            if (window.DictaTaskAndroid && typeof window.DictaTaskAndroid.stopRecognition === "function") {
+              window.DictaTaskAndroid.stopRecognition();
+            }
+          }
+
+          abort() {
+            if (window.DictaTaskAndroid && typeof window.DictaTaskAndroid.abortRecognition === "function") {
+              window.DictaTaskAndroid.abortRecognition();
+            }
+            this._emitEnd();
+          }
+
+          _emitResult(transcript, isFinal) {
+            if (typeof this.onresult === "function") {
+              this.onresult({
+                resultIndex: 0,
+                results: [{ isFinal: Boolean(isFinal), 0: { transcript } }],
+              });
+            }
+          }
+
+          _emitError(error) {
+            if (typeof this.onerror === "function") {
+              this.onerror({ error });
+            }
+          }
+
+          _emitEnd() {
+            if (activeRecognition === this) {
+              activeRecognition = null;
+            }
+            if (typeof this.onend === "function") {
+              this.onend();
+            }
+          }
+        }
+
+        window.SpeechRecognition = AndroidSpeechRecognition;
+        window.webkitSpeechRecognition = AndroidSpeechRecognition;
+        window.__dictaSpeechResult = (transcript, isFinal) => {
+          activeRecognition?._emitResult(String(transcript || ""), Boolean(isFinal));
+        };
+        window.__dictaSpeechError = (error) => {
+          activeRecognition?._emitError(String(error || "audio-capture"));
+        };
+        window.__dictaSpeechEnd = () => {
+          activeRecognition?._emitEnd();
+        };
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-CXpdOfhc.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BKPd8WK2.css">
+  </head>
+  <body class="antialiased">
+    <div id="root"></div>
+  </body>
+</html>
+
