@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -38,6 +39,7 @@ public final class MainActivity extends AppCompatActivity {
     private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final String LOCAL_ENTRYPOINT =
             "https://" + ASSET_HOST + "/assets/index.html";
+    private static final String NOTIFICATION_PROMPT_SHOWN = "notification_prompt_shown";
 
     private WebView webView;
     private SpeechRecognizer speechRecognizer;
@@ -49,7 +51,27 @@ public final class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         configureMicrophonePermission();
+        configureHourlyReminder();
         configureWebView();
+    }
+
+    private void configureHourlyReminder() {
+        ReminderScheduler.ensureNotificationChannel(this);
+        ReminderScheduler.schedule(this);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+                && !getPreferences(MODE_PRIVATE).getBoolean(NOTIFICATION_PROMPT_SHOWN, false)) {
+            getPreferences(MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(NOTIFICATION_PROMPT_SHOWN, true)
+                    .apply();
+            requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    9101
+            );
+        }
     }
 
     private void configureMicrophonePermission() {

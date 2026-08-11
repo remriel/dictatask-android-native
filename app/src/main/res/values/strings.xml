@@ -40,5 +40,8 @@
     <string name="voice_status_network_error">Your device’s speech service needs a connection right now.</string>
     <string name="voice_status_try_again">That didn’t land. Try dictating again.</string>
     <string name="microphone_permission_needed">Allow microphone access to dictate tasks.</string>
+    <string name="notification_channel_name">Hourly reminders</string>
+    <string name="notification_channel_description">A gentle DictaTask prompt every hour.</string>
+    <string name="notification_title">Time to capture a thought</string>
+    <string name="notification_text">Open DictaTask and make your next move actionable.</string>
 </resources>
-
