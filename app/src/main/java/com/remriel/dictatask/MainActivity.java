@@ -2,8 +2,10 @@ package com.remriel.dictatask;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.speech.RecognitionListener;
@@ -15,6 +17,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -29,6 +32,8 @@ import androidx.webkit.WebViewAssetLoader;
 
 import org.json.JSONObject;
 
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 /**
@@ -44,6 +49,8 @@ public final class MainActivity extends AppCompatActivity {
     private WebView webView;
     private SpeechRecognizer speechRecognizer;
     private ActivityResultLauncher<String> microphonePermissionLauncher;
+    private ActivityResultLauncher<Intent> exportFileLauncher;
+    private String pendingExportContents;
     private boolean awaitingMicrophonePermission;
 
     @Override
@@ -51,8 +58,49 @@ public final class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         configureMicrophonePermission();
+        configureExportFilePicker();
         configureHourlyReminder();
         configureWebView();
+    }
+
+    private void configureExportFilePicker() {
+        exportFileLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    String contents = pendingExportContents;
+                    pendingExportContents = null;
+                    if (result.getResultCode() != RESULT_OK || result.getData() == null || contents == null) {
+                        return;
+                    }
+
+                    Uri destination = result.getData().getData();
+                    if (destination == null) {
+                        return;
+                    }
+
+                    try (OutputStream output = getContentResolver().openOutputStream(destination)) {
+                        if (output == null) {
+                            throw new IllegalStateException("The selected location could not be opened.");
+                        }
+                        output.write(contents.getBytes(StandardCharsets.UTF_8));
+                        Toast.makeText(this, "Task history exported.", Toast.LENGTH_SHORT).show();
+                    } catch (Exception exception) {
+                        Toast.makeText(this, "Could not export task history.", Toast.LENGTH_LONG).show();
+                    }
+                }
+        );
+    }
+
+    private void launchTaskHistoryExport(String contents) {
+        if (exportFileLauncher == null) {
+            return;
+        }
+        pendingExportContents = contents;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, "dictatask-task-history.txt");
+        exportFileLauncher.launch(intent);
     }
 
     private void configureHourlyReminder() {
@@ -308,6 +356,24 @@ public final class MainActivity extends AppCompatActivity {
         webView.post(() -> webView.evaluateJavascript(script, null));
     }
 
+    private String getStoredState(String key) {
+        if (key == null || key.isEmpty()) {
+            return "";
+        }
+        return getSharedPreferences("dictatask_state", MODE_PRIVATE)
+                .getString(key, "");
+    }
+
+    private void setStoredState(String key, String raw) {
+        if (key == null || key.isEmpty() || raw == null) {
+            return;
+        }
+        getSharedPreferences("dictatask_state", MODE_PRIVATE)
+                .edit()
+                .putString(key, raw)
+                .apply();
+    }
+
     @Override
     protected void onDestroy() {
         if (speechRecognizer != null) {
@@ -336,6 +402,21 @@ public final class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void abortRecognition() {
             runOnUiThread(MainActivity.this::abortNativeRecognition);
+        }
+
+        @JavascriptInterface
+        public String getStoredState(String key) {
+            return MainActivity.this.getStoredState(key);
+        }
+
+        @JavascriptInterface
+        public void setStoredState(String key, String raw) {
+            MainActivity.this.setStoredState(key, raw);
+        }
+
+        @JavascriptInterface
+        public void exportTaskHistory(String contents) {
+            runOnUiThread(() -> launchTaskHistoryExport(contents == null ? "" : contents));
         }
     }
 }
