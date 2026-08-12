@@ -262,6 +262,18 @@ public final class MainActivity extends AppCompatActivity {
             recognizerIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
             recognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
             recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
+            recognizerIntent.putExtra(
+                    RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
+                    30_000L
+            );
+            recognizerIntent.putExtra(
+                    RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                    30_000L
+            );
+            recognizerIntent.putExtra(
+                    RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
+                    30_000L
+            );
             speechRecognizer.startListening(recognizerIntent);
         } catch (SecurityException exception) {
             emitSpeechError("not-allowed");
