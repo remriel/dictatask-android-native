@@ -1,20 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.DicTaTask" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.DicTaTask" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowBackground">@color/dt_charcoal</item>
         <item name="android:statusBarColor">@color/dt_charcoal</item>
         <item name="android:navigationBarColor">@color/dt_charcoal</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-        <item name="colorPrimary">@color/dt_lime</item>
-        <item name="colorOnPrimary">@color/dt_charcoal</item>
-        <item name="colorSecondary">@color/dt_magenta</item>
-        <item name="colorOnSecondary">@color/dt_black</item>
-        <item name="colorTertiary">@color/dt_cobalt</item>
-        <item name="colorSurface">@color/dt_surface</item>
-        <item name="colorOnSurface">@color/dt_paper</item>
-        <item name="colorOutline">@color/dt_outline</item>
+        <item name="android:colorAccent">@color/dt_lime</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
 </resources>

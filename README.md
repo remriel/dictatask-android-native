@@ -1,22 +1,39 @@
 # DictaTask for Android
 
-DictaTask for Android is a standalone Android package containing the exact compiled DictaTask interface and client-side behavior from the website. It does not load, synchronize with, or otherwise communicate with the DictaTask site at runtime.
+DictaTask is a local-first Android task app built around a bundled React interface. The APK never loads the product UI from the network: `MainActivity` serves the compiled files from `app/src/main/assets` through `WebViewAssetLoader` and blocks external navigation.
 
-## What it does
+## Product behavior
 
-- Bundles the same DictaTask UI, copy, starter data, task parser, filters, completion flow, XP/combo behavior, confetti, and local persistence as the website.
-- Uses Android's native speech-recognition service through a small bridge that feeds live transcripts into the original DictaTask voice-input flow.
-- Stores task state locally within the app's bundled interface.
-- Blocks external page navigation and has no `INTERNET` permission.
+- Turns a 30-second native Android voice session or pasted transcript into editable tasks.
+- Keeps transcripts, tasks, completion history, theme, and reminder preference on the device.
+- Includes real dark and light palettes, responsive 320 px+ layouts, task filters, completion feedback, and text-history export.
+- Offers opt-in, task-aware focus reminders with **Done** and **Snooze 30 min** actions, quiet hours from 10 PM–8 AM, foreground suppression, and private lock-screen copy.
+- Requests microphone access only when recording starts and notification access only after the user enables Focus Signals.
+- Declares no `INTERNET` permission.
 
-The app requests microphone access only when the user starts a voice note. Availability of speech recognition depends on the Android recognition provider configured on the device.
+## Source layout
+
+- `ui-src/` — maintainable React, TypeScript, CSS, font licenses, and production artwork.
+- `app/src/main/assets/` — generated offline web bundle packaged in the APK.
+- `app/src/main/java/com/remriel/dictatask/` — speech, persistence, export, theme, and notification bridges.
+- `dist/DictaTask.apk` — packaged internal-review APK.
 
 ## Build
 
-Open the project in Android Studio or run:
+Prerequisites are Node.js/npm, Android SDK 36, and JDK 17. On Windows with Android Studio installed:
 
 ```powershell
-.\gradlew.bat assembleDebug
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+
+Push-Location ui-src
+npm ci
+npm run build
+Pop-Location
+
+.\gradlew.bat :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease
+Copy-Item app\build\outputs\apk\release\app-release.apk dist\DictaTask.apk -Force
 ```
 
-The installable debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. The packaged delivery copy is at `dist/DictaTask.apk` after a release build.
+The optimized APK is written to `app/build/outputs/apk/release/app-release.apk`. The checked-in build uses the Android debug signing key so it can be installed for internal review; a Play Store release must be signed with the repository owner’s protected release key.

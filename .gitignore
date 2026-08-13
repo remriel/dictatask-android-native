@@ -5,4 +5,7 @@ build/
 app/build/
 *.iml
 captures/
+.playwright-cli/
+output/
+ui-src/node_modules/
 
