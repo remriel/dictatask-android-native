@@ -14,12 +14,21 @@ android {
         applicationId = "com.remriel.dictatask"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 5
+        versionName = "1.4.0"
     }
 
-    buildFeatures {
-        viewBinding = true
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // Produces an installable internal-review APK. Play releases should use the owner's key.
+            signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 
     compileOptions {
@@ -29,11 +38,11 @@ android {
 }
 
 dependencies {
-    implementation("androidx.activity:activity:1.10.1")
-    implementation("androidx.appcompat:appcompat:1.7.1")
-    implementation("androidx.core:core:1.17.0")
-    implementation("androidx.coordinatorlayout:coordinatorlayout:1.3.0")
-    implementation("androidx.recyclerview:recyclerview:1.4.0")
-    implementation("androidx.webkit:webkit:1.13.0")
-    implementation("com.google.android.material:material:1.13.0")
+    implementation("androidx.activity:activity:1.13.0")
+    // Core 1.19 requires compileSdk 37 and AGP 9.1; this project intentionally targets 36.
+    //noinspection GradleDependency
+    implementation("androidx.core:core:1.18.0")
+    implementation("androidx.webkit:webkit:1.17.0")
+    implementation("androidx.work:work-runtime:2.11.2")
+    testImplementation("junit:junit:4.13.2")
 }

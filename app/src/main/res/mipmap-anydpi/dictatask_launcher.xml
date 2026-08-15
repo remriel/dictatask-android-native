@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The API 33 resource variant supplies the monochrome themed icon. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MonochromeLauncherIcon">
+    <background android:drawable="@color/dt_charcoal" />
+    <foreground android:drawable="@drawable/dictatask_launcher_art" />
+</adaptive-icon>

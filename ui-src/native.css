@@ -1,0 +1,10 @@
+/* Android shell: the desktop header divider renders as an unintended overlay
+   when the compact mobile header is cropped by system UI. */
+.juice-topbar {
+  border-bottom: 0;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
