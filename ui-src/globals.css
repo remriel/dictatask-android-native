@@ -1991,9 +1991,59 @@ body {
   align-self: start;
   width: 100%;
   margin-top: 0;
+  padding-block: 0;
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+}
+
+.juice-workspace .manual-task-card input {
+  color: var(--juice-black);
+}
+
+.juice-workspace .manual-task-card input::placeholder {
+  color: var(--juice-black);
+  opacity: 0.86;
+}
+
+.juice-workspace .spin-launch-card {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   border: 4px solid var(--juice-black);
   background: var(--juice-lime);
   box-shadow: 8px 8px 0 var(--juice-black);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+  color: var(--juice-black);
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button:hover:not(:disabled) {
+  background: var(--juice-orange);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .juice-workspace .juice-panel {
@@ -3055,7 +3105,8 @@ body {
 
   .juice-workspace .transcript-card,
   .juice-workspace .manual-task-card,
-  .juice-workspace .tasks-card {
+  .juice-workspace .tasks-card,
+  .juice-workspace .spin-launch-card {
     grid-column: 1;
     grid-row: auto;
   }
@@ -4945,5 +4996,48 @@ textarea {
   .tasks-card.is-wheel-converging .add-task-form {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body {
+    background: var(--juice-cream);
+  }
+
+  .app-shell.juice-shell {
+    padding-right: 0;
+    /* Keep the flush side-to-side stack, but reserve a touch-safe lane above
+       Android's gesture/navigation bar for the final Spin the Wheel card. */
+    padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
+    padding-left: 0;
+    background-color: var(--juice-cream);
+  }
+
+  .juice-shell::before {
+    display: none;
+  }
+
+  .juice-workspace {
+    gap: 0;
+    max-width: none;
+  }
+
+  .top-flare {
+    margin-bottom: 0;
+  }
+
+  .juice-workspace .transcript-card,
+  .juice-workspace .manual-task-card,
+  .juice-workspace .tasks-card,
+  .juice-workspace .spin-launch-card {
+    width: 100%;
+    max-width: none;
+    margin-right: 0;
+    margin-left: 0;
+    box-shadow: none;
+  }
+
+  .top-flare {
+    box-shadow: none;
   }
 }

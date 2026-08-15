@@ -1729,19 +1729,6 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="task-actions task-list-wheel-action" aria-label="Focus selection">
-                <button
-                  className="clear-button wheel-launch-button"
-                  type="button"
-                  onClick={spinTheWheel}
-                  disabled={!openCount}
-                  aria-label="Spin the wheel to choose an open task"
-                >
-                  <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
-                  <span>Spin the wheel</span>
-                </button>
-              </div>
-
               <div className="task-actions task-actions-footer" aria-label="Task list actions">
                 <button
                   className={`clear-button wheel-settings-button ${wheelSettingsOpen ? "is-open" : ""}`}
@@ -1878,6 +1865,21 @@ export default function Home() {
             </div>
           </div>
         </article>
+
+        {wheelPhase === "list" && (
+          <section className="spin-launch-card juice-panel" aria-label="Focus selection">
+            <button
+              className="clear-button wheel-launch-button"
+              type="button"
+              onClick={spinTheWheel}
+              disabled={!openCount}
+              aria-label="Spin the wheel to choose an open task"
+            >
+              <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
+              <span>Spin the wheel</span>
+            </button>
+          </section>
+        )}
       </section>
 
     </main>

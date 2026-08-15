@@ -9,7 +9,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The shipped UI is the bundled React/Vite app in `ui-src/`, copied into `app/src/main/assets/`.
 - Spin the Wheel uses a persisted configurable countdown, cancel-safe run IDs, bright task-card shadow colors, and a WebView-safe `requestAnimationFrame` rotation loop.
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
-- Manual task entry is a standalone green card between the recording and task panels on mobile (and occupies the left-side gap below recording on wider layouts), with its own `ADD TASK` button.
+- Manual task entry is a standalone green card between the recording and task panels on mobile (and occupies the left-side gap below recording on wider layouts), with its own `ADD TASK` button. The card has no extra top/bottom padding, no black border bars, and uses theme ink for its placeholder.
+- On mobile the workspace is a flush vertical stack with no visible black side/gap background: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. A safe-area-aware bottom lane keeps that final card clear of Android navigation controls.
 - The former percentage/clear board panel is removed. A colorful 16px top flare remains as a completion progress bar with no visible percentage copy; this is the current 30%-larger banner pass.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
@@ -25,7 +26,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Task titles use a larger mobile-first type scale so they fill more of each card; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
 - The bottom `DICTATASK / LOCAL-FIRST FOCUS` footer and `DT_` mark are removed so the page ends with the task workspace rather than extra branding copy.
 - Focus clock, Export .txt, Clear done, and Remove all are compacted to roughly 60% of their former mobile height and forced into one responsive row.
-- The current branch is `agent/spin-wheel-focus-cleanup`; the release APK was rebuilt and the existing Google Drive file was updated in place.
+- The current branch is `agent/spin-wheel-focus-cleanup`; each release APK is uploaded to Google Drive as a new uniquely named file so prior versions remain available.
 
 ## Verification completed
 
@@ -37,10 +38,12 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the top flare is 16px tall and the viewport has no horizontal overflow.
 - Browser QA passed for the standalone manual-task card: it renders between the recording and task panels, the task list remains in its own panel, and submitting the `ADD TASK` form creates a new TO DO row.
+- Browser QA passed for the flush mobile stack: the Spin the Wheel launch control is in its own panel below the cream task board, the workspace has zero gap/side inset, and the manual card has zero vertical padding with theme-colored placeholder text.
+- The Android handoff includes a safe-area-aware mobile bottom inset for the Spin the Wheel card and removes the manual card's black border/shadow bands so its surrounding surface stays green.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `8BE6CE4AC0119D5BB673F0E7CB352CCFCC9B62F9B4033EC9E8C7E9BE651F9767` (1,205,426 bytes).
-- Google Drive APK: https://drive.google.com/file/d/1W3aWlos7bXlG_41qdqL__K9_TOXSeLYn/view?usp=drivesdk
+- APK SHA-256: `3B6E1B72BFC56EA96685B11E3BD0BC68B775202B0B65896CD59F66AE1C682E80` (1,205,710 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1z7fet544nidpK1lVxhhOcrmsCK_buVp0/view?usp=drivesdk
 
 ## Constraints
 
