@@ -13,11 +13,14 @@ type WheelSettings = {
   durationMinutes: number;
 };
 
+type FocusEntry = "wheel" | "direct";
+
 type WheelChallenge = {
   taskId: string;
   startedAt: number;
   durationSeconds: number;
   expired: boolean;
+  source: FocusEntry;
 };
 
 type WheelPhase = "list" | "converging" | "wheel" | "spinning" | "challenge" | "complete";
@@ -433,6 +436,7 @@ function normalizeWheelChallenge(value: unknown): WheelChallenge | null {
     startedAt,
     durationSeconds,
     expired: record.expired === true,
+    source: record.source === "direct" ? "direct" : "wheel",
   };
 }
 
@@ -628,11 +632,13 @@ const TaskRow = memo(function TaskRow({
   index,
   celebrating,
   onToggle,
+  onFocus,
 }: {
   task: Task;
   index: number;
   celebrating: boolean;
   onToggle: (id: string) => void;
+  onFocus: (id: string) => void;
 }) {
   return (
     <div
@@ -664,6 +670,20 @@ const TaskRow = memo(function TaskRow({
         <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
         <div>
           <p className="task-title">{task.title}</p>
+          {!task.completed && (
+            <button
+              className="task-focus-button"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onFocus(task.id);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+              aria-label={`Focus ${task.title} without spinning the wheel`}
+            >
+              FOCUS
+            </button>
+          )}
         </div>
       </div>
       <span className="task-badge">{task.completed ? "DONE" : "NEXT"}</span>
@@ -792,6 +812,7 @@ export default function Home() {
   const [sessionXp, setSessionXp] = useState(0);
   const [combo, setCombo] = useState(0);
   const [wheelPhase, setWheelPhase] = useState<WheelPhase>("list");
+  const [focusEntryMode, setFocusEntryMode] = useState<FocusEntry>("wheel");
   const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelCandidates, setWheelCandidates] = useState<Task[]>([]);
   const [pendingWheelTaskId, setPendingWheelTaskId] = useState<string | null>(null);
@@ -817,7 +838,9 @@ export default function Home() {
   const lastCompletionAtRef = useRef(0);
   const milestonesSeenRef = useRef(new Set<number>());
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
+  const focusTaskRef = useRef<(id: string) => void>(() => undefined);
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
+  const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
   const colorScheme = theme === "paper" ? "light" : "dark";
 
   useEffect(() => {
@@ -892,10 +915,12 @@ export default function Home() {
     if (!activeTask || activeTask.completed) {
       setWheelChallenge(null);
       if (wheelPhase === "challenge") setWheelPhase("list");
+      setFocusEntryMode("wheel");
       return;
     }
 
     if (wheelPhase === "list") {
+      setFocusEntryMode(wheelChallenge.source);
       setWheelCandidates((current) => current.length ? current : openTasks);
       setPendingWheelTaskId(activeTask.id);
       setWheelPhase("challenge");
@@ -1005,15 +1030,18 @@ export default function Home() {
     }
   }
 
-  function putWheelAway(message = "Wheel cancelled. Your tasks are unchanged.") {
+  function putWheelAway(message?: string) {
     wheelRunIdRef.current += 1;
     clearWheelTimers();
     setWheelChallenge(null);
     setWheelPhase("list");
+    setFocusEntryMode("wheel");
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
-    setNotice(message);
+    setNotice(message ?? (focusEntryMode === "direct"
+      ? "Focus cancelled. Your tasks are unchanged."
+      : "Wheel cancelled. Your tasks are unchanged."));
   }
 
   function finishWheelSpin(runId: number, selectedTask: Task, targetRotation: number, durationMinutes: number) {
@@ -1028,6 +1056,7 @@ export default function Home() {
       startedAt: Date.now(),
       durationSeconds: durationMinutes * 60,
       expired: false,
+      source: "wheel",
     });
     setWheelPhase("challenge");
     setNotice(`${selectedTask.title} is the move. ${durationMinutes} minutes, clean finish.`);
@@ -1050,6 +1079,7 @@ export default function Home() {
     wheelRunIdRef.current = runId;
     clearWheelTimers();
     setWheelChallenge(null);
+    setFocusEntryMode("wheel");
     const selectedIndex = Math.floor(Math.random() * eligibleTasks.length);
     const selectedTask = eligibleTasks[selectedIndex];
     const segmentAngle = 360 / eligibleTasks.length;
@@ -1105,11 +1135,42 @@ export default function Home() {
     }, WHEEL_CONVERGE_DURATION_MS);
   }
 
+  function focusTaskDirectly(taskId: string) {
+    const selectedTask = tasks.find((task) => task.id === taskId);
+    if (!selectedTask || selectedTask.completed) {
+      setNotice("Choose an open task to start a focus clock.");
+      return;
+    }
+
+    if (wheelChallenge && !wheelChallenge.expired) {
+      setWheelPhase("challenge");
+      setNotice("Your focus clock is already running. Finish that task before choosing another.");
+      return;
+    }
+
+    wheelRunIdRef.current += 1;
+    clearWheelTimers();
+    setWheelChallenge({
+      taskId: selectedTask.id,
+      startedAt: Date.now(),
+      durationSeconds: wheelSettings.durationMinutes * 60,
+      expired: false,
+      source: "direct",
+    });
+    setWheelPhase("challenge");
+    setFocusEntryMode("direct");
+    setWheelCandidates([]);
+    setPendingWheelTaskId(selectedTask.id);
+    setWheelSettingsOpen(false);
+    setNotice(`${selectedTask.title} is locked in. ${wheelSettings.durationMinutes} minutes, clean finish.`);
+  }
+
   function rerollWheel() {
     wheelRunIdRef.current += 1;
     clearWheelTimers();
     setWheelChallenge(null);
     setWheelPhase("list");
+    setFocusEntryMode("wheel");
     const rerollId = wheelRunIdRef.current;
     window.setTimeout(() => {
       if (wheelRunIdRef.current !== rerollId) return;
@@ -1311,12 +1372,14 @@ export default function Home() {
         clearWheelTimers();
         setWheelChallenge(null);
         setWheelPhase("complete");
+        setFocusEntryMode(wheelChallenge?.source ?? "wheel");
         setNotice(wheelChallenge?.expired
           ? "Task cleared after the buzzer. Still a win."
           : "Focus task cleared. You held the line.");
         wheelReturnTimerRef.current = window.setTimeout(() => {
           wheelReturnTimerRef.current = null;
           setWheelPhase("list");
+          setFocusEntryMode("wheel");
           setWheelCandidates([]);
           setPendingWheelTaskId(null);
         }, 1400);
@@ -1371,6 +1434,7 @@ export default function Home() {
     setCombo(0);
     setWheelChallenge(null);
     setWheelPhase("list");
+    setFocusEntryMode("wheel");
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
@@ -1406,6 +1470,7 @@ export default function Home() {
   }
 
   toggleTaskRef.current = toggleTask;
+  focusTaskRef.current = focusTaskDirectly;
 
   return (
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
@@ -1534,6 +1599,7 @@ export default function Home() {
                       index={index}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
+                      onFocus={handleTaskFocus}
                     />
                   ))
                 ) : (
@@ -1602,7 +1668,7 @@ export default function Home() {
             <div className="task-board-face task-board-face-back" aria-hidden={wheelPhase === "list"}>
               <section className="wheel-stage" aria-label="Spin the Wheel focus challenge">
                 <div className="wheel-stage-kicker">
-                  <span>SPIN THE WHEEL</span>
+                  <span>{focusEntryMode === "direct" ? "DIRECT FOCUS" : "SPIN THE WHEEL"}</span>
                   <span>FOCUS CLOCK · {wheelSettings.durationMinutes} MIN</span>
                 </div>
 
@@ -1611,28 +1677,38 @@ export default function Home() {
                     className="wheel-cancel-button"
                     type="button"
                     onClick={() => putWheelAway()}
-                    aria-label="Cancel the wheel and return to the current tasks"
+                    aria-label="Cancel focus and return to the current tasks"
                   >
                     <span aria-hidden="true">×</span> CANCEL / KEEP TASKS
                   </button>
                 )}
 
-                <div className="wheel-machine">
-                  <span className="wheel-landing-marker">LAND HERE</span>
-                  <div
-                    ref={wheelRotorRef}
-                    className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
-                    style={{
-                      "--wheel-color-gradient": wheelColorGradient,
-                      transform: `rotate(${wheelRotation}deg)`,
-                    } as CSSProperties}
-                    role="img"
-                    aria-label="A colorful task-selection wheel"
-                  >
-                    <span className="wheel-color-field" aria-hidden="true" />
-                    <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
+                {focusEntryMode === "direct" ? (
+                  wheelPhase === "challenge" && wheelFocusTask && (
+                    <div className={`direct-focus-panel task-${wheelFocusTask.color}`} role="status">
+                      <span>DIRECT FOCUS</span>
+                      <strong>YOUR CHOICE</strong>
+                      <small>No spin. Start with the task you picked.</small>
+                    </div>
+                  )
+                ) : (
+                  <div className="wheel-machine">
+                    <span className="wheel-landing-marker">LAND HERE</span>
+                    <div
+                      ref={wheelRotorRef}
+                      className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
+                      style={{
+                        "--wheel-color-gradient": wheelColorGradient,
+                        transform: `rotate(${wheelRotation}deg)`,
+                      } as CSSProperties}
+                      role="img"
+                      aria-label="A colorful task-selection wheel"
+                    >
+                      <span className="wheel-color-field" aria-hidden="true" />
+                      <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {(wheelPhase === "wheel" || wheelPhase === "spinning") && (
                   <div className="wheel-result-card is-spinning" role="status" aria-live="polite">

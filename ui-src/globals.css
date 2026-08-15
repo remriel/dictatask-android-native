@@ -2235,6 +2235,7 @@ body {
   justify-content: flex-start;
   flex-wrap: nowrap;
   gap: 6px;
+  margin-bottom: 8px;
 }
 
 .juice-panel .task-heading-copy .clear-button {
@@ -2497,6 +2498,36 @@ body {
   font-weight: 950;
   letter-spacing: -0.045em;
   line-height: 1.04;
+}
+
+.task-focus-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 9px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-yellow);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  color: var(--juice-black);
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 6px 10px;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.task-focus-button:hover,
+.task-focus-button:focus-visible {
+  background: var(--juice-orange);
+  transform: translate(-1px, -1px);
+}
+
+.task-focus-button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(2px, 2px);
 }
 
 .juice-panel .is-complete .task-title {
@@ -4411,6 +4442,42 @@ textarea {
   box-shadow: 7px 7px 0 var(--juice-black);
   color: var(--juice-black);
   padding: clamp(18px, 2.5vw, 28px);
+}
+
+.direct-focus-panel {
+  display: grid;
+  min-height: 168px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-lime);
+  box-shadow: 7px 7px 0 var(--juice-black);
+  color: var(--juice-black);
+  padding: 22px;
+  text-align: center;
+}
+
+.direct-focus-panel.task-orange { background: var(--task-tile-orange-shadow); }
+.direct-focus-panel.task-blue { background: var(--task-tile-blue-shadow); color: var(--juice-cream); }
+.direct-focus-panel.task-cyan { background: var(--task-tile-cyan-shadow); }
+.direct-focus-panel.task-lime { background: var(--task-tile-lime-shadow); }
+.direct-focus-panel.task-violet { background: var(--task-tile-violet-shadow); color: var(--juice-cream); }
+
+.direct-focus-panel span,
+.direct-focus-panel small {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.35;
+}
+
+.direct-focus-panel strong {
+  font-size: clamp(29px, 4vw, 52px);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
 }
 
 .wheel-stage-kicker {
