@@ -1,15 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DictaTask</string>
-    <string name="notification_channel_name">Focus reminders</string>
-    <string name="notification_channel_description">Quiet, task-aware prompts for your next move.</string>
-    <string name="notification_title">Your next move</string>
-    <plurals name="notification_open_count">
-        <item quantity="one">%1$d open task</item>
-        <item quantity="other">%1$d open tasks</item>
-    </plurals>
-    <string name="notification_public_title">DictaTask</string>
-    <string name="notification_public_text">You have a task waiting.</string>
-    <string name="notification_action_done">Done</string>
-    <string name="notification_action_snooze">Snooze 30 min</string>
 </resources>

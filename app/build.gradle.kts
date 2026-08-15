@@ -14,8 +14,8 @@ android {
         applicationId = "com.remriel.dictatask"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.5.0"
     }
 
     buildTypes {
@@ -43,6 +43,5 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.core:core:1.18.0")
     implementation("androidx.webkit:webkit:1.17.0")
-    implementation("androidx.work:work-runtime:2.11.2")
     testImplementation("junit:junit:4.13.2")
 }

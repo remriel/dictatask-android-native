@@ -9,13 +9,18 @@ type Filter = "all" | "open" | "done";
 type Theme = "midnight" | "paper";
 type CelebrationVariant = "burst" | "stamp" | "jackpot" | "massacre";
 
-type ReminderSettings = {
-  enabled: boolean;
-  permissionGranted: boolean;
-  notificationsEnabled: boolean;
-  quietStartHour: number;
-  quietEndHour: number;
+type WheelSettings = {
+  durationMinutes: number;
 };
+
+type WheelChallenge = {
+  taskId: string;
+  startedAt: number;
+  durationSeconds: number;
+  expired: boolean;
+};
+
+type WheelPhase = "list" | "converging" | "wheel" | "spinning" | "challenge" | "complete";
 
 type Task = {
   id: string;
@@ -62,12 +67,7 @@ declare global {
       getStoredState?: (key: string) => string;
       setStoredState?: (key: string, raw: string) => void;
       exportTaskHistory?: (contents: string) => void;
-      getReminderSettings?: () => string;
-      setRemindersEnabled?: (enabled: boolean) => void;
-      requestNotificationPermission?: () => void;
-      openNotificationSettings?: () => void;
       setColorScheme?: (scheme: "dark" | "light") => void;
-      notifyWebReady?: () => void;
     };
   }
 }
@@ -148,12 +148,11 @@ const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
 const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
-const defaultReminderSettings: ReminderSettings = {
-  enabled: false,
-  permissionGranted: false,
-  notificationsEnabled: false,
-  quietStartHour: 22,
-  quietEndHour: 8,
+const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
+const WHEEL_CONVERGE_DURATION_MS = 560;
+const WHEEL_SPIN_DURATION_MS = 3600;
+const defaultWheelSettings: WheelSettings = {
+  durationMinutes: 10,
 };
 const confettiPieces = Array.from({ length: 20 }, (_, index) => ({
   left: `${-8 + ((index * 29) % 116)}vw`,
@@ -263,12 +262,6 @@ function useStoredState<T>(key: string, fallback: T) {
   }, [fallback, key]);
 
   return [value, setValue] as const;
-}
-
-function invalidateStoredValue(key: string) {
-  nativeRawSnapshots.delete(key);
-  storageSnapshots.delete(key);
-  storageListeners.get(key)?.forEach((listener) => listener());
 }
 
 function useDebouncedStoredString(key: string, fallback: string, delay = 350) {
@@ -403,6 +396,39 @@ function normalizeTheme(value: unknown): Theme {
   return "midnight";
 }
 
+function normalizeWheelSettings(value: unknown): WheelSettings {
+  if (!value || typeof value !== "object") return defaultWheelSettings;
+  const durationMinutes = (value as Record<string, unknown>).durationMinutes;
+  if (typeof durationMinutes !== "number" || !Number.isFinite(durationMinutes)) {
+    return defaultWheelSettings;
+  }
+
+  const rounded = Math.round(durationMinutes);
+  return WHEEL_DURATION_OPTIONS.includes(rounded as (typeof WHEEL_DURATION_OPTIONS)[number])
+    ? { durationMinutes: rounded }
+    : defaultWheelSettings;
+}
+
+function normalizeWheelChallenge(value: unknown): WheelChallenge | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const taskId = typeof record.taskId === "string" ? record.taskId.trim() : "";
+  const startedAt = typeof record.startedAt === "number" && Number.isFinite(record.startedAt)
+    ? record.startedAt
+    : 0;
+  const durationSeconds = typeof record.durationSeconds === "number" && Number.isFinite(record.durationSeconds)
+    ? Math.floor(record.durationSeconds)
+    : 0;
+
+  if (!taskId || startedAt <= 0 || durationSeconds < 60 || durationSeconds > 7200) return null;
+  return {
+    taskId,
+    startedAt,
+    durationSeconds,
+    expired: record.expired === true,
+  };
+}
+
 function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
   const now = Date.now();
   const byId = new Map(current.map((entry) => [entry.id, {
@@ -428,27 +454,19 @@ function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
     .slice(0, MAX_HISTORY_RECORDS);
 }
 
-function parseReminderSettings(raw: string | undefined): ReminderSettings {
-  if (!raw) return defaultReminderSettings;
-  try {
-    const parsed = JSON.parse(raw) as Partial<ReminderSettings>;
-    return {
-      enabled: parsed.enabled === true,
-      permissionGranted: parsed.permissionGranted === true,
-      notificationsEnabled: parsed.notificationsEnabled === true,
-      quietStartHour: Number.isInteger(parsed.quietStartHour) ? Number(parsed.quietStartHour) : 22,
-      quietEndHour: Number.isInteger(parsed.quietEndHour) ? Number(parsed.quietEndHour) : 8,
-    };
-  } catch {
-    return defaultReminderSettings;
-  }
+function getRemainingFocusSeconds(challenge: WheelChallenge) {
+  const deadline = challenge.startedAt + (challenge.durationSeconds * 1000);
+  return Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
 }
 
-function formatHour(hour: number) {
-  const normalized = ((hour % 24) + 24) % 24;
-  if (normalized === 0) return "12 AM";
-  if (normalized === 12) return "12 PM";
-  return normalized < 12 ? `${normalized} AM` : `${normalized - 12} PM`;
+function formatFocusCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function shortenWheelTitle(title: string) {
+  return title.length > 22 ? `${title.slice(0, 20).trim()}…` : title;
 }
 
 function formatHistoryDate(timestamp: number | null) {
@@ -596,6 +614,10 @@ const TaskRow = memo(function TaskRow({
     <div
       className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${celebrating ? "is-celebrating" : ""}`}
       id={`task-${task.id}`}
+      style={{
+        "--task-stack-index": index,
+        "--task-stack-offset": `${(2 - index) * 94}px`,
+      } as CSSProperties}
       role="checkbox"
       aria-checked={task.completed}
       tabIndex={0}
@@ -623,6 +645,52 @@ const TaskRow = memo(function TaskRow({
       <span className="task-badge">{task.completed ? "DONE" : "NEXT"}</span>
       <span className="task-swipe" aria-hidden="true">→</span>
     </div>
+  );
+});
+
+const FocusCountdown = memo(function FocusCountdown({
+  challenge,
+  onExpire,
+}: {
+  challenge: WheelChallenge;
+  onExpire: () => void;
+}) {
+  const deadline = challenge.startedAt + (challenge.durationSeconds * 1000);
+  const [remainingSeconds, setRemainingSeconds] = useState(() => getRemainingFocusSeconds(challenge));
+  const onExpireRef = useRef(onExpire);
+  const expirationNotifiedRef = useRef(Boolean(challenge.expired));
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  useEffect(() => {
+    expirationNotifiedRef.current = Boolean(challenge.expired);
+    const tick = () => {
+      const next = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemainingSeconds((current) => current === next ? current : next);
+      if (next === 0 && !challenge.expired && !expirationNotifiedRef.current) {
+        expirationNotifiedRef.current = true;
+        onExpireRef.current();
+      }
+    };
+
+    tick();
+    if (challenge.expired) return undefined;
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [challenge.expired, deadline]);
+
+  const expired = challenge.expired || remainingSeconds === 0;
+  return (
+    <span
+      className={`wheel-countdown ${expired ? "is-expired" : ""}`}
+      role="timer"
+      aria-label={expired ? "Focus timer ended" : `${remainingSeconds} seconds remaining`}
+      aria-live="off"
+    >
+      {expired ? "TIME CALLED" : formatFocusCountdown(remainingSeconds)}
+    </span>
   );
 });
 
@@ -676,6 +744,16 @@ export default function Home() {
   const [tasks, setTasks] = useNormalizedStoredState("dictatask-tasks", starterTasks, normalizeTasks);
   const [taskHistory, setTaskHistory] = useNormalizedStoredState("dictatask-task-history", starterTaskHistory, normalizeTaskHistory);
   const [theme, setTheme] = useNormalizedStoredState("dictatask-theme", "midnight" as Theme, normalizeTheme);
+  const [wheelSettings, setWheelSettings] = useNormalizedStoredState(
+    "dictatask-wheel-settings",
+    defaultWheelSettings,
+    normalizeWheelSettings,
+  );
+  const [wheelChallenge, setWheelChallenge] = useNormalizedStoredState<WheelChallenge | null>(
+    "dictatask-wheel-challenge",
+    null,
+    normalizeWheelChallenge,
+  );
   const [filter, setFilter] = useState<Filter>("all");
   const [newTask, setNewTask] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -689,8 +767,11 @@ export default function Home() {
   const [milestone, setMilestone] = useState<string | null>(null);
   const [sessionXp, setSessionXp] = useState(0);
   const [combo, setCombo] = useState(0);
-  const [reminderSettings, setReminderSettings] = useState(defaultReminderSettings);
-  const [reminderBusy, setReminderBusy] = useState(false);
+  const [wheelPhase, setWheelPhase] = useState<WheelPhase>("list");
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [wheelCandidates, setWheelCandidates] = useState<Task[]>([]);
+  const [pendingWheelTaskId, setPendingWheelTaskId] = useState<string | null>(null);
+  const [wheelSettingsOpen, setWheelSettingsOpen] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceBufferRef = useRef("");
   const voiceInterimRef = useRef("");
@@ -703,13 +784,14 @@ export default function Home() {
   const milestoneTimerRef = useRef<number | null>(null);
   const rewardTimerRef = useRef<number | null>(null);
   const comboTimerRef = useRef<number | null>(null);
+  const wheelRevealTimerRef = useRef<number | null>(null);
+  const wheelSpinTimerRef = useRef<number | null>(null);
+  const wheelReturnTimerRef = useRef<number | null>(null);
   const lastCompletionAtRef = useRef(0);
   const milestonesSeenRef = useRef(new Set<number>());
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const colorScheme = theme === "paper" ? "light" : "dark";
-  const isNativeAndroid = typeof window !== "undefined"
-    && typeof window.DictaTaskAndroid?.getStoredState === "function";
 
   useEffect(() => {
     document.documentElement.dataset.dictataskTheme = theme;
@@ -724,50 +806,6 @@ export default function Home() {
       document.documentElement.style.removeProperty("color-scheme");
     };
   }, [colorScheme, theme]);
-
-  const refreshReminderSettings = useCallback(() => {
-    setReminderSettings(parseReminderSettings(window.DictaTaskAndroid?.getReminderSettings?.()));
-    setReminderBusy(false);
-  }, []);
-
-  useEffect(() => {
-    refreshReminderSettings();
-    const handleReminderSettings = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<ReminderSettings>>).detail;
-      if (detail && typeof detail === "object") {
-        setReminderSettings((current) => ({ ...current, ...detail }));
-        setReminderBusy(false);
-      } else {
-        refreshReminderSettings();
-      }
-    };
-    const handleNativeState = (event: Event) => {
-      const key = (event as CustomEvent<{ key?: string }>).detail?.key ?? "dictatask-tasks";
-      invalidateStoredValue(key);
-      if (key === "dictatask-tasks") {
-        setNotice("Task updated from your notification.");
-      }
-    };
-    const handleNavigate = (event: Event) => {
-      const detail = (event as CustomEvent<{ destination?: string; taskId?: string }>).detail;
-      if (detail?.destination !== "task") return;
-      setFilter("open");
-      window.setTimeout(() => {
-        const target = detail.taskId ? document.getElementById(`task-${detail.taskId}`) : null;
-        (target ?? document.querySelector(".tasks-card"))?.scrollIntoView({ behavior: "smooth", block: "center" });
-        if (target instanceof HTMLElement) target.focus({ preventScroll: true });
-      }, 120);
-    };
-    window.addEventListener("dictatask:reminder-settings-changed", handleReminderSettings);
-    window.addEventListener("dictatask:native-state-changed", handleNativeState);
-    window.addEventListener("dictatask:navigate", handleNavigate);
-    window.dispatchEvent(new CustomEvent("dictatask:web-ready"));
-    return () => {
-      window.removeEventListener("dictatask:reminder-settings-changed", handleReminderSettings);
-      window.removeEventListener("dictatask:native-state-changed", handleNativeState);
-      window.removeEventListener("dictatask:navigate", handleNavigate);
-    };
-  }, [refreshReminderSettings]);
 
   useEffect(() => {
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
@@ -789,7 +827,8 @@ export default function Home() {
     });
   }, [setDismissedTaskIds, tasks]);
 
-  const openCount = tasks.filter((task) => !task.completed).length;
+  const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks]);
+  const openCount = openTasks.length;
   const doneCount = tasks.filter((task) => task.completed).length;
   const totalCount = tasks.length;
   const progressPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
@@ -805,8 +844,35 @@ export default function Home() {
       : visibleTasks;
   }, [celebratingTaskId, dismissedTaskIdSet, filter, tasks]);
 
-  const nextTaskTitle = tasks.find((task) => !task.completed)?.title
-    ?? "Board clear — reminders automatically stay quiet.";
+  const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
+  const wheelFocusTaskId = wheelChallenge?.taskId ?? pendingWheelTaskId;
+  const wheelFocusTask = wheelFocusTaskId
+    ? tasks.find((task) => task.id === wheelFocusTaskId) ?? null
+    : null;
+
+  const handleWheelDeadline = useCallback(() => {
+    setWheelChallenge((current) => {
+      if (!current || current.expired) return current;
+      return { ...current, expired: true };
+    });
+    setNotice("Clock called. Reset when you are ready, then take the task cleanly.");
+  }, [setWheelChallenge]);
+
+  useEffect(() => {
+    if (!wheelChallenge) return;
+    const activeTask = tasks.find((task) => task.id === wheelChallenge.taskId);
+    if (!activeTask || activeTask.completed) {
+      setWheelChallenge(null);
+      if (wheelPhase === "challenge") setWheelPhase("list");
+      return;
+    }
+
+    if (wheelPhase === "list") {
+      setWheelCandidates((current) => current.length ? current : openTasks);
+      setPendingWheelTaskId(activeTask.id);
+      setWheelPhase("challenge");
+    }
+  }, [openTasks, setWheelChallenge, tasks, wheelChallenge, wheelPhase]);
 
   function publishTranscriptPreview() {
     const preview = [voiceBufferRef.current.trim(), voiceInterimRef.current.trim()]
@@ -883,12 +949,97 @@ export default function Home() {
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
     if (rewardTimerRef.current !== null) window.clearTimeout(rewardTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
+    clearWheelTimers();
     try {
       recognitionRef.current?.stop();
     } catch {
       recognitionRef.current?.abort?.();
     }
   }, []);
+
+  function clearWheelTimers() {
+    if (wheelRevealTimerRef.current !== null) {
+      window.clearTimeout(wheelRevealTimerRef.current);
+      wheelRevealTimerRef.current = null;
+    }
+    if (wheelSpinTimerRef.current !== null) {
+      window.clearTimeout(wheelSpinTimerRef.current);
+      wheelSpinTimerRef.current = null;
+    }
+    if (wheelReturnTimerRef.current !== null) {
+      window.clearTimeout(wheelReturnTimerRef.current);
+      wheelReturnTimerRef.current = null;
+    }
+  }
+
+  function putWheelAway(message = "Wheel tucked away. Your whole board is back in view.") {
+    clearWheelTimers();
+    setWheelPhase("list");
+    setWheelCandidates([]);
+    setPendingWheelTaskId(null);
+    setWheelSettingsOpen(false);
+    setNotice(message);
+  }
+
+  function spinTheWheel() {
+    const eligibleTasks = tasks.filter((task) => !task.completed);
+    if (!eligibleTasks.length) {
+      setNotice("Add an open task before you spin the wheel.");
+      return;
+    }
+
+    if (wheelChallenge && !wheelChallenge.expired) {
+      setWheelPhase("challenge");
+      setNotice("Your focus clock is already running. Finish that task before the next spin.");
+      return;
+    }
+
+    clearWheelTimers();
+    setWheelChallenge(null);
+    const selectedIndex = Math.floor(Math.random() * eligibleTasks.length);
+    const selectedTask = eligibleTasks[selectedIndex];
+    const segmentAngle = 360 / eligibleTasks.length;
+    const labelAngle = selectedIndex * segmentAngle;
+
+    setWheelCandidates(eligibleTasks);
+    setPendingWheelTaskId(selectedTask.id);
+    setWheelSettingsOpen(false);
+    setWheelPhase("converging");
+    setNotice("The board is closing in. One task is about to get the spotlight.");
+
+    wheelRevealTimerRef.current = window.setTimeout(() => {
+      wheelRevealTimerRef.current = null;
+      setWheelPhase("wheel");
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          setWheelPhase("spinning");
+          setWheelRotation((current) => {
+            const normalizedCurrent = ((current % 360) + 360) % 360;
+            const alignment = (360 - labelAngle - normalizedCurrent + 360) % 360;
+            return current + (6 * 360) + alignment;
+          });
+        });
+      });
+
+      wheelSpinTimerRef.current = window.setTimeout(() => {
+        wheelSpinTimerRef.current = null;
+        setWheelChallenge({
+          taskId: selectedTask.id,
+          startedAt: Date.now(),
+          durationSeconds: wheelSettings.durationMinutes * 60,
+          expired: false,
+        });
+        setWheelPhase("challenge");
+        setNotice(`${selectedTask.title} is the move. ${wheelSettings.durationMinutes} minutes, clean finish.`);
+      }, WHEEL_SPIN_DURATION_MS + 120);
+    }, WHEEL_CONVERGE_DURATION_MS);
+  }
+
+  function rerollWheel() {
+    setWheelChallenge(null);
+    setWheelPhase("list");
+    window.setTimeout(spinTheWheel, 120);
+  }
 
   function generateTasks() {
     const nextTasks = extractTasks(transcript);
@@ -1022,6 +1173,7 @@ export default function Home() {
   function toggleTask(id: string) {
     const task = tasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
+    const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
 
     if (celebrationTimerRef.current !== null) {
       window.clearTimeout(celebrationTimerRef.current);
@@ -1078,6 +1230,22 @@ export default function Home() {
 
       setCelebratingTaskId(id);
       setNotice(nextCombo >= 4 ? "Focus streak. Keep the sequence moving." : `${nextCombo}x momentum. Next move handled.`);
+
+      if (isWheelFocusTask) {
+        clearWheelTimers();
+        setWheelChallenge(null);
+        setWheelPhase("complete");
+        setNotice(wheelChallenge?.expired
+          ? "Task cleared after the buzzer. Still a win."
+          : "Focus task cleared. You held the line.");
+        wheelReturnTimerRef.current = window.setTimeout(() => {
+          wheelReturnTimerRef.current = null;
+          setWheelPhase("list");
+          setWheelCandidates([]);
+          setPendingWheelTaskId(null);
+        }, 1400);
+      }
+
       celebrationTimerRef.current = window.setTimeout(() => {
         setDismissedTaskIds((current) => {
           return current.includes(id) ? current : [...current, id];
@@ -1119,10 +1287,16 @@ export default function Home() {
   }
 
   function clearAllTasks() {
+    clearWheelTimers();
     setTasks([]);
     setFilter("all");
     setDismissedTaskIds([]);
     setCombo(0);
+    setWheelChallenge(null);
+    setWheelPhase("list");
+    setWheelCandidates([]);
+    setPendingWheelTaskId(null);
+    setWheelSettingsOpen(false);
     setNotice("All tasks removed.");
   }
 
@@ -1156,25 +1330,6 @@ export default function Home() {
 
   function toggleTheme() {
     setTheme(theme === "paper" ? "midnight" : "paper");
-  }
-
-  function toggleReminders() {
-    if (!isNativeAndroid || !window.DictaTaskAndroid?.setRemindersEnabled) {
-      setNotice("Focus reminders are available in the Android app.");
-      return;
-    }
-
-    const nextEnabled = !reminderSettings.enabled;
-    setReminderBusy(true);
-    window.DictaTaskAndroid.setRemindersEnabled(nextEnabled);
-    if (nextEnabled && !reminderSettings.permissionGranted) {
-      window.DictaTaskAndroid.requestNotificationPermission?.();
-    }
-    window.setTimeout(refreshReminderSettings, 450);
-  }
-
-  function openNotificationSettings() {
-    window.DictaTaskAndroid?.openNotificationSettings?.();
   }
 
   toggleTaskRef.current = toggleTask;
@@ -1279,104 +1434,192 @@ export default function Home() {
           </div>
         </article>
 
-        <article className="tasks-card card-shadow juice-panel">
-          <div className="card-heading task-heading">
-            <div className="task-heading-copy">
-              <div className="task-actions">
-                <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
-                  <Icon name="download" /> Export .txt
-                </button>
-                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!doneCount}>
-                  <Icon name="trash" /> Clear done
-                </button>
-                <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
-                  <Icon name="trash" /> Remove all
-                </button>
+        <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
+          <div className={`task-board-flip ${wheelPhase !== "list" ? "is-wheel-revealed" : ""}`}>
+            <div className="task-board-face task-board-face-front" aria-hidden={wheelPhase !== "list"}>
+              <div className="card-heading task-heading">
+                <div className="task-heading-copy">
+                  <div className="task-actions">
+                    <button
+                      className="clear-button wheel-launch-button"
+                      type="button"
+                      onClick={spinTheWheel}
+                      disabled={!openCount}
+                      aria-label="Spin the wheel to choose an open task"
+                    >
+                      <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
+                      <span>Spin the wheel</span>
+                    </button>
+                    <button
+                      className={`clear-button wheel-settings-button ${wheelSettingsOpen ? "is-open" : ""}`}
+                      type="button"
+                      onClick={() => setWheelSettingsOpen((open) => !open)}
+                      aria-expanded={wheelSettingsOpen}
+                      aria-controls="wheel-settings"
+                    >
+                      <span>Focus clock</span><b>{wheelSettings.durationMinutes}m</b>
+                    </button>
+                    <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
+                      <Icon name="download" /> Export .txt
+                    </button>
+                    <button className="clear-button" type="button" onClick={clearCompleted} disabled={!doneCount}>
+                      <Icon name="trash" /> Clear done
+                    </button>
+                    <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
+                      <Icon name="trash" /> Remove all
+                    </button>
+                  </div>
+                  <h2>Your next moves</h2>
+                </div>
               </div>
-              <h2>Your next moves</h2>
+
+              {wheelSettingsOpen && (
+                <section className="wheel-settings-inline" id="wheel-settings" aria-label="Spin the Wheel settings">
+                  <div className="wheel-settings-copy">
+                    <span>SPIN THE WHEEL / SETTINGS</span>
+                    <strong>Focus countdown</strong>
+                    <small>Choose the clock for your next selected task.</small>
+                  </div>
+                  <div className="wheel-duration-options" role="group" aria-label="Focus countdown duration">
+                    {WHEEL_DURATION_OPTIONS.map((minutes) => (
+                      <button
+                        className={wheelSettings.durationMinutes === minutes ? "is-selected" : ""}
+                        key={minutes}
+                        type="button"
+                        aria-pressed={wheelSettings.durationMinutes === minutes}
+                        onClick={() => {
+                          setWheelSettings({ durationMinutes: minutes });
+                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next spin.`);
+                        }}
+                      >
+                        {minutes} MIN
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <div className="task-toolbar">
+                <div className="filter-tabs" role="group" aria-label="Filter tasks">
+                  {(["all", "open", "done"] as Filter[]).map((item) => (
+                    <button
+                      className={filter === item ? "active" : ""}
+                      key={item}
+                      type="button"
+                      aria-pressed={filter === item}
+                      onClick={() => setFilter(item)}
+                    >
+                      {item === "all" ? "All" : item === "open" ? "To do" : "Done"}
+                      <span>{item === "all" ? tasks.length : item === "open" ? openCount : doneCount}</span>
+                    </button>
+                  ))}
+                </div>
+                <span className="task-sort">AUTO-SORTED ↕</span>
+              </div>
+
+              <div className="task-list">
+                {filteredTasks.length ? (
+                  filteredTasks.map((task, index) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      index={index}
+                      celebrating={celebratingTaskId === task.id}
+                      onToggle={handleTaskToggle}
+                    />
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <span className="empty-icon"><Icon name="check" /></span>
+                    <strong>{filter === "done" ? "Nothing finished yet." : "Clean slate."}</strong>
+                    <span>{filter === "done" ? "Check off a task and it will land here." : "Everything in this view is already handled."}</span>
+                  </div>
+                )}
+              </div>
+
+              <form className="add-task-form" onSubmit={addTask}>
+                <span className="add-icon"><Icon name="plus" /></span>
+                <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
+                <button type="submit" disabled={!newTask.trim()}>ADD TASK</button>
+              </form>
+            </div>
+
+            <div className="task-board-face task-board-face-back" aria-hidden={wheelPhase === "list"}>
+              <section className="wheel-stage" aria-label="Spin the Wheel focus challenge">
+                <div className="wheel-stage-kicker">
+                  <span>SPIN THE WHEEL</span>
+                  <span>FOCUS CLOCK · {wheelSettings.durationMinutes} MIN</span>
+                </div>
+
+                <div className="wheel-machine">
+                  <span className="wheel-landing-marker">LAND HERE</span>
+                  <div
+                    className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
+                    style={{ transform: `rotate(${wheelRotation}deg)` }}
+                    role="img"
+                    aria-label="A task-selection wheel showing your open tasks"
+                  >
+                    <img src="./dictatask-wheel-face.jpg" alt="" />
+                    {wheelTaskPool.map((task, index) => {
+                      const angle = (index / Math.max(wheelTaskPool.length, 1)) * 360;
+                      return (
+                        <span
+                          className={`wheel-task-label wheel-label-${task.color}`}
+                          key={task.id}
+                          style={{
+                            "--wheel-label-angle": `${angle}deg`,
+                            "--wheel-label-counter-angle": `${-(angle + wheelRotation)}deg`,
+                          } as CSSProperties}
+                        >
+                          {shortenWheelTitle(task.title)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {(wheelPhase === "wheel" || wheelPhase === "spinning") && (
+                  <div className="wheel-result-card is-spinning" role="status" aria-live="polite">
+                    <span>{wheelPhase === "wheel" ? "LOCKING IN" : "THE WHEEL IS SPINNING"}</span>
+                    <strong>One clean move is on its way.</strong>
+                    <small>Keep your eyes on the landing mark.</small>
+                  </div>
+                )}
+
+                {wheelPhase === "challenge" && wheelChallenge && wheelFocusTask && (
+                  <div className={`wheel-result-card is-challenge ${wheelChallenge.expired ? "is-expired" : ""}`} role="status" aria-live="polite">
+                    <span>{wheelChallenge.expired ? "TIME CALLED" : "FOCUS LOCKED"}</span>
+                    <strong>{wheelFocusTask.title}</strong>
+                    <FocusCountdown
+                      key={`${wheelChallenge.taskId}-${wheelChallenge.startedAt}`}
+                      challenge={wheelChallenge}
+                      onExpire={handleWheelDeadline}
+                    />
+                    <small>{wheelChallenge.expired ? "Finish it anyway, or reset for another focused run." : "This is the only task that matters until the clock stops."}</small>
+                    <div className="wheel-result-actions">
+                      <button className="wheel-complete-button" type="button" onClick={() => toggleTask(wheelFocusTask.id)}>
+                        {wheelChallenge.expired ? "MARK DONE ANYWAY" : "MARK COMPLETE"}
+                      </button>
+                      {wheelChallenge.expired && (
+                        <button className="wheel-reroll-button" type="button" onClick={rerollWheel}>
+                          RESET + SPIN
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {wheelPhase === "complete" && (
+                  <div className="wheel-result-card is-complete" role="status" aria-live="polite">
+                    <span>FOCUS CLEARED</span>
+                    <strong>That was the move.</strong>
+                    <small>Sending you back to the board.</small>
+                  </div>
+                )}
+              </section>
             </div>
           </div>
-
-          <div className="task-toolbar">
-            <div className="filter-tabs" role="group" aria-label="Filter tasks">
-              {(["all", "open", "done"] as Filter[]).map((item) => (
-                <button
-                  className={filter === item ? "active" : ""}
-                  key={item}
-                  type="button"
-                  aria-pressed={filter === item}
-                  onClick={() => setFilter(item)}
-                >
-                  {item === "all" ? "All" : item === "open" ? "To do" : "Done"}
-                  <span>{item === "all" ? tasks.length : item === "open" ? openCount : doneCount}</span>
-                </button>
-              ))}
-            </div>
-            <span className="task-sort">AUTO-SORTED ↕</span>
-          </div>
-
-          <div className="task-list">
-            {filteredTasks.length ? (
-              filteredTasks.map((task, index) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  index={index}
-                  celebrating={celebratingTaskId === task.id}
-                  onToggle={handleTaskToggle}
-                />
-              ))
-            ) : (
-              <div className="empty-state">
-                <span className="empty-icon"><Icon name="check" /></span>
-                <strong>{filter === "done" ? "Nothing finished yet." : "Clean slate."}</strong>
-                <span>{filter === "done" ? "Check off a task and it will land here." : "Everything in this view is already handled."}</span>
-              </div>
-            )}
-            </div>
-
-          <form className="add-task-form" onSubmit={addTask}>
-            <span className="add-icon"><Icon name="plus" /></span>
-            <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
-            <button type="submit" disabled={!newTask.trim()}>ADD TASK</button>
-          </form>
         </article>
-      </section>
-
-      <section className="focus-reminders" aria-labelledby="focus-reminders-title">
-        <div className="reminder-copy">
-          <span className="reminder-kicker">FOCUS SIGNALS / ANDROID</span>
-          <h2 id="focus-reminders-title">Notifications with a point.</h2>
-          <p>One real unfinished task, delivered quietly with <b>Done</b> and <b>Snooze</b>. No empty nudges. No late-night noise.</p>
-          <span className="quiet-hours">QUIET · {formatHour(reminderSettings.quietStartHour)}–{formatHour(reminderSettings.quietEndHour)}</span>
-        </div>
-        <div className="notification-preview" aria-label="Notification preview">
-          <span className="preview-app"><i /> DICTATASK FOCUS</span>
-          <strong>Your next move</strong>
-          <p>{nextTaskTitle}</p>
-          <div><span>DONE</span><span>SNOOZE 30M</span></div>
-        </div>
-        <div className="reminder-control">
-          <span className={`reminder-state ${reminderSettings.enabled && reminderSettings.notificationsEnabled ? "is-on" : ""}`}>
-            {reminderSettings.enabled && reminderSettings.notificationsEnabled ? "FOCUS SIGNALS ON" : "FOCUS SIGNALS OFF"}
-          </span>
-          <button
-            className={`reminder-toggle ${reminderSettings.enabled ? "is-on" : ""}`}
-            type="button"
-            aria-pressed={reminderSettings.enabled}
-            disabled={reminderBusy || !isNativeAndroid}
-            onClick={toggleReminders}
-          >
-            <span aria-hidden="true"><i /></span>
-            {reminderBusy ? "WORKING…" : reminderSettings.enabled ? "TURN OFF" : "TURN ON"}
-          </button>
-          {isNativeAndroid && (
-            <button className="notification-settings-link" type="button" onClick={openNotificationSettings}>
-              SYSTEM SETTINGS
-            </button>
-          )}
-          <small>{isNativeAndroid ? "TASK DETAILS STAY PRIVATE ON LOCK SCREEN" : "AVAILABLE IN THE ANDROID APP"}</small>
-        </div>
       </section>
 
       <section className="status-strip juice-status-strip">
