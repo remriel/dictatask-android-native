@@ -2,16 +2,15 @@ package com.remriel.dictatask;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Settings;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -41,7 +40,6 @@ import org.json.JSONObject;
 
 import java.io.BufferedOutputStream;
 import java.io.OutputStream;
-import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
@@ -52,15 +50,16 @@ import java.util.concurrent.Executors;
  * WebViewAssetLoader from this APK; no remote URL is loaded at runtime.
  */
 public final class MainActivity extends ComponentActivity {
-    static final String ACTION_OPEN_TASK = "com.remriel.dictatask.action.OPEN_TASK";
-    static final String EXTRA_TASK_ID = "task_id";
-
     private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final String LOCAL_ENTRYPOINT =
             "https://" + ASSET_HOST + "/assets/index.html";
+    private static final String STATE_PREFERENCES = "dictatask_state";
+    private static final String RETIRED_REMINDER_PREFERENCES = "dictatask_reminders";
+    private static final String RETIRED_REMINDER_CHANNEL = "dictatask_focus_v2";
+    private static final String RETIRED_LEGACY_CHANNEL = "dictatask_hourly_reminders";
+    private static final int RETIRED_REMINDER_NOTIFICATION_ID = 7042;
+    private static final int RETIRED_LEGACY_NOTIFICATION_ID = 7041;
     private static final long PARTIAL_RESULT_COALESCE_MILLIS = 75L;
-    private static volatile WeakReference<MainActivity> activeActivity =
-            new WeakReference<>(null);
 
     private WebView webView;
     private SpeechRecognizer speechRecognizer;
@@ -68,14 +67,9 @@ public final class MainActivity extends ComponentActivity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService exportExecutor = Executors.newSingleThreadExecutor();
     private ActivityResultLauncher<String> microphonePermissionLauncher;
-    private ActivityResultLauncher<String> notificationPermissionLauncher;
     private ActivityResultLauncher<Intent> exportFileLauncher;
     private String pendingExportContents;
-    private String pendingTaskId;
     private boolean awaitingMicrophonePermission;
-    private boolean webContentReady;
-    private boolean pendingNativeStateChanged;
-    private boolean pendingReminderSettingsChanged;
     private boolean recognitionActive;
     private boolean partialResultScheduled;
     private String pendingPartialTranscript;
@@ -92,15 +86,31 @@ public final class MainActivity extends ComponentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         statePreferences = getSharedPreferences(
-                TaskSnapshotRepository.PREFERENCES_NAME,
+                STATE_PREFERENCES,
                 MODE_PRIVATE
         );
+        retireFocusSignals();
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         configureMicrophonePermission();
-        configureNotificationPermission();
         configureExportFilePicker();
-        handleNotificationIntent(getIntent());
         configureWebView();
+    }
+
+    /** Removes the retired custom reminder surface from upgraded installs. */
+    private void retireFocusSignals() {
+        getSharedPreferences(RETIRED_REMINDER_PREFERENCES, MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply();
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager == null) {
+            return;
+        }
+        manager.cancel(RETIRED_REMINDER_NOTIFICATION_ID);
+        manager.cancel(RETIRED_LEGACY_NOTIFICATION_ID);
+        manager.deleteNotificationChannel(RETIRED_REMINDER_CHANNEL);
+        manager.deleteNotificationChannel(RETIRED_LEGACY_CHANNEL);
     }
 
     private void configureExportFilePicker() {
@@ -158,20 +168,6 @@ public final class MainActivity extends ComponentActivity {
         intent.setType("text/plain");
         intent.putExtra(Intent.EXTRA_TITLE, "dictatask-task-history.txt");
         exportFileLauncher.launch(intent);
-    }
-
-    private void configureNotificationPermission() {
-        notificationPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                granted -> {
-                    ReminderPreferences preferences = new ReminderPreferences(this);
-                    if (!granted) {
-                        preferences.setEnabled(false);
-                    }
-                    ReminderScheduler.reconcile(this);
-                    dispatchReminderSettingsChanged();
-                }
-        );
     }
 
     private void configureMicrophonePermission() {
@@ -248,7 +244,6 @@ public final class MainActivity extends ComponentActivity {
                 if (view != webView) {
                     return false;
                 }
-                webContentReady = false;
                 view.removeJavascriptInterface("DictaTaskAndroid");
                 if (view.getParent() instanceof ViewGroup) {
                     ((ViewGroup) view.getParent()).removeView(view);
@@ -264,79 +259,6 @@ public final class MainActivity extends ComponentActivity {
             }
         });
         webView.loadUrl(LOCAL_ENTRYPOINT);
-    }
-
-    private void handleNotificationIntent(Intent intent) {
-        if (intent == null || !ACTION_OPEN_TASK.equals(intent.getAction())) {
-            return;
-        }
-        String taskId = intent.getStringExtra(EXTRA_TASK_ID);
-        if (taskId != null && !taskId.isBlank()) {
-            pendingTaskId = taskId;
-            if (webContentReady) {
-                dispatchPendingTaskNavigation();
-            }
-        }
-    }
-
-    private void requestNotificationPermissionFromUi() {
-        runOnUiThread(() -> {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
-                    || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                    == PackageManager.PERMISSION_GRANTED) {
-                ReminderScheduler.reconcile(this);
-                dispatchReminderSettingsChanged();
-                return;
-            }
-            if (notificationPermissionLauncher != null) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-            }
-        });
-    }
-
-    private void setRemindersEnabledFromUi(boolean enabled) {
-        new ReminderPreferences(this).setEnabled(enabled);
-        if (enabled) {
-            ReminderScheduler.reconcile(this);
-        } else {
-            ReminderScheduler.cancel(this);
-        }
-        runOnUiThread(this::dispatchReminderSettingsChanged);
-    }
-
-    private String getReminderSettingsJson() {
-        ReminderScheduler.ensureNotificationChannel(this);
-        ReminderPreferences preferences = new ReminderPreferences(this);
-        JSONObject settings = new JSONObject();
-        try {
-            settings.put("enabled", preferences.isEnabled());
-            settings.put("permissionGranted", ReminderNotification.hasRuntimePermission(this));
-            settings.put(
-                    "notificationsEnabled",
-                    ReminderNotification.areNotificationsUsable(this)
-            );
-            settings.put("quietStartHour", preferences.getQuietStartHour());
-            settings.put("quietEndHour", preferences.getQuietEndHour());
-        } catch (Exception ignored) {
-            // These primitive values are always JSON-safe.
-        }
-        return settings.toString();
-    }
-
-    private void openNotificationSettingsFromUi() {
-        runOnUiThread(() -> {
-            ReminderScheduler.ensureNotificationChannel(this);
-            Intent channelSettings = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName())
-                    .putExtra(Settings.EXTRA_CHANNEL_ID, ReminderNotification.CHANNEL_ID);
-            try {
-                startActivity(channelSettings);
-            } catch (RuntimeException exception) {
-                Intent appSettings = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
-                startActivity(appSettings);
-            }
-        });
     }
 
     private void setColorSchemeFromUi(String scheme) {
@@ -362,80 +284,6 @@ public final class MainActivity extends ComponentActivity {
             controller.setAppearanceLightStatusBars(light);
             controller.setAppearanceLightNavigationBars(light);
         });
-    }
-
-    private void dispatchReminderSettingsChanged() {
-        if (!webContentReady) {
-            pendingReminderSettingsChanged = true;
-            return;
-        }
-        pendingReminderSettingsChanged = false;
-        dispatchWebEvent(
-                "dictatask:reminder-settings-changed",
-                getReminderSettingsJson()
-        );
-    }
-
-    private void dispatchNativeStateChanged() {
-        if (!webContentReady) {
-            pendingNativeStateChanged = true;
-            return;
-        }
-        pendingNativeStateChanged = false;
-        JSONObject detail = new JSONObject();
-        try {
-            detail.put("key", TaskSnapshotRepository.TASKS_KEY);
-        } catch (Exception ignored) {
-            // The constant key is always JSON-safe.
-        }
-        dispatchWebEvent("dictatask:native-state-changed", detail.toString());
-    }
-
-    private void dispatchPendingTaskNavigation() {
-        String taskId = pendingTaskId;
-        if (!webContentReady || taskId == null) {
-            return;
-        }
-        pendingTaskId = null;
-        JSONObject detail = new JSONObject();
-        try {
-            detail.put("destination", "task");
-            detail.put("taskId", taskId);
-        } catch (Exception ignored) {
-            return;
-        }
-        dispatchWebEvent("dictatask:navigate", detail.toString());
-    }
-
-    private void dispatchWebEvent(String eventName, String detailJson) {
-        evaluateJavascript(
-                "window.dispatchEvent(new CustomEvent("
-                        + JSONObject.quote(eventName)
-                        + ", { detail: "
-                        + detailJson
-                        + " }));"
-        );
-    }
-
-    private void flushPendingWebEvents() {
-        dispatchPendingTaskNavigation();
-        if (pendingNativeStateChanged) {
-            dispatchNativeStateChanged();
-        }
-        if (pendingReminderSettingsChanged) {
-            dispatchReminderSettingsChanged();
-        }
-    }
-
-    static void dispatchNativeStateChangedIfActive() {
-        MainActivity activity = activeActivity.get();
-        if (activity != null) {
-            activity.runOnUiThread(activity::dispatchNativeStateChanged);
-        }
-    }
-
-    static boolean isAppInForeground() {
-        return activeActivity.get() != null;
     }
 
     private void startNativeRecognition() {
@@ -672,29 +520,11 @@ public final class MainActivity extends ComponentActivity {
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        handleNotificationIntent(intent);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        activeActivity = new WeakReference<>(this);
-        new ReminderPreferences(this).markForeground();
-        ReminderNotification.cancel(this);
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
         if (webView != null) {
             webView.onResume();
-            webView.post(() -> ReminderScheduler.reconcile(getApplicationContext()));
         }
-        dispatchReminderSettingsChanged();
-        dispatchNativeStateChanged();
     }
 
     @Override
@@ -709,10 +539,6 @@ public final class MainActivity extends ComponentActivity {
     protected void onStop() {
         if (recognitionActive) {
             abortNativeRecognition();
-        }
-        MainActivity active = activeActivity.get();
-        if (active == this) {
-            activeActivity = new WeakReference<>(null);
         }
         super.onStop();
     }
@@ -760,36 +586,8 @@ public final class MainActivity extends ComponentActivity {
         }
 
         @JavascriptInterface
-        public String getReminderSettings() {
-            return MainActivity.this.getReminderSettingsJson();
-        }
-
-        @JavascriptInterface
-        public void setRemindersEnabled(boolean enabled) {
-            MainActivity.this.setRemindersEnabledFromUi(enabled);
-        }
-
-        @JavascriptInterface
-        public void requestNotificationPermission() {
-            MainActivity.this.requestNotificationPermissionFromUi();
-        }
-
-        @JavascriptInterface
-        public void openNotificationSettings() {
-            MainActivity.this.openNotificationSettingsFromUi();
-        }
-
-        @JavascriptInterface
         public void setColorScheme(String scheme) {
             MainActivity.this.setColorSchemeFromUi(scheme);
-        }
-
-        @JavascriptInterface
-        public void notifyWebReady() {
-            runOnUiThread(() -> {
-                webContentReady = true;
-                flushPendingWebEvents();
-            });
         }
 
         @JavascriptInterface
