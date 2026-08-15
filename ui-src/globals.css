@@ -1943,6 +1943,91 @@ body {
   transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.undo-toast {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: max(14px, env(safe-area-inset-left));
+  z-index: 30;
+  display: flex;
+  width: min(100%, 430px);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-cream);
+  box-shadow: 5px 5px 0 var(--juice-black);
+  color: var(--juice-black);
+  animation: undo-toast-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.undo-toast-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.undo-toast-copy strong,
+.undo-toast-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-toast-copy strong {
+  color: var(--juice-orange);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.undo-toast-copy span {
+  max-width: 245px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.undo-toast button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-orange);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  color: var(--juice-black);
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.undo-toast button:hover {
+  background: var(--juice-yellow);
+  transform: translate(-1px, -1px);
+}
+
+.undo-toast button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(2px, 2px);
+}
+
+@keyframes undo-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) rotate(0.5deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(-0.5deg);
+  }
+}
+
 .juice-workspace .tasks-card {
   order: 0;
 }
@@ -4866,6 +4951,22 @@ textarea {
     font-size: 12px;
   }
 
+  .undo-toast {
+    gap: 8px;
+    padding: 8px 9px;
+  }
+
+  .undo-toast-copy span {
+    max-width: 190px;
+    font-size: 10px;
+  }
+
+  .undo-toast button {
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: 8px;
+  }
+
 }
 
 @media (max-width: 360px) {
@@ -4895,7 +4996,8 @@ textarea {
   .tasks-card.is-wheel-converging .task-row,
   .tasks-card.is-wheel-converging .card-heading,
   .tasks-card.is-wheel-converging .task-toolbar,
-  .tasks-card.is-wheel-converging .add-task-form {
+  .tasks-card.is-wheel-converging .add-task-form,
+  .undo-toast {
     animation: none !important;
     transition: none !important;
   }

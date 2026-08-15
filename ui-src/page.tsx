@@ -38,6 +38,13 @@ type TaskHistoryEntry = Task & {
   completedAt: number | null;
 };
 
+type UndoCompletion = {
+  id: string;
+  title: string;
+  previousHistory: TaskHistoryEntry | null;
+  wasDismissed: boolean;
+};
+
 type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
@@ -457,7 +464,9 @@ function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
     byId.set(task.id, {
       ...task,
       createdAt: previous?.createdAt ?? now,
-      completedAt: task.completed ? previous?.completedAt ?? now : previous?.completedAt ?? null,
+      completedAt: task.completed
+        ? (previous?.completed ? previous.completedAt ?? now : now)
+        : previous?.completedAt ?? null,
     });
   });
 
@@ -811,6 +820,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const setNotice = useCallback((_message: string) => undefined, []);
+  const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
   const [celebratingTaskId, setCelebratingTaskId] = useState<string | null>(null);
   const [dismissedTaskIds, setDismissedTaskIds] = useStoredState<string[]>("dictatask-dismissed-task-ids", EMPTY_STRING_ARRAY);
   const [celebrationVariant, setCelebrationVariant] = useState<CelebrationVariant>("burst");
@@ -832,6 +842,7 @@ export default function Home() {
   const recordingStartedAtRef = useRef(0);
   const restartTimerRef = useRef<number | null>(null);
   const celebrationTimerRef = useRef<number | null>(null);
+  const undoCompletionTimerRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<number | null>(null);
   const comboTimerRef = useRef<number | null>(null);
   const wheelRevealTimerRef = useRef<number | null>(null);
@@ -886,14 +897,13 @@ export default function Home() {
   const openCount = openTasks.length;
   const completedCount = tasks.filter((task) => task.completed).length;
   const doneHistoryTasks = useMemo(() => {
-    const history = new Map<string, Task>();
+    const fallbackCompletionTime = Date.now();
+    const history = new Map<string, TaskHistoryEntry>();
 
     taskHistory.forEach((entry) => {
       if (entry.completed || entry.completedAt !== null) {
         history.set(entry.id, {
-          id: entry.id,
-          title: entry.title,
-          color: entry.color,
+          ...entry,
           completed: true,
           historyOnly: true,
         });
@@ -902,11 +912,28 @@ export default function Home() {
 
     tasks.forEach((task) => {
       if (task.completed) {
-        history.set(task.id, { ...task, historyOnly: false });
+        const previous = history.get(task.id);
+        history.set(task.id, {
+          ...task,
+          createdAt: previous?.createdAt ?? null,
+          completedAt: previous?.completedAt ?? fallbackCompletionTime,
+          historyOnly: false,
+        });
       }
     });
 
-    return Array.from(history.values());
+    return Array.from(history.values())
+      .sort((left, right) => (
+        (right.completedAt ?? 0) - (left.completedAt ?? 0)
+        || (right.createdAt ?? 0) - (left.createdAt ?? 0)
+      ))
+      .map(({ id, title, color, completed, historyOnly }) => ({
+        id,
+        title,
+        color,
+        completed,
+        historyOnly,
+      }));
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
   const totalCount = tasks.length;
@@ -1023,6 +1050,7 @@ export default function Home() {
     voiceSessionRef.current += 1;
     if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current);
     if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
+    if (undoCompletionTimerRef.current !== null) window.clearTimeout(undoCompletionTimerRef.current);
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
     wheelRunIdRef.current += 1;
@@ -1330,6 +1358,58 @@ export default function Home() {
     startRecognitionSegment();
   }
 
+  function clearUndoCompletion() {
+    if (undoCompletionTimerRef.current !== null) {
+      window.clearTimeout(undoCompletionTimerRef.current);
+      undoCompletionTimerRef.current = null;
+    }
+    setUndoCompletion(null);
+  }
+
+  function undoLastCompletion() {
+    const action = undoCompletion;
+    if (!action) return;
+
+    clearUndoCompletion();
+    const activeTask = tasks.find((task) => task.id === action.id);
+    if (!activeTask || !activeTask.completed) return;
+
+    setTasks((current) => current.map((task) => (
+      task.id === action.id ? { ...task, completed: false } : task
+    )));
+    setTaskHistory((current) => {
+      if (!action.previousHistory) return current.filter((entry) => entry.id !== action.id);
+      const restored = { ...action.previousHistory, completed: false };
+      let restoredInPlace = false;
+      const next = current.map((entry) => {
+        if (entry.id !== action.id) return entry;
+        restoredInPlace = true;
+        return restored;
+      });
+      return restoredInPlace ? next : [...next, restored];
+    });
+    setDismissedTaskIds((current) => action.wasDismissed
+      ? current
+      : current.filter((taskId) => taskId !== action.id));
+    if (celebrationTimerRef.current !== null) {
+      window.clearTimeout(celebrationTimerRef.current);
+      celebrationTimerRef.current = null;
+    }
+    setCelebratingTaskId(null);
+    setMilestone(null);
+
+    if (wheelFocusTaskId === action.id) {
+      wheelRunIdRef.current += 1;
+      clearWheelTimers();
+      setWheelChallenge(null);
+      setWheelPhase("list");
+      setFocusEntryMode("wheel");
+      setWheelCandidates([]);
+      setPendingWheelTaskId(null);
+    }
+    setNotice("Task restored. Nothing was completed.");
+  }
+
   function toggleTask(id: string) {
     const task = tasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
@@ -1345,6 +1425,19 @@ export default function Home() {
     );
 
     if (willComplete) {
+      if (undoCompletionTimerRef.current !== null) {
+        window.clearTimeout(undoCompletionTimerRef.current);
+      }
+      setUndoCompletion({
+        id,
+        title: task?.title ?? "Task",
+        previousHistory: taskHistory.find((entry) => entry.id === id) ?? null,
+        wasDismissed: dismissedTaskIdSet.has(id),
+      });
+      undoCompletionTimerRef.current = window.setTimeout(() => {
+        setUndoCompletion((current) => current?.id === id ? null : current);
+        undoCompletionTimerRef.current = null;
+      }, 6000);
       const previousPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
       const nextDoneCount = completedCount + 1;
       const nextPercent = totalCount ? Math.round((nextDoneCount / totalCount) * 100) : 100;
@@ -1404,6 +1497,7 @@ export default function Home() {
         celebrationTimerRef.current = null;
       }, 1050);
     } else {
+      if (undoCompletion?.id === id) clearUndoCompletion();
       lastCompletionAtRef.current = 0;
       setCombo(0);
       setDismissedTaskIds((current) => {
@@ -1433,6 +1527,9 @@ export default function Home() {
 
   function clearCompleted() {
     const completedTasks = tasks.filter((task) => task.completed);
+    if (undoCompletion && completedTasks.some((task) => task.id === undoCompletion.id)) {
+      clearUndoCompletion();
+    }
     if (completedTasks.length) {
       setTaskHistory((current) => mergeTaskHistory(current, completedTasks));
     }
@@ -1441,6 +1538,7 @@ export default function Home() {
   }
 
   function clearAllTasks() {
+    clearUndoCompletion();
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
     wheelRunIdRef.current += 1;
     clearWheelTimers();
@@ -1510,6 +1608,21 @@ export default function Home() {
       >
         <span className="top-flare-fill" aria-hidden="true" />
       </div>
+      {undoCompletion && (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <div className="undo-toast-copy">
+            <strong>Marked done</strong>
+            <span>{undoCompletion.title}</span>
+          </div>
+          <button
+            type="button"
+            onClick={undoLastCompletion}
+            aria-label={`Undo marking ${undoCompletion.title} done`}
+          >
+            UNDO
+          </button>
+        </div>
+      )}
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">

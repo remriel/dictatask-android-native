@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history, remove the percentage/status panel and XP, put recording first, compact the recording form, and keep task actions in one row.
+Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, remove the percentage/status panel and XP, put recording first, compact the recording form, and keep task actions in one row.
 
 ## Current implementation
 
@@ -18,6 +18,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - XP state, XP accumulation, XP display, and floating XP rewards are removed for now; completion progress is represented only by the thin top flare.
 - The task board has only `TO DO` and `DONE` tabs, with `TO DO` as the default.
 - Completed records remain available in `DONE` through persistent task history, even after active completed rows are cleared.
+- `DONE` history is sorted by `completedAt` descending, so the most recently completed task is always at the top. Re-completing a reopened task refreshes its completion timestamp.
+- Completing a task shows a short fixed `UNDO` toast. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
 - Focus clock, Export .txt, Clear done, and Remove all are compacted to roughly 60% of their former mobile height and forced into one responsive row.
 - The current branch is `agent/spin-wheel-focus-cleanup`; the release APK was rebuilt and the existing Google Drive file was updated in place.
 
@@ -27,9 +29,10 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
 - Browser QA passed for recording-first order, the absent percentage/clear panel, the 10px progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
+- Browser QA passed for the accidental-completion `UNDO` flow (task restored, counts/progress restored, toast dismissed) and deterministic DONE ordering with the newest completion first.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `1B395688C8722FBC39D33B7D0035B940A7D3CC1DF4D0E50F663FEF3C3EED22D3` (1,205,018 bytes).
+- APK SHA-256: `0D0BA001132BA0FC2AAE2CDF7A9279F2B327D3C64D26D7D75BD5FC88C864C098` (1,205,662 bytes).
 - Google Drive APK: https://drive.google.com/file/d/1W3aWlos7bXlG_41qdqL__K9_TOXSeLYn/view?usp=drivesdk
 
 ## Constraints
