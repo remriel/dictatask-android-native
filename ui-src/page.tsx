@@ -802,14 +802,12 @@ export default function Home() {
   const [newTask, setNewTask] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [notice, setNotice] = useState("Ready when you are.");
+  const setNotice = useCallback((_message: string) => undefined, []);
   const [celebratingTaskId, setCelebratingTaskId] = useState<string | null>(null);
   const [dismissedTaskIds, setDismissedTaskIds] = useStoredState<string[]>("dictatask-dismissed-task-ids", EMPTY_STRING_ARRAY);
   const [celebrationVariant, setCelebrationVariant] = useState<CelebrationVariant>("burst");
   const [celebrationNonce, setCelebrationNonce] = useState(0);
-  const [floatingReward, setFloatingReward] = useState<{ label: string; id: number } | null>(null);
   const [milestone, setMilestone] = useState<string | null>(null);
-  const [sessionXp, setSessionXp] = useState(0);
   const [combo, setCombo] = useState(0);
   const [wheelPhase, setWheelPhase] = useState<WheelPhase>("list");
   const [focusEntryMode, setFocusEntryMode] = useState<FocusEntry>("wheel");
@@ -827,7 +825,6 @@ export default function Home() {
   const restartTimerRef = useRef<number | null>(null);
   const celebrationTimerRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<number | null>(null);
-  const rewardTimerRef = useRef<number | null>(null);
   const comboTimerRef = useRef<number | null>(null);
   const wheelRevealTimerRef = useRef<number | null>(null);
   const wheelSpinTimerRef = useRef<number | null>(null);
@@ -1000,7 +997,6 @@ export default function Home() {
     if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current);
     if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
-    if (rewardTimerRef.current !== null) window.clearTimeout(rewardTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
     wheelRunIdRef.current += 1;
     clearWheelTimers();
@@ -1333,23 +1329,11 @@ export default function Home() {
       setCombo(nextCombo);
       setCelebrationVariant(variants[celebrationNonce % variants.length]);
       setCelebrationNonce((current) => current + 1);
-      setSessionXp((current) => current + (nextCombo >= 4 ? 50 : nextCombo * 10));
-      setFloatingReward({
-        label: nextCombo >= 4 ? "FOCUS STREAK" : `+${nextCombo * 10} XP`,
-        id: now,
-      });
-
       if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
       comboTimerRef.current = window.setTimeout(() => {
         setCombo(0);
         comboTimerRef.current = null;
       }, 4200);
-
-      if (rewardTimerRef.current !== null) window.clearTimeout(rewardTimerRef.current);
-      rewardTimerRef.current = window.setTimeout(() => {
-        setFloatingReward(null);
-        rewardTimerRef.current = null;
-      }, 1250);
 
       const crossedMilestone = [25, 50, 75, 100].find((threshold) => (
         nextPercent >= threshold && previousPercent < threshold && !milestonesSeenRef.current.has(threshold)
@@ -1476,7 +1460,6 @@ export default function Home() {
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
       <div className="noise" aria-hidden="true" />
       {celebratingTaskId && <CelebrationBurst key={celebrationNonce} variant={celebrationVariant} nonce={celebrationNonce} />}
-      {floatingReward && <div className="floating-reward" key={floatingReward.id} aria-live="polite">{floatingReward.label}</div>}
       {milestone && (
         <div className={`milestone-overlay ${milestone === "LEVEL COMPLETE" ? "is-final" : ""}`} role="status" aria-live="polite">
           <span className="milestone-kicker">PROGRESS UNLOCKED</span>
@@ -1555,23 +1538,6 @@ export default function Home() {
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
           <div className={`task-board-flip ${wheelPhase !== "list" ? "is-wheel-revealed" : ""}`}>
             <div className="task-board-face task-board-face-front" aria-hidden={wheelPhase !== "list"}>
-              <div className="card-heading task-heading">
-                <div className="task-heading-copy">
-                  <div className="task-actions">
-                    <button
-                      className="clear-button wheel-launch-button"
-                      type="button"
-                      onClick={spinTheWheel}
-                      disabled={!openCount}
-                      aria-label="Spin the wheel to choose an open task"
-                    >
-                      <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
-                      <span>Spin the wheel</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <div className="task-toolbar">
                 <div className="filter-tabs" role="group" aria-label="Filter tasks">
                   {(["all", "open", "done"] as Filter[]).map((item) => (
@@ -1611,6 +1577,19 @@ export default function Home() {
                 )}
               </div>
 
+              <div className="task-actions task-list-wheel-action" aria-label="Focus selection">
+                <button
+                  className="clear-button wheel-launch-button"
+                  type="button"
+                  onClick={spinTheWheel}
+                  disabled={!openCount}
+                  aria-label="Spin the wheel to choose an open task"
+                >
+                  <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
+                  <span>Spin the wheel</span>
+                </button>
+              </div>
+
               <div className="task-actions task-actions-footer" aria-label="Task list actions">
                 <button
                   className={`clear-button wheel-settings-button ${wheelSettingsOpen ? "is-open" : ""}`}
@@ -1633,11 +1612,11 @@ export default function Home() {
               </div>
 
               {wheelSettingsOpen && (
-                <section className="wheel-settings-inline" id="wheel-settings" aria-label="Spin the Wheel settings">
-                  <div className="wheel-settings-copy">
-                    <span>SPIN THE WHEEL / SETTINGS</span>
-                    <strong>Focus countdown</strong>
-                    <small>Choose the clock for your next selected task.</small>
+                  <section className="wheel-settings-inline" id="wheel-settings" aria-label="Focus countdown settings">
+                    <div className="wheel-settings-copy">
+                      <span>FOCUS CLOCK / SETTINGS</span>
+                      <strong>Focus countdown</strong>
+                      <small>Choose the clock for your next focus run.</small>
                   </div>
                   <div className="wheel-duration-options" role="group" aria-label="Focus countdown duration">
                     {WHEEL_DURATION_OPTIONS.map((minutes) => (
@@ -1648,7 +1627,7 @@ export default function Home() {
                         aria-pressed={wheelSettings.durationMinutes === minutes}
                         onClick={() => {
                           setWheelSettings({ durationMinutes: minutes });
-                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next spin.`);
+                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next focus run.`);
                         }}
                       >
                         {minutes} MIN
@@ -1752,16 +1731,6 @@ export default function Home() {
             </div>
           </div>
         </article>
-      </section>
-
-      <section className="status-strip juice-status-strip">
-        <div className="status-message" role="status" aria-live="polite" aria-atomic="true"><span className="status-message-dot" /> <strong>{notice}</strong></div>
-        <div className="stats-row">
-          <span><b>{totalCount.toString().padStart(2, "0")}</b> TOTAL</span>
-          <span><b>{doneCount.toString().padStart(2, "0")}</b> DONE</span>
-          <span><b>{progressPercent}%</b> CLEAR</span>
-          <span><b>{sessionXp.toString().padStart(4, "0")}</b> XP</span>
-        </div>
       </section>
 
       <footer className="footer">
