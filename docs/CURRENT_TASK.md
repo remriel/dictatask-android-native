@@ -9,7 +9,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The shipped UI is the bundled React/Vite app in `ui-src/`, copied into `app/src/main/assets/`.
 - Spin the Wheel uses a persisted configurable countdown, cancel-safe run IDs, bright task-card shadow colors, and a WebView-safe `requestAnimationFrame` rotation loop.
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
-- The former percentage/clear board panel is removed. A thin colorful 12px top flare remains as a completion progress bar with no visible percentage copy.
+- Manual task entry is a standalone green card between the recording and task panels on mobile (and occupies the left-side gap below recording on wider layouts), with its own `ADD TASK` button.
+- The former percentage/clear board panel is removed. A colorful 16px top flare remains as a completion progress bar with no visible percentage copy; this is the current 30%-larger banner pass.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
 - The Spin the Wheel launch row has an 8px top and bottom gap so its borders stay clear of the task cards and actions below it.
@@ -31,13 +32,14 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `npx tsc --noEmit` passed.
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
-- Browser QA passed for recording-first order, the absent percentage/clear panel, the 10px progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
+- Browser QA passed for recording-first order, the absent percentage/clear panel, the 16px progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
-- Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the top flare is 12px tall and the viewport has no horizontal overflow.
+- Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the top flare is 16px tall and the viewport has no horizontal overflow.
+- Browser QA passed for the standalone manual-task card: it renders between the recording and task panels, the task list remains in its own panel, and submitting the `ADD TASK` form creates a new TO DO row.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `DBB6F62D873ABBBCFE2B0788BBC28AC13463CCD82895693E9A6C945E9E66DFED` (1,205,342 bytes).
+- APK SHA-256: `8BE6CE4AC0119D5BB673F0E7CB352CCFCC9B62F9B4033EC9E8C7E9BE651F9767` (1,205,426 bytes).
 - Google Drive APK: https://drive.google.com/file/d/1W3aWlos7bXlG_41qdqL__K9_TOXSeLYn/view?usp=drivesdk
 
 ## Constraints

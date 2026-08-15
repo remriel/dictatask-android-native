@@ -1665,6 +1665,12 @@ export default function Home() {
           </div>
         </article>
 
+        <form className="manual-task-card add-task-form" onSubmit={addTask}>
+          <span className="add-icon"><Icon name="plus" /></span>
+          <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
+          <button type="submit" disabled={!newTask.trim()}>ADD TASK</button>
+        </form>
+
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
           <div className={`task-board-flip ${wheelPhase !== "list" ? "is-wheel-revealed" : ""}`}>
             <div className="task-board-face task-board-face-front" aria-hidden={wheelPhase !== "list"}>
@@ -1783,11 +1789,6 @@ export default function Home() {
                 </section>
               )}
 
-              <form className="add-task-form" onSubmit={addTask}>
-                <span className="add-icon"><Icon name="plus" /></span>
-                <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
-                <button type="submit" disabled={!newTask.trim()}>ADD TASK</button>
-              </form>
             </div>
 
             <div className="task-board-face task-board-face-back" aria-hidden={wheelPhase === "list"}>
