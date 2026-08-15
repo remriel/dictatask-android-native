@@ -910,7 +910,7 @@ export default function Home() {
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
   const totalCount = tasks.length;
-  const progressPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+  const completionProgress = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
   const filteredTasks = useMemo(() => {
     if (filter === "done") return doneHistoryTasks;
     return tasks
@@ -1499,14 +1499,17 @@ export default function Home() {
           <span className="milestone-sub">{milestone === "LEVEL COMPLETE" ? "YOU CLEARED THE WHOLE BOARD" : "KEEP THE MOMENTUM"}</span>
         </div>
       )}
-      <section className="focus-banner" aria-label="Task board progress">
-        <div className="focus-banner-score" aria-label={`${progressPercent} percent of tasks complete`}>
-          <span>BOARD STATUS</span>
-          <strong>{progressPercent}%</strong>
-          <small>CLEAR</small>
-        </div>
-      </section>
-
+      <div
+        className="top-flare"
+        role="progressbar"
+        aria-label="Task completion progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={completionProgress}
+        style={{ "--completion-progress": `${completionProgress}%` } as CSSProperties}
+      >
+        <span className="top-flare-fill" aria-hidden="true" />
+      </div>
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">
