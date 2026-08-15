@@ -1891,9 +1891,13 @@ body {
 .juice-workspace {
   position: relative;
   z-index: 1;
-  grid-template-columns: minmax(300px, 0.86fr) minmax(0, 1.14fr);
+  grid-template-columns: minmax(0, 1.14fr) minmax(300px, 0.86fr);
   gap: clamp(20px, 3.3vw, 38px);
   max-width: 1440px;
+}
+
+.juice-workspace .tasks-card {
+  order: -1;
 }
 
 .juice-workspace .juice-panel {
@@ -2222,7 +2226,7 @@ body {
   width: 100%;
   flex-direction: column;
   align-items: flex-start;
-  gap: 13px;
+  gap: 0;
 }
 
 .juice-panel .task-heading-copy .task-actions {
@@ -2270,6 +2274,27 @@ body {
 
 .juice-panel .task-actions {
   gap: 8px;
+}
+
+.juice-panel .task-actions-footer {
+  align-items: stretch;
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
+.juice-panel .task-actions-footer .clear-button {
+  flex: 1 1 0;
+}
+
+.juice-panel .task-actions-footer .wheel-settings-button {
+  justify-content: space-between;
+  background: var(--juice-cream);
+}
+
+.juice-panel .task-actions-footer .wheel-settings-button.is-open,
+.juice-panel .task-actions-footer .wheel-settings-button:hover:not(:disabled) {
+  background: var(--juice-violet);
+  color: var(--juice-cream);
 }
 
 .juice-panel .clear-button {
@@ -2330,7 +2355,7 @@ body {
 }
 
 .juice-panel .task-toolbar {
-  margin-top: 20px;
+  margin-top: 0;
   padding-bottom: 13px;
   border-bottom: 3px solid var(--juice-black);
 }
@@ -4052,12 +4077,12 @@ textarea {
 .focus-banner {
   position: relative;
   display: grid;
-  min-height: 176px;
+  min-height: 88px;
   max-width: 1440px;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 24px;
-  margin: 18px auto 26px;
+  margin: 14px auto 20px;
   overflow: hidden;
   border: 3px solid #f7f0df;
   background-color: #111319;
@@ -4068,7 +4093,7 @@ textarea {
   background-size: cover, cover;
   box-shadow: 8px 8px 0 var(--juice-orange);
   color: #f7f0df;
-  padding: clamp(22px, 3vw, 38px);
+  padding: clamp(12px, 1.5vw, 18px);
 }
 
 .focus-banner::after {
@@ -4106,7 +4131,7 @@ textarea {
 
 .focus-banner-score strong {
   color: var(--juice-yellow);
-  font-size: clamp(48px, 6vw, 78px);
+  font-size: clamp(32px, 4vw, 52px);
   font-stretch: 78%;
   font-weight: 900;
   letter-spacing: -0.08em;
@@ -4219,7 +4244,12 @@ textarea {
   z-index: 1;
   display: grid;
   min-height: 620px;
+  pointer-events: none;
   transform: rotateY(180deg);
+}
+
+.task-board-flip.is-wheel-revealed .task-board-face-back {
+  pointer-events: auto;
 }
 
 .juice-panel .task-heading-copy .wheel-launch-button,
@@ -4403,6 +4433,40 @@ textarea {
   background: var(--juice-yellow);
   box-shadow: 3px 3px 0 var(--juice-black);
   padding: 5px 6px;
+}
+
+.wheel-cancel-button {
+  justify-self: start;
+  min-height: 40px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-cream);
+  box-shadow: 4px 4px 0 var(--juice-black);
+  color: var(--juice-black);
+  cursor: pointer;
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 8px 12px;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.wheel-cancel-button span {
+  display: inline-block;
+  font-size: 18px;
+  line-height: 0.6;
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
+.wheel-cancel-button:hover,
+.wheel-cancel-button:focus-visible {
+  background: var(--juice-yellow);
+}
+
+.wheel-cancel-button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(3px, 3px);
 }
 
 .wheel-machine {
@@ -4660,13 +4724,13 @@ textarea {
   }
 
   .focus-banner {
-    min-height: 148px;
+    min-height: 74px;
     display: block;
     margin-top: 11px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     background-position: center, 58% center;
     box-shadow: 6px 6px 0 var(--juice-orange);
-    padding: 18px;
+    padding: 10px 14px;
   }
 
   .focus-banner::after {
@@ -4676,7 +4740,7 @@ textarea {
   .focus-banner-score {
     position: absolute;
     right: 16px;
-    bottom: 16px;
+    bottom: 10px;
     min-width: 72px;
     border-left: 0;
     padding-left: 0;

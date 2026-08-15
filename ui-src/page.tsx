@@ -787,6 +787,7 @@ export default function Home() {
   const wheelRevealTimerRef = useRef<number | null>(null);
   const wheelSpinTimerRef = useRef<number | null>(null);
   const wheelReturnTimerRef = useRef<number | null>(null);
+  const wheelRunIdRef = useRef(0);
   const lastCompletionAtRef = useRef(0);
   const milestonesSeenRef = useRef(new Set<number>());
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
@@ -949,6 +950,7 @@ export default function Home() {
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
     if (rewardTimerRef.current !== null) window.clearTimeout(rewardTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
+    wheelRunIdRef.current += 1;
     clearWheelTimers();
     try {
       recognitionRef.current?.stop();
@@ -972,8 +974,10 @@ export default function Home() {
     }
   }
 
-  function putWheelAway(message = "Wheel tucked away. Your whole board is back in view.") {
+  function putWheelAway(message = "Wheel cancelled. Your tasks are unchanged.") {
+    wheelRunIdRef.current += 1;
     clearWheelTimers();
+    setWheelChallenge(null);
     setWheelPhase("list");
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
@@ -994,6 +998,8 @@ export default function Home() {
       return;
     }
 
+    const runId = wheelRunIdRef.current + 1;
+    wheelRunIdRef.current = runId;
     clearWheelTimers();
     setWheelChallenge(null);
     const selectedIndex = Math.floor(Math.random() * eligibleTasks.length);
@@ -1009,9 +1015,12 @@ export default function Home() {
 
     wheelRevealTimerRef.current = window.setTimeout(() => {
       wheelRevealTimerRef.current = null;
+      if (wheelRunIdRef.current !== runId) return;
       setWheelPhase("wheel");
       window.requestAnimationFrame(() => {
+        if (wheelRunIdRef.current !== runId) return;
         window.requestAnimationFrame(() => {
+          if (wheelRunIdRef.current !== runId) return;
           setWheelPhase("spinning");
           setWheelRotation((current) => {
             const normalizedCurrent = ((current % 360) + 360) % 360;
@@ -1023,6 +1032,7 @@ export default function Home() {
 
       wheelSpinTimerRef.current = window.setTimeout(() => {
         wheelSpinTimerRef.current = null;
+        if (wheelRunIdRef.current !== runId) return;
         setWheelChallenge({
           taskId: selectedTask.id,
           startedAt: Date.now(),
@@ -1036,9 +1046,15 @@ export default function Home() {
   }
 
   function rerollWheel() {
+    wheelRunIdRef.current += 1;
+    clearWheelTimers();
     setWheelChallenge(null);
     setWheelPhase("list");
-    window.setTimeout(spinTheWheel, 120);
+    const rerollId = wheelRunIdRef.current;
+    window.setTimeout(() => {
+      if (wheelRunIdRef.current !== rerollId) return;
+      spinTheWheel();
+    }, 120);
   }
 
   function generateTasks() {
@@ -1287,6 +1303,7 @@ export default function Home() {
   }
 
   function clearAllTasks() {
+    wheelRunIdRef.current += 1;
     clearWheelTimers();
     setTasks([]);
     setFilter("all");
@@ -1328,10 +1345,6 @@ export default function Home() {
     setNotice(`Exported ${records.length} task ${records.length === 1 ? "record" : "records"}.`);
   }
 
-  function toggleTheme() {
-    setTheme(theme === "paper" ? "midnight" : "paper");
-  }
-
   toggleTaskRef.current = toggleTask;
 
   return (
@@ -1346,26 +1359,6 @@ export default function Home() {
           <span className="milestone-sub">{milestone === "LEVEL COMPLETE" ? "YOU CLEARED THE WHOLE BOARD" : "KEEP THE MOMENTUM"}</span>
         </div>
       )}
-      <header className="topbar juice-topbar">
-        <a className="brand" href="#top" aria-label="DictaTask home">
-          <span className="brand-mark"><Icon name="wave" /></span>
-          <span className="brand-word">DICTA<span className="brand-accent">TASK</span></span>
-        </a>
-        <div className="topbar-actions">
-          <div className="topbar-center"><span className="status-dot" /> PRIVATE / ON DEVICE · {progressPercent}% CLEAR</div>
-          <button
-            className="mode-toggle"
-            type="button"
-            aria-label={`Switch to ${theme === "paper" ? "dark" : "light"} mode`}
-            aria-pressed={theme === "paper"}
-            onClick={toggleTheme}
-          >
-            <span className="mode-toggle-glyph" aria-hidden="true"><i /><i /><i /></span>
-            <span className="mode-toggle-copy"><small>MODE</small><strong>{theme === "paper" ? "LIGHT" : "DARK"}</strong></span>
-          </button>
-        </div>
-      </header>
-
       <section className="focus-banner" aria-label="Task board progress">
         <div className="focus-banner-score" aria-label={`${progressPercent} percent of tasks complete`}>
           <span>BOARD STATUS</span>
@@ -1450,54 +1443,9 @@ export default function Home() {
                       <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
                       <span>Spin the wheel</span>
                     </button>
-                    <button
-                      className={`clear-button wheel-settings-button ${wheelSettingsOpen ? "is-open" : ""}`}
-                      type="button"
-                      onClick={() => setWheelSettingsOpen((open) => !open)}
-                      aria-expanded={wheelSettingsOpen}
-                      aria-controls="wheel-settings"
-                    >
-                      <span>Focus clock</span><b>{wheelSettings.durationMinutes}m</b>
-                    </button>
-                    <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
-                      <Icon name="download" /> Export .txt
-                    </button>
-                    <button className="clear-button" type="button" onClick={clearCompleted} disabled={!doneCount}>
-                      <Icon name="trash" /> Clear done
-                    </button>
-                    <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
-                      <Icon name="trash" /> Remove all
-                    </button>
                   </div>
-                  <h2>Your next moves</h2>
                 </div>
               </div>
-
-              {wheelSettingsOpen && (
-                <section className="wheel-settings-inline" id="wheel-settings" aria-label="Spin the Wheel settings">
-                  <div className="wheel-settings-copy">
-                    <span>SPIN THE WHEEL / SETTINGS</span>
-                    <strong>Focus countdown</strong>
-                    <small>Choose the clock for your next selected task.</small>
-                  </div>
-                  <div className="wheel-duration-options" role="group" aria-label="Focus countdown duration">
-                    {WHEEL_DURATION_OPTIONS.map((minutes) => (
-                      <button
-                        className={wheelSettings.durationMinutes === minutes ? "is-selected" : ""}
-                        key={minutes}
-                        type="button"
-                        aria-pressed={wheelSettings.durationMinutes === minutes}
-                        onClick={() => {
-                          setWheelSettings({ durationMinutes: minutes });
-                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next spin.`);
-                        }}
-                      >
-                        {minutes} MIN
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
 
               <div className="task-toolbar">
                 <div className="filter-tabs" role="group" aria-label="Filter tasks">
@@ -1537,6 +1485,53 @@ export default function Home() {
                 )}
               </div>
 
+              <div className="task-actions task-actions-footer" aria-label="Task list actions">
+                <button
+                  className={`clear-button wheel-settings-button ${wheelSettingsOpen ? "is-open" : ""}`}
+                  type="button"
+                  onClick={() => setWheelSettingsOpen((open) => !open)}
+                  aria-expanded={wheelSettingsOpen}
+                  aria-controls="wheel-settings"
+                >
+                  <span>Focus clock</span><b>{wheelSettings.durationMinutes}m</b>
+                </button>
+                <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
+                  <Icon name="download" /> Export .txt
+                </button>
+                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!doneCount}>
+                  <Icon name="trash" /> Clear done
+                </button>
+                <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
+                  <Icon name="trash" /> Remove all
+                </button>
+              </div>
+
+              {wheelSettingsOpen && (
+                <section className="wheel-settings-inline" id="wheel-settings" aria-label="Spin the Wheel settings">
+                  <div className="wheel-settings-copy">
+                    <span>SPIN THE WHEEL / SETTINGS</span>
+                    <strong>Focus countdown</strong>
+                    <small>Choose the clock for your next selected task.</small>
+                  </div>
+                  <div className="wheel-duration-options" role="group" aria-label="Focus countdown duration">
+                    {WHEEL_DURATION_OPTIONS.map((minutes) => (
+                      <button
+                        className={wheelSettings.durationMinutes === minutes ? "is-selected" : ""}
+                        key={minutes}
+                        type="button"
+                        aria-pressed={wheelSettings.durationMinutes === minutes}
+                        onClick={() => {
+                          setWheelSettings({ durationMinutes: minutes });
+                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next spin.`);
+                        }}
+                      >
+                        {minutes} MIN
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               <form className="add-task-form" onSubmit={addTask}>
                 <span className="add-icon"><Icon name="plus" /></span>
                 <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
@@ -1550,6 +1545,17 @@ export default function Home() {
                   <span>SPIN THE WHEEL</span>
                   <span>FOCUS CLOCK · {wheelSettings.durationMinutes} MIN</span>
                 </div>
+
+                {wheelPhase !== "complete" && (
+                  <button
+                    className="wheel-cancel-button"
+                    type="button"
+                    onClick={() => putWheelAway()}
+                    aria-label="Cancel the wheel and return to the current tasks"
+                  >
+                    <span aria-hidden="true">×</span> CANCEL / KEEP TASKS
+                  </button>
+                )}
 
                 <div className="wheel-machine">
                   <span className="wheel-landing-marker">LAND HERE</span>
