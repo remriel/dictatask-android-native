@@ -150,7 +150,14 @@ const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
 const WHEEL_CONVERGE_DURATION_MS = 560;
-const WHEEL_SPIN_DURATION_MS = 3600;
+const WHEEL_SPIN_DURATION_MS = 3000;
+const WHEEL_TASK_COLOR_VARIABLES: Record<TaskColor, string> = {
+  orange: "var(--task-tile-orange-shadow)",
+  blue: "var(--task-tile-blue-shadow)",
+  cyan: "var(--task-tile-cyan-shadow)",
+  lime: "var(--task-tile-lime-shadow)",
+  violet: "var(--task-tile-violet-shadow)",
+};
 const defaultWheelSettings: WheelSettings = {
   durationMinutes: 10,
 };
@@ -465,8 +472,25 @@ function formatFocusCountdown(totalSeconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function shortenWheelTitle(title: string) {
-  return title.length > 22 ? `${title.slice(0, 20).trim()}…` : title;
+function buildWheelGradient(tasks: Task[]) {
+  if (!tasks.length) {
+    return "conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg)";
+  }
+
+  const segmentAngle = 360 / tasks.length;
+  const separator = Math.min(1.5, segmentAngle * 0.08);
+  const stops = tasks.flatMap((task, index) => {
+    const start = index * segmentAngle;
+    const end = (index + 1) * segmentAngle;
+    const color = WHEEL_TASK_COLOR_VARIABLES[task.color];
+    const wedgeEnd = Math.max(start, end - separator);
+    return [
+      `${color} ${start.toFixed(2)}deg ${wedgeEnd.toFixed(2)}deg`,
+      `var(--juice-black) ${wedgeEnd.toFixed(2)}deg ${end.toFixed(2)}deg`,
+    ];
+  });
+
+  return `conic-gradient(from -90deg, ${stops.join(", ")})`;
 }
 
 function formatHistoryDate(timestamp: number | null) {
@@ -846,6 +870,7 @@ export default function Home() {
   }, [celebratingTaskId, dismissedTaskIdSet, filter, tasks]);
 
   const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
+  const wheelColorGradient = useMemo(() => buildWheelGradient(wheelTaskPool), [wheelTaskPool]);
   const wheelFocusTaskId = wheelChallenge?.taskId ?? pendingWheelTaskId;
   const wheelFocusTask = wheelFocusTaskId
     ? tasks.find((task) => task.id === wheelFocusTaskId) ?? null
@@ -1005,7 +1030,7 @@ export default function Home() {
     const selectedIndex = Math.floor(Math.random() * eligibleTasks.length);
     const selectedTask = eligibleTasks[selectedIndex];
     const segmentAngle = 360 / eligibleTasks.length;
-    const labelAngle = selectedIndex * segmentAngle;
+    const targetAngle = selectedIndex * segmentAngle + (segmentAngle / 2);
 
     setWheelCandidates(eligibleTasks);
     setPendingWheelTaskId(selectedTask.id);
@@ -1024,7 +1049,7 @@ export default function Home() {
           setWheelPhase("spinning");
           setWheelRotation((current) => {
             const normalizedCurrent = ((current % 360) + 360) % 360;
-            const alignment = (360 - labelAngle - normalizedCurrent + 360) % 360;
+            const alignment = (360 - targetAngle - normalizedCurrent + 360) % 360;
             return current + (6 * 360) + alignment;
           });
         });
@@ -1561,26 +1586,15 @@ export default function Home() {
                   <span className="wheel-landing-marker">LAND HERE</span>
                   <div
                     className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
-                    style={{ transform: `rotate(${wheelRotation}deg)` }}
+                    style={{
+                      "--wheel-color-gradient": wheelColorGradient,
+                      transform: `rotate(${wheelRotation}deg)`,
+                    } as CSSProperties}
                     role="img"
-                    aria-label="A task-selection wheel showing your open tasks"
+                    aria-label="A colorful task-selection wheel"
                   >
-                    <img src="./dictatask-wheel-face.jpg" alt="" />
-                    {wheelTaskPool.map((task, index) => {
-                      const angle = (index / Math.max(wheelTaskPool.length, 1)) * 360;
-                      return (
-                        <span
-                          className={`wheel-task-label wheel-label-${task.color}`}
-                          key={task.id}
-                          style={{
-                            "--wheel-label-angle": `${angle}deg`,
-                            "--wheel-label-counter-angle": `${-(angle + wheelRotation)}deg`,
-                          } as CSSProperties}
-                        >
-                          {shortenWheelTitle(task.title)}
-                        </span>
-                      );
-                    })}
+                    <span className="wheel-color-field" aria-hidden="true" />
+                    <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
                   </div>
                 </div>
 
