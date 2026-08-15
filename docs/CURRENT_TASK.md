@@ -2,14 +2,14 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel and XP, put recording first, compact the recording form, and keep task actions in one row.
+Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, and keep task actions in one row.
 
 ## Current implementation
 
 - The shipped UI is the bundled React/Vite app in `ui-src/`, copied into `app/src/main/assets/`.
 - Spin the Wheel uses a persisted configurable countdown, cancel-safe run IDs, bright task-card shadow colors, and a WebView-safe `requestAnimationFrame` rotation loop.
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
-- The former percentage/clear board panel is removed. A thin colorful top flare remains as a completion progress bar with no visible percentage copy.
+- The former percentage/clear board panel is removed. A thin colorful 12px top flare remains as a completion progress bar with no visible percentage copy.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
 - The Spin the Wheel launch row has an 8px top and bottom gap so its borders stay clear of the task cards and actions below it.
@@ -22,6 +22,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Completing a task shows a persistent inline `UNDO` bar beneath the task toolbar, so it remains reachable on mobile until the user dismisses it or takes another task action. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
 - Every `DONE` row is an accessible checkbox. Tapping, pressing Enter, or pressing Space on a completed row reopens it, removes it from the completion history list, and returns it to `TO DO` without a completion side effect.
 - Task titles use a larger mobile-first type scale so they fill more of each card; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
+- The bottom `DICTATASK / LOCAL-FIRST FOCUS` footer and `DT_` mark are removed so the page ends with the task workspace rather than extra branding copy.
 - Focus clock, Export .txt, Clear done, and Remove all are compacted to roughly 60% of their former mobile height and forced into one responsive row.
 - The current branch is `agent/spin-wheel-focus-cleanup`; the release APK was rebuilt and the existing Google Drive file was updated in place.
 
@@ -33,9 +34,10 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA passed for recording-first order, the absent percentage/clear panel, the 10px progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
+- Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the top flare is 12px tall and the viewport has no horizontal overflow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `6D66EB7E3B2C83C726EDE4BF639B628E4691F52CE0DC2343F01E47ADEBEAC5C3` (1,205,534 bytes).
+- APK SHA-256: `DBB6F62D873ABBBCFE2B0788BBC28AC13463CCD82895693E9A6C945E9E66DFED` (1,205,342 bytes).
 - Google Drive APK: https://drive.google.com/file/d/1W3aWlos7bXlG_41qdqL__K9_TOXSeLYn/view?usp=drivesdk
 
 ## Constraints

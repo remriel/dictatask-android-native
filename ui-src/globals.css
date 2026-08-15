@@ -1275,31 +1275,6 @@ a:focus-visible {
   font-size: 9px;
 }
 
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1320px;
-  margin: 20px auto 0;
-  color: #77716a;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-}
-
-.footer-mark {
-  color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 16px;
-  font-weight: 950;
-  letter-spacing: -0.12em;
-}
-
-.footer-mark span {
-  color: var(--orange);
-}
-
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr 210px;
@@ -1428,11 +1403,6 @@ a:focus-visible {
     gap: 8px;
   }
 
-  .footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1909,7 +1879,7 @@ body {
   z-index: 1;
   width: 100%;
   max-width: 1440px;
-  height: 10px;
+  height: 12px;
   margin: 0 auto 12px;
   overflow: hidden;
   border: 2px solid var(--juice-black);
@@ -2775,19 +2745,6 @@ body {
   transform: translate(2px, 2px);
 }
 
-.juice-shell .footer {
-  position: relative;
-  z-index: 1;
-  max-width: 1440px;
-  margin-top: 24px;
-  color: rgba(241, 230, 209, 0.7);
-}
-
-.juice-shell .footer-mark {
-  color: var(--juice-cream);
-  font-size: 21px;
-}
-
 .celebration-burst {
   position: fixed;
   top: 46%;
@@ -3316,12 +3273,6 @@ body {
     font-size: 8px;
   }
 
-  .juice-shell .footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
-
   .sticker-surface {
     top: 235px;
     right: -260px;
@@ -3757,8 +3708,6 @@ body {
   --app-header-ink: #f7f0df;
   --theme-transcript-panel: #ffd21f;
   --theme-tasks-panel: #f7f0df;
-  --theme-footer-ink: rgba(241, 230, 209, 0.7);
-  --theme-footer-mark: #f7f0df;
   --theme-option-active-ink: #0d0d12;
   --task-tile-default-bg: #123d68;
   --task-tile-default-shadow: #20bfe5;
@@ -3791,8 +3740,6 @@ body {
   --app-header-ink: #fff0d9;
   --theme-transcript-panel: #e4a840;
   --theme-tasks-panel: #fff0d9;
-  --theme-footer-ink: rgba(255, 240, 217, 0.74);
-  --theme-footer-mark: #fff0d9;
   --theme-option-active-ink: #1b1020;
   --task-tile-default-bg: #314a7b;
   --task-tile-default-shadow: #3892a3;
@@ -3825,8 +3772,6 @@ body {
   --app-header-ink: #172640;
   --theme-transcript-panel: #f4ca63;
   --theme-tasks-panel: #fff8e7;
-  --theme-footer-ink: rgba(23, 38, 64, 0.76);
-  --theme-footer-mark: #172640;
   --theme-option-active-ink: #fff8e7;
   --task-tile-default-bg: #2b5e99;
   --task-tile-default-shadow: #237f91;
@@ -3878,14 +3823,6 @@ body {
 
 .juice-workspace .tasks-card {
   background: var(--theme-tasks-panel);
-}
-
-.juice-shell .footer {
-  color: var(--theme-footer-ink);
-}
-
-.juice-shell .footer-mark {
-  color: var(--theme-footer-mark);
 }
 
 .juice-panel .task-row {

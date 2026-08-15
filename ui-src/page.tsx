@@ -1879,10 +1879,6 @@ export default function Home() {
         </article>
       </section>
 
-      <footer className="footer">
-        <span>DICTATASK / LOCAL-FIRST FOCUS</span>
-        <span className="footer-mark">DT<span>_</span></span>
-      </footer>
     </main>
   );
 }
