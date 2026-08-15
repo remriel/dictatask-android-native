@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import { createPortal } from "react-dom";
 
 type TaskColor = "orange" | "blue" | "cyan" | "lime" | "violet";
-type Filter = "all" | "open" | "done";
+type Filter = "open" | "done";
 type Theme = "midnight" | "paper";
 type CelebrationVariant = "burst" | "stamp" | "jackpot" | "massacre";
 
@@ -30,6 +30,7 @@ type Task = {
   title: string;
   color: TaskColor;
   completed: boolean;
+  historyOnly?: boolean;
 };
 
 type TaskHistoryEntry = Task & {
@@ -460,9 +461,14 @@ function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
     });
   });
 
-  return Array.from(byId.values())
-    .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0))
+  const sorted = Array.from(byId.values())
+    .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0));
+  const permanentDoneHistory = sorted.filter((entry) => entry.completed || entry.completedAt !== null);
+  const openHistory = sorted
+    .filter((entry) => !entry.completed && entry.completedAt === null)
     .slice(0, MAX_HISTORY_RECORDS);
+
+  return [...permanentDoneHistory, ...openHistory];
 }
 
 function getRemainingFocusSeconds(challenge: WheelChallenge) {
@@ -640,20 +646,22 @@ const TaskRow = memo(function TaskRow({
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
 }) {
+  const historyOnly = task.historyOnly === true;
+
   return (
     <div
-      className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${celebrating ? "is-celebrating" : ""}`}
+      className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${historyOnly ? "is-history" : ""} ${celebrating ? "is-celebrating" : ""}`}
       id={`task-${task.id}`}
       style={{
         "--task-stack-index": index,
         "--task-stack-offset": `${(2 - index) * 94}px`,
       } as CSSProperties}
-      role="checkbox"
-      aria-checked={task.completed}
-      tabIndex={0}
-      aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
-      onClick={() => onToggle(task.id)}
-      onKeyDown={(event) => {
+      role={historyOnly ? "article" : "checkbox"}
+      aria-checked={historyOnly ? undefined : task.completed}
+      tabIndex={historyOnly ? undefined : 0}
+      aria-label={historyOnly ? `Completed task history: ${task.title}` : `${task.completed ? "Reopen" : "Complete"} ${task.title}`}
+      onClick={historyOnly ? undefined : () => onToggle(task.id)}
+      onKeyDown={historyOnly ? undefined : (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onToggle(task.id);
@@ -686,7 +694,7 @@ const TaskRow = memo(function TaskRow({
           )}
         </div>
       </div>
-      <span className="task-badge">{task.completed ? "DONE" : "NEXT"}</span>
+      <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
       <span className="task-swipe" aria-hidden="true">→</span>
     </div>
   );
@@ -798,7 +806,7 @@ export default function Home() {
     null,
     normalizeWheelChallenge,
   );
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("open");
   const [newTask, setNewTask] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -876,20 +884,39 @@ export default function Home() {
 
   const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks]);
   const openCount = openTasks.length;
-  const doneCount = tasks.filter((task) => task.completed).length;
-  const totalCount = tasks.length;
-  const progressPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-  const filteredTasks = useMemo(() => {
-    const visibleTasks = filter === "open"
-      ? tasks.filter((task) => !task.completed || task.id === celebratingTaskId)
-      : filter === "done"
-        ? tasks.filter((task) => task.completed)
-        : tasks;
+  const completedCount = tasks.filter((task) => task.completed).length;
+  const doneHistoryTasks = useMemo(() => {
+    const history = new Map<string, Task>();
 
-    return filter === "open"
-      ? visibleTasks.filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id))
-      : visibleTasks;
-  }, [celebratingTaskId, dismissedTaskIdSet, filter, tasks]);
+    taskHistory.forEach((entry) => {
+      if (entry.completed || entry.completedAt !== null) {
+        history.set(entry.id, {
+          id: entry.id,
+          title: entry.title,
+          color: entry.color,
+          completed: true,
+          historyOnly: true,
+        });
+      }
+    });
+
+    tasks.forEach((task) => {
+      if (task.completed) {
+        history.set(task.id, { ...task, historyOnly: false });
+      }
+    });
+
+    return Array.from(history.values());
+  }, [taskHistory, tasks]);
+  const doneCount = doneHistoryTasks.length;
+  const totalCount = tasks.length;
+  const progressPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+  const filteredTasks = useMemo(() => {
+    if (filter === "done") return doneHistoryTasks;
+    return tasks
+      .filter((task) => !task.completed || task.id === celebratingTaskId)
+      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id));
+  }, [celebratingTaskId, dismissedTaskIdSet, doneHistoryTasks, filter, tasks]);
 
   const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
   const wheelColorGradient = useMemo(() => buildWheelGradient(wheelTaskPool), [wheelTaskPool]);
@@ -1192,7 +1219,7 @@ export default function Home() {
     }
 
     setTasks([...(isDemoList ? [] : tasks), ...additions]);
-    setFilter("all");
+    setFilter("open");
     setNotice(`${additions.length} new ${additions.length === 1 ? "task" : "tasks"} added. Your dictated text is still here.`);
   }
 
@@ -1318,8 +1345,8 @@ export default function Home() {
     );
 
     if (willComplete) {
-      const previousPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-      const nextDoneCount = doneCount + 1;
+      const previousPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+      const nextDoneCount = completedCount + 1;
       const nextPercent = totalCount ? Math.round((nextDoneCount / totalCount) * 100) : 100;
       const now = Date.now();
       const nextCombo = now - lastCompletionAtRef.current < 3600 ? Math.min(combo + 1, 4) : 1;
@@ -1405,15 +1432,20 @@ export default function Home() {
   }
 
   function clearCompleted() {
+    const completedTasks = tasks.filter((task) => task.completed);
+    if (completedTasks.length) {
+      setTaskHistory((current) => mergeTaskHistory(current, completedTasks));
+    }
     setTasks((current) => current.filter((task) => !task.completed));
     setNotice("Finished items cleared.");
   }
 
   function clearAllTasks() {
+    setTaskHistory((current) => mergeTaskHistory(current, tasks));
     wheelRunIdRef.current += 1;
     clearWheelTimers();
     setTasks([]);
-    setFilter("all");
+    setFilter("open");
     setDismissedTaskIds([]);
     setCombo(0);
     setWheelChallenge(null);
@@ -1540,7 +1572,7 @@ export default function Home() {
             <div className="task-board-face task-board-face-front" aria-hidden={wheelPhase !== "list"}>
               <div className="task-toolbar">
                 <div className="filter-tabs" role="group" aria-label="Filter tasks">
-                  {(["all", "open", "done"] as Filter[]).map((item) => (
+                  {(["open", "done"] as Filter[]).map((item) => (
                     <button
                       className={filter === item ? "active" : ""}
                       key={item}
@@ -1548,8 +1580,8 @@ export default function Home() {
                       aria-pressed={filter === item}
                       onClick={() => setFilter(item)}
                     >
-                      {item === "all" ? "All" : item === "open" ? "To do" : "Done"}
-                      <span>{item === "all" ? tasks.length : item === "open" ? openCount : doneCount}</span>
+                      {item === "open" ? "TO DO" : "DONE"}
+                      <span>{item === "open" ? openCount : doneCount}</span>
                     </button>
                   ))}
                 </div>
@@ -1603,7 +1635,7 @@ export default function Home() {
                 <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
                   <Icon name="download" /> Export .txt
                 </button>
-                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!doneCount}>
+                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!completedCount}>
                   <Icon name="trash" /> Clear done
                 </button>
                 <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>

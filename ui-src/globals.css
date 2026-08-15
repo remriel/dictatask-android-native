@@ -836,6 +836,14 @@ a:focus-visible {
   transform: translateX(3px);
 }
 
+.task-row.is-history {
+  cursor: default;
+}
+
+.task-row.is-history:hover {
+  transform: none;
+}
+
 .task-row.is-celebrating {
   position: relative;
   z-index: 1;
@@ -2279,6 +2287,7 @@ body {
 .juice-panel .task-actions-footer {
   align-items: stretch;
   justify-content: flex-start;
+  gap: 5px;
   margin-top: 18px;
 }
 
@@ -2290,7 +2299,17 @@ body {
 }
 
 .juice-panel .task-actions-footer .clear-button {
-  flex: 1 1 0;
+  flex: 0 1 auto;
+  min-height: 29px;
+  padding: 4px 5px;
+  font-size: 7px;
+  letter-spacing: 0.035em;
+  box-shadow: 2px 2px 0 var(--juice-black);
+}
+
+.juice-panel .task-actions-footer .clear-button svg {
+  width: 10px;
+  height: 10px;
 }
 
 .juice-panel .task-actions-footer .wheel-settings-button {
@@ -3583,12 +3602,16 @@ body {
   cursor: pointer;
 }
 
+.juice-panel .task-row.is-history {
+  cursor: default;
+}
+
 .juice-panel .task-row:focus-visible {
   outline: 4px solid var(--juice-yellow);
   outline-offset: 4px;
 }
 
-.juice-panel .task-row:active:not(.is-celebrating) {
+.juice-panel .task-row:active:not(.is-celebrating):not(.is-history) {
   box-shadow: 2px 2px 0 var(--task-card-shadow);
   transform: translate(4px, 4px) scale(0.985);
 }
@@ -4221,9 +4244,10 @@ textarea {
 }
 
 .juice-panel .task-actions-footer .wheel-settings-button {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   justify-content: space-between;
   background: var(--juice-cream);
+  font-size: 7px;
 }
 
 .juice-panel .task-actions-footer .wheel-settings-button.is-open,
@@ -4234,8 +4258,8 @@ textarea {
 
 .wheel-settings-button b {
   border-left: 2px solid currentColor;
-  padding-left: 6px;
-  font-size: 10px;
+  padding-left: 4px;
+  font-size: 7px;
 }
 
 .wheel-launch-art {
@@ -4774,6 +4798,21 @@ textarea {
     min-height: 48px;
     padding: 8px 10px;
     font-size: 11px;
+  }
+
+  .juice-panel .task-actions-footer {
+    display: flex;
+    grid-template-columns: none;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .juice-panel .task-actions-footer button,
+  .juice-panel .task-actions-footer .wheel-settings-button {
+    min-height: 29px;
+    padding: 4px 5px;
+    font-size: 7px;
+    grid-column: auto;
   }
 
   .wheel-settings-inline {
