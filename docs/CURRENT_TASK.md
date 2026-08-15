@@ -42,8 +42,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The Android handoff includes a safe-area-aware mobile bottom inset for the Spin the Wheel card and removes the manual card's black border/shadow bands so its surrounding surface stays green.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `3B6E1B72BFC56EA96685B11E3BD0BC68B775202B0B65896CD59F66AE1C682E80` (1,205,710 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1z7fet544nidpK1lVxhhOcrmsCK_buVp0/view?usp=drivesdk
+- APK SHA-256: `F609BF34A08440D0A481FD4104F18DC5A695F6647A391494B2D5B27756AEB409` (1,205,702 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1pPHN_hd4SDN0cNzTdQ0Mgnm-Hw1SPpSy/view?usp=drivesdk
 
 ## Constraints
 
