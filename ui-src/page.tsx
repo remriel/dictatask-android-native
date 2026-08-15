@@ -665,12 +665,12 @@ const TaskRow = memo(function TaskRow({
         "--task-stack-index": index,
         "--task-stack-offset": `${(2 - index) * 94}px`,
       } as CSSProperties}
-      role={historyOnly ? "article" : "checkbox"}
-      aria-checked={historyOnly ? undefined : task.completed}
-      tabIndex={historyOnly ? undefined : 0}
-      aria-label={historyOnly ? `Completed task history: ${task.title}` : `${task.completed ? "Reopen" : "Complete"} ${task.title}`}
-      onClick={historyOnly ? undefined : () => onToggle(task.id)}
-      onKeyDown={historyOnly ? undefined : (event) => {
+      role="checkbox"
+      aria-checked={task.completed}
+      tabIndex={0}
+      aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
+      onClick={() => onToggle(task.id)}
+      onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onToggle(task.id);
@@ -842,7 +842,6 @@ export default function Home() {
   const recordingStartedAtRef = useRef(0);
   const restartTimerRef = useRef<number | null>(null);
   const celebrationTimerRef = useRef<number | null>(null);
-  const undoCompletionTimerRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<number | null>(null);
   const comboTimerRef = useRef<number | null>(null);
   const wheelRevealTimerRef = useRef<number | null>(null);
@@ -1050,7 +1049,6 @@ export default function Home() {
     voiceSessionRef.current += 1;
     if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current);
     if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
-    if (undoCompletionTimerRef.current !== null) window.clearTimeout(undoCompletionTimerRef.current);
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
     wheelRunIdRef.current += 1;
@@ -1359,10 +1357,6 @@ export default function Home() {
   }
 
   function clearUndoCompletion() {
-    if (undoCompletionTimerRef.current !== null) {
-      window.clearTimeout(undoCompletionTimerRef.current);
-      undoCompletionTimerRef.current = null;
-    }
     setUndoCompletion(null);
   }
 
@@ -1411,7 +1405,7 @@ export default function Home() {
   }
 
   function toggleTask(id: string) {
-    const task = tasks.find((item) => item.id === id);
+    const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
 
@@ -1420,24 +1414,26 @@ export default function Home() {
       celebrationTimerRef.current = null;
     }
 
-    setTasks((current) =>
-      current.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)),
-    );
+    setTasks((current) => {
+      if (current.some((item) => item.id === id)) {
+        return current.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item));
+      }
+      if (!task || !task.completed) return current;
+      return [...current, {
+        id: task.id,
+        title: task.title,
+        color: task.color,
+        completed: false,
+      }];
+    });
 
     if (willComplete) {
-      if (undoCompletionTimerRef.current !== null) {
-        window.clearTimeout(undoCompletionTimerRef.current);
-      }
       setUndoCompletion({
         id,
         title: task?.title ?? "Task",
         previousHistory: taskHistory.find((entry) => entry.id === id) ?? null,
         wasDismissed: dismissedTaskIdSet.has(id),
       });
-      undoCompletionTimerRef.current = window.setTimeout(() => {
-        setUndoCompletion((current) => current?.id === id ? null : current);
-        undoCompletionTimerRef.current = null;
-      }, 6000);
       const previousPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
       const nextDoneCount = completedCount + 1;
       const nextPercent = totalCount ? Math.round((nextDoneCount / totalCount) * 100) : 100;
@@ -1498,6 +1494,7 @@ export default function Home() {
       }, 1050);
     } else {
       if (undoCompletion?.id === id) clearUndoCompletion();
+      setTaskHistory((current) => current.filter((entry) => entry.id !== id));
       lastCompletionAtRef.current = 0;
       setCombo(0);
       setDismissedTaskIds((current) => {
@@ -1608,21 +1605,6 @@ export default function Home() {
       >
         <span className="top-flare-fill" aria-hidden="true" />
       </div>
-      {undoCompletion && (
-        <div className="undo-toast" role="status" aria-live="polite">
-          <div className="undo-toast-copy">
-            <strong>Marked done</strong>
-            <span>{undoCompletion.title}</span>
-          </div>
-          <button
-            type="button"
-            onClick={undoLastCompletion}
-            aria-label={`Undo marking ${undoCompletion.title} done`}
-          >
-            UNDO
-          </button>
-        </div>
-      )}
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">
@@ -1703,6 +1685,22 @@ export default function Home() {
                 </div>
                 <span className="task-sort">AUTO-SORTED ↕</span>
               </div>
+
+              {undoCompletion && (
+                <div className="undo-inline" role="status" aria-live="polite">
+                  <div className="undo-inline-copy">
+                    <strong>LAST MOVE</strong>
+                    <span>{undoCompletion.title}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={undoLastCompletion}
+                    aria-label={`Undo marking ${undoCompletion.title} done`}
+                  >
+                    UNDO
+                  </button>
+                </div>
+              )}
 
               <div className="task-list">
                 {filteredTasks.length ? (

@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, remove the percentage/status panel and XP, put recording first, compact the recording form, and keep task actions in one row.
+Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel and XP, put recording first, compact the recording form, and keep task actions in one row.
 
 ## Current implementation
 
@@ -19,7 +19,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The task board has only `TO DO` and `DONE` tabs, with `TO DO` as the default.
 - Completed records remain available in `DONE` through persistent task history, even after active completed rows are cleared.
 - `DONE` history is sorted by `completedAt` descending, so the most recently completed task is always at the top. Re-completing a reopened task refreshes its completion timestamp.
-- Completing a task shows a short fixed `UNDO` toast. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
+- Completing a task shows a persistent inline `UNDO` bar beneath the task toolbar, so it remains reachable on mobile until the user dismisses it or takes another task action. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
+- Every `DONE` row is an accessible checkbox. Tapping, pressing Enter, or pressing Space on a completed row reopens it, removes it from the completion history list, and returns it to `TO DO` without a completion side effect.
+- Task titles use a larger mobile-first type scale so they fill more of each card; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
 - Focus clock, Export .txt, Clear done, and Remove all are compacted to roughly 60% of their former mobile height and forced into one responsive row.
 - The current branch is `agent/spin-wheel-focus-cleanup`; the release APK was rebuilt and the existing Google Drive file was updated in place.
 
@@ -29,10 +31,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
 - Browser QA passed for recording-first order, the absent percentage/clear panel, the 10px progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
-- Browser QA passed for the accidental-completion `UNDO` flow (task restored, counts/progress restored, toast dismissed) and deterministic DONE ordering with the newest completion first.
+- Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
+- Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `0D0BA001132BA0FC2AAE2CDF7A9279F2B327D3C64D26D7D75BD5FC88C864C098` (1,205,662 bytes).
+- APK SHA-256: `6D66EB7E3B2C83C726EDE4BF639B628E4691F52CE0DC2343F01E47ADEBEAC5C3` (1,205,534 bytes).
 - Google Drive APK: https://drive.google.com/file/d/1W3aWlos7bXlG_41qdqL__K9_TOXSeLYn/view?usp=drivesdk
 
 ## Constraints
