@@ -12,7 +12,7 @@ Add direct task selection for focus mode so Spin the Wheel is optional, and add 
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
 - The Spin the Wheel launch row has an 8px bottom gap so its border does not touch the task filters.
 - Direct focus cancellation uses the same consequence-free path as wheel cancellation and leaves task counts unchanged.
-- The current branch is `agent/spin-wheel-focus-cleanup`; the release APK was rebuilt and the existing Google Drive file was updated in place.
+- The current branch is `agent/spin-wheel-focus-cleanup` at commit `4360ce9`; the release APK was rebuilt and the existing Google Drive file was updated in place.
 
 ## Verification completed
 
@@ -30,8 +30,8 @@ Add direct task selection for focus mode so Spin the Wheel is optional, and add 
 - Keep cancellation consequence-free and preserve the existing configurable countdown.
 - The release APK is still Android Debug signed for internal review, not Play Store distribution.
 
-## Next steps
+## GitHub handoff
 
-1. Commit and push the direct-focus and spacing changes.
-2. Open or update the GitHub review PR.
-3. Run a physical-device smoke test when an Android target is available.
+- Changes are pushed to `agent/spin-wheel-focus-cleanup`.
+- Draft PR: https://github.com/remriel/dictatask-android-native/pull/5
+- Run a physical-device smoke test when an Android target is available.
