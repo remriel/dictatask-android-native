@@ -811,6 +811,8 @@ export default function Home() {
   const wheelRevealTimerRef = useRef<number | null>(null);
   const wheelSpinTimerRef = useRef<number | null>(null);
   const wheelReturnTimerRef = useRef<number | null>(null);
+  const wheelAnimationFrameRef = useRef<number | null>(null);
+  const wheelRotorRef = useRef<HTMLDivElement | null>(null);
   const wheelRunIdRef = useRef(0);
   const lastCompletionAtRef = useRef(0);
   const milestonesSeenRef = useRef(new Set<number>());
@@ -997,6 +999,10 @@ export default function Home() {
       window.clearTimeout(wheelReturnTimerRef.current);
       wheelReturnTimerRef.current = null;
     }
+    if (wheelAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(wheelAnimationFrameRef.current);
+      wheelAnimationFrameRef.current = null;
+    }
   }
 
   function putWheelAway(message = "Wheel cancelled. Your tasks are unchanged.") {
@@ -1008,6 +1014,23 @@ export default function Home() {
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
     setNotice(message);
+  }
+
+  function finishWheelSpin(runId: number, selectedTask: Task, targetRotation: number, durationMinutes: number) {
+    if (wheelRunIdRef.current !== runId) return;
+    clearWheelTimers();
+    if (wheelRotorRef.current) {
+      wheelRotorRef.current.style.transform = `rotate(${targetRotation}deg)`;
+    }
+    setWheelRotation(targetRotation);
+    setWheelChallenge({
+      taskId: selectedTask.id,
+      startedAt: Date.now(),
+      durationSeconds: durationMinutes * 60,
+      expired: false,
+    });
+    setWheelPhase("challenge");
+    setNotice(`${selectedTask.title} is the move. ${durationMinutes} minutes, clean finish.`);
   }
 
   function spinTheWheel() {
@@ -1031,6 +1054,11 @@ export default function Home() {
     const selectedTask = eligibleTasks[selectedIndex];
     const segmentAngle = 360 / eligibleTasks.length;
     const targetAngle = selectedIndex * segmentAngle + (segmentAngle / 2);
+    const startRotation = wheelRotation;
+    const normalizedCurrent = ((startRotation % 360) + 360) % 360;
+    const alignment = (360 - targetAngle - normalizedCurrent + 360) % 360;
+    const targetRotation = startRotation + (6 * 360) + alignment;
+    const durationMinutes = wheelSettings.durationMinutes;
 
     setWheelCandidates(eligibleTasks);
     setPendingWheelTaskId(selectedTask.id);
@@ -1044,29 +1072,36 @@ export default function Home() {
       setWheelPhase("wheel");
       window.requestAnimationFrame(() => {
         if (wheelRunIdRef.current !== runId) return;
+        setWheelPhase("spinning");
         window.requestAnimationFrame(() => {
           if (wheelRunIdRef.current !== runId) return;
-          setWheelPhase("spinning");
-          setWheelRotation((current) => {
-            const normalizedCurrent = ((current % 360) + 360) % 360;
-            const alignment = (360 - targetAngle - normalizedCurrent + 360) % 360;
-            return current + (6 * 360) + alignment;
-          });
+          const animationStartedAt = window.performance.now();
+          const animateWheel = (now: number) => {
+            if (wheelRunIdRef.current !== runId) return;
+            const progress = Math.min(1, (now - animationStartedAt) / WHEEL_SPIN_DURATION_MS);
+            const easedProgress = 1 - Math.pow(1 - progress, 4);
+            const rotation = startRotation + ((targetRotation - startRotation) * easedProgress);
+            if (wheelRotorRef.current) {
+              wheelRotorRef.current.style.transform = `rotate(${rotation}deg)`;
+            }
+
+            if (progress < 1) {
+              wheelAnimationFrameRef.current = window.requestAnimationFrame(animateWheel);
+              return;
+            }
+
+            wheelAnimationFrameRef.current = null;
+            finishWheelSpin(runId, selectedTask, targetRotation, durationMinutes);
+          };
+
+          wheelAnimationFrameRef.current = window.requestAnimationFrame(animateWheel);
         });
       });
 
       wheelSpinTimerRef.current = window.setTimeout(() => {
         wheelSpinTimerRef.current = null;
-        if (wheelRunIdRef.current !== runId) return;
-        setWheelChallenge({
-          taskId: selectedTask.id,
-          startedAt: Date.now(),
-          durationSeconds: wheelSettings.durationMinutes * 60,
-          expired: false,
-        });
-        setWheelPhase("challenge");
-        setNotice(`${selectedTask.title} is the move. ${wheelSettings.durationMinutes} minutes, clean finish.`);
-      }, WHEEL_SPIN_DURATION_MS + 120);
+        finishWheelSpin(runId, selectedTask, targetRotation, durationMinutes);
+      }, WHEEL_SPIN_DURATION_MS + 240);
     }, WHEEL_CONVERGE_DURATION_MS);
   }
 
@@ -1585,6 +1620,7 @@ export default function Home() {
                 <div className="wheel-machine">
                   <span className="wheel-landing-marker">LAND HERE</span>
                   <div
+                    ref={wheelRotorRef}
                     className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
                     style={{
                       "--wheel-color-gradient": wheelColorGradient,
