@@ -5041,3 +5041,103 @@ textarea {
     box-shadow: none;
   }
 }
+
+/* The mobile-first canvas is intentionally panel-led, not a dark frame around
+   the panels. Keep that true at every WebView viewport width. */
+body,
+.app-shell.juice-shell {
+  background: var(--juice-cream);
+}
+
+.juice-shell::before {
+  display: none;
+}
+
+/* These are color bands in the screen sequence, not framed cards. */
+.juice-workspace .manual-task-card,
+.juice-workspace .spin-launch-card,
+.juice-workspace .transcript-card,
+.juice-workspace .tasks-card {
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.juice-workspace .manual-task-card,
+.juice-workspace .spin-launch-card {
+  background: var(--juice-lime);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  border: 0;
+  box-shadow: none;
+}
+
+/* Keep the manual entry surface a continuous green band, including its action.
+   The small plus tile is retained as the control's visual affordance. */
+.juice-workspace .manual-task-card button {
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+  color: var(--juice-black);
+}
+
+/* The manual-entry band is roughly 30% taller than the compact predecessor,
+   while staying a single uninterrupted green surface. */
+.juice-workspace .manual-task-card {
+  min-height: 48px;
+}
+
+.juice-workspace .manual-task-card input,
+.juice-workspace .manual-task-card > button:last-child {
+  min-height: 48px;
+}
+
+.juice-workspace .manual-task-card > button:last-child {
+  padding-inline: 10px;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button {
+  display: grid;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  place-items: center;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-yellow);
+  box-shadow: 2px 2px 0 var(--juice-black);
+  color: var(--juice-black);
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.8;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button.is-dictating {
+  background: var(--juice-orange);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  transform: translate(-1px, -1px);
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(1px, 1px);
+}
+
+/* Task tiles retain the tactile treatment, but their edge is now the theme
+   ink rather than the former cream/white outline. */
+.juice-panel .task-row {
+  border: 4px solid var(--juice-black);
+}
+
+.juice-panel .task-row::before {
+  display: none;
+}

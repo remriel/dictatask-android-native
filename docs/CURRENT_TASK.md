@@ -9,8 +9,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The shipped UI is the bundled React/Vite app in `ui-src/`, copied into `app/src/main/assets/`.
 - Spin the Wheel uses a persisted configurable countdown, cancel-safe run IDs, bright task-card shadow colors, and a WebView-safe `requestAnimationFrame` rotation loop.
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
-- Manual task entry is a standalone green card between the recording and task panels on mobile (and occupies the left-side gap below recording on wider layouts), with its own `ADD TASK` button. The card has no extra top/bottom padding, no black border bars, and uses theme ink for its placeholder.
-- On mobile the workspace is a flush vertical stack with no visible black side/gap background: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. A safe-area-aware bottom lane keeps that final card clear of Android navigation controls.
+- Manual task entry is a standalone green card between the recording and task panels on mobile, with its own `ADD TASK` action. The band is 48px tall (slightly more than 30% taller than its prior 36px layout), has no outer black border bars, uses theme ink for its placeholder, and includes a dedicated mic button that dictates directly into the new-task field.
+- On mobile the workspace is a flush full-width stack: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. At every WebView width, the old black canvas/grid and all outer panel border/shadow bands are removed; a safe-area-aware bottom lane keeps the final card clear of Android navigation controls.
+- TO DO task tiles now use a 4px theme-ink border instead of the former cream/white outline, while retaining their bright shadow color.
 - The former percentage/clear board panel is removed. A colorful 16px top flare remains as a completion progress bar with no visible percentage copy; this is the current 30%-larger banner pass.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
@@ -40,10 +41,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA passed for the standalone manual-task card: it renders between the recording and task panels, the task list remains in its own panel, and submitting the `ADD TASK` form creates a new TO DO row.
 - Browser QA passed for the flush mobile stack: the Spin the Wheel launch control is in its own panel below the cream task board, the workspace has zero gap/side inset, and the manual card has zero vertical padding with theme-colored placeholder text.
 - The Android handoff includes a safe-area-aware mobile bottom inset for the Spin the Wheel card and removes the manual card's black border/shadow bands so its surrounding surface stays green.
+- Browser QA confirmed every outer panel has `x: 0`, full viewport width, `border: 0`, and no shadow at a 640px Android-style viewport; the body background is cream with no horizontal overflow. A simulated Android speech bridge filled the manual task field from the new mic control.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `F609BF34A08440D0A481FD4104F18DC5A695F6647A391494B2D5B27756AEB409` (1,205,702 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1pPHN_hd4SDN0cNzTdQ0Mgnm-Hw1SPpSy/view?usp=drivesdk
+- APK SHA-256: `2328F84172078C29C08B72DDA53367A32F60E328E7C61A3C1BF0DFC2DDEA3B56` (1,206,462 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1_T8ZjqgYjmb5lGHOu9BrqbIP1kAVlPjt/view?usp=drivesdk
 
 ## Constraints
 

@@ -818,6 +818,7 @@ export default function Home() {
   const [filter, setFilter] = useState<Filter>("open");
   const [newTask, setNewTask] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isManualDictating, setIsManualDictating] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const setNotice = useCallback((_message: string) => undefined, []);
   const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
@@ -834,6 +835,8 @@ export default function Home() {
   const [pendingWheelTaskId, setPendingWheelTaskId] = useState<string | null>(null);
   const [wheelSettingsOpen, setWheelSettingsOpen] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const manualTaskInputRef = useRef<HTMLInputElement | null>(null);
+  const manualRecognitionTimerRef = useRef<number | null>(null);
   const voiceBufferRef = useRef("");
   const voiceInterimRef = useRef("");
   const fallbackInterimRef = useRef("");
@@ -1048,6 +1051,7 @@ export default function Home() {
     keepListeningRef.current = false;
     voiceSessionRef.current += 1;
     if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current);
+    if (manualRecognitionTimerRef.current !== null) window.clearTimeout(manualRecognitionTimerRef.current);
     if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
@@ -1354,6 +1358,123 @@ export default function Home() {
     setIsListening(true);
     setNotice("Recording now. Live transcript will appear as you speak.");
     startRecognitionSegment();
+  }
+
+  function stopManualDictation(message = "Task dictation stopped.") {
+    voiceSessionRef.current += 1;
+    if (manualRecognitionTimerRef.current !== null) {
+      window.clearTimeout(manualRecognitionTimerRef.current);
+      manualRecognitionTimerRef.current = null;
+    }
+
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    try {
+      recognition?.stop();
+    } catch {
+      recognition?.abort?.();
+    }
+    setIsManualDictating(false);
+    setNotice(message);
+  }
+
+  function toggleManualDictation() {
+    if (isManualDictating) {
+      stopManualDictation();
+      return;
+    }
+
+    const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setNotice("Microphone dictation is unavailable here. You can still type the task.");
+      return;
+    }
+
+    if (isListening) {
+      finishListening("Voice note stopped. Dictating a task instead.");
+    }
+
+    manualTaskInputRef.current?.focus();
+    voiceSessionRef.current += 1;
+    const sessionId = voiceSessionRef.current;
+    const initialTask = newTask.trim();
+    let finalSpeech = "";
+    let interimSpeech = "";
+    const committedFinalResults = new Set<string>();
+    const recognition = new Recognition();
+
+    const publishTaskPreview = () => {
+      const spoken = [finalSpeech, interimSpeech].filter(Boolean).join(" ").trim();
+      setNewTask([initialTask, spoken].filter(Boolean).join(" "));
+    };
+
+    const finishManualSession = (message: string) => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+      if (manualRecognitionTimerRef.current !== null) {
+        window.clearTimeout(manualRecognitionTimerRef.current);
+        manualRecognitionTimerRef.current = null;
+      }
+      recognitionRef.current = null;
+      setIsManualDictating(false);
+      setNotice(message);
+    };
+
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+
+      let nextInterim = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const spoken = result[0].transcript.trim();
+        if (!spoken) continue;
+        if (result.isFinal) {
+          const resultKey = `${index}:${spoken.toLowerCase()}`;
+          if (!committedFinalResults.has(resultKey)) {
+            committedFinalResults.add(resultKey);
+            finalSpeech = `${finalSpeech} ${spoken}`.trim();
+          }
+        } else {
+          nextInterim = `${nextInterim} ${spoken}`.trim();
+        }
+      }
+      interimSpeech = nextInterim;
+      publishTaskPreview();
+    };
+    recognition.onerror = (event) => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        finishManualSession("Microphone permission is blocked. You can still type the task.");
+      } else if (event.error !== "aborted") {
+        finishManualSession("Task dictation stopped. Try the mic again when you are ready.");
+      }
+    };
+    recognition.onend = () => {
+      finishManualSession(finalSpeech.trim()
+        ? "Task dictation is ready to add."
+        : "No task was heard. Try the mic again or type it in.");
+    };
+
+    recognitionRef.current = recognition;
+    setIsManualDictating(true);
+    setNotice("Dictating a task. Tap the mic again when you are done.");
+    manualRecognitionTimerRef.current = window.setTimeout(() => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+      try {
+        recognition.stop();
+      } catch {
+        recognition.abort?.();
+      }
+      finishManualSession("30-second task dictation complete.");
+    }, RECORDING_LIMIT_SECONDS * 1000);
+
+    try {
+      recognition.start();
+    } catch {
+      finishManualSession("I could not start the microphone. You can still type the task.");
+    }
   }
 
   function clearUndoCompletion() {
@@ -1667,8 +1788,23 @@ export default function Home() {
 
         <form className="manual-task-card add-task-form" onSubmit={addTask}>
           <span className="add-icon"><Icon name="plus" /></span>
-          <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
-          <button type="submit" disabled={!newTask.trim()}>ADD TASK</button>
+          <input
+            ref={manualTaskInputRef}
+            value={newTask}
+            onChange={(event) => setNewTask(event.target.value)}
+            placeholder="Add a task manually…"
+            aria-label="New task"
+          />
+          <button
+            className={`manual-dictate-button ${isManualDictating ? "is-dictating" : ""}`}
+            type="button"
+            onClick={toggleManualDictation}
+            aria-label={isManualDictating ? "Stop dictating the new task" : "Dictate the new task"}
+            aria-pressed={isManualDictating}
+          >
+            <Icon name="mic" />
+          </button>
+          <button type="submit" disabled={!newTask.trim() || isManualDictating}>ADD TASK</button>
         </form>
 
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
