@@ -1879,7 +1879,7 @@ body {
   z-index: 1;
   width: 100%;
   max-width: 1440px;
-  height: 16px;
+  height: 36px;
   margin: 0 auto 12px;
   overflow: hidden;
   border: 2px solid var(--juice-black);
@@ -5082,15 +5082,15 @@ body,
   color: var(--juice-black);
 }
 
-/* The manual-entry band is roughly 30% taller than the compact predecessor,
+/* The manual-entry band is 50% taller than the 48px compact predecessor,
    while staying a single uninterrupted green surface. */
 .juice-workspace .manual-task-card {
-  min-height: 48px;
+  min-height: 72px;
 }
 
 .juice-workspace .manual-task-card input,
 .juice-workspace .manual-task-card > button:last-child {
-  min-height: 48px;
+  min-height: 72px;
 }
 
 .juice-workspace .manual-task-card > button:last-child {
