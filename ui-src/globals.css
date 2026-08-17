@@ -5175,3 +5175,14 @@ body,
   width: 17px;
   height: 17px;
 }
+
+/* Buttons should press straight into their shadows. Keep the tactile lift and
+   press feedback, but never rotate or skew a control while it is touched. */
+button:hover:not(:disabled),
+button:focus-visible:not(:disabled) {
+  transform: translate(-1px, -1px) !important;
+}
+
+button:active:not(:disabled) {
+  transform: translate(2px, 2px) !important;
+}
