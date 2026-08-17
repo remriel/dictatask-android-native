@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make the manual-entry surface 50% taller, and make the top progress surface another 50% taller.
+Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make the manual-entry surface 50% taller, make the top banner another 50% taller, and make that banner reset independently every day.
 
 ## Current implementation
 
@@ -12,7 +12,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Manual task entry is a standalone green card between the recording and task panels on mobile, with its own `ADD TASK` action. The band is 72px tall (50% taller than its prior 48px layout), has no outer black border bars, uses theme ink for its placeholder, and includes a dedicated mic button that dictates directly into the new-task field.
 - On mobile the workspace is a flush full-width stack: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. At every WebView width, the old black canvas/grid and all outer panel border/shadow bands are removed; a safe-area-aware bottom lane keeps the final card clear of Android navigation controls.
 - TO DO task tiles now use a 4px theme-ink border instead of the former cream/white outline, while retaining their bright shadow color.
-- The former percentage/clear board panel is removed. A colorful 36px top flare remains as a completion progress bar with no visible percentage copy; it is another 50% taller than the prior 24px banner (125% taller than the original 16px flare).
+- The former percentage/clear board panel is removed. A colorful 36px top flare remains as a task-independent daily progress cycle with no visible percentage copy; it resets at the device's local midnight, advances on minute boundaries, refreshes when the app returns to view, and is another 50% taller than the prior 24px banner (125% taller than the original 16px flare).
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
 - The Spin the Wheel launch row has an 8px top and bottom gap so its borders stay clear of the task cards and actions below it.
@@ -27,6 +27,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Task titles use a larger mobile-first type scale so they fill more of each card; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
 - The bottom `DICTATASK / LOCAL-FIRST FOCUS` footer and `DT_` mark are removed so the page ends with the task workspace rather than extra branding copy.
 - Focus clock, Export .txt, Clear done, and Remove all are compacted to roughly 60% of their former mobile height and forced into one responsive row.
+- The transcript action now reads `CONVERT TO TASKS`; its and the `CLEAR TEXT` control's rendered mobile height is roughly 20% smaller (about 57px versus the former 72px) while retaining clear icon and label treatment.
+- The standalone bottom Spin the Wheel launch panel is 76px tall, approximately 30% taller than its former 58px control, without changing the safe-area lane below it.
 - The current branch is `agent/spin-wheel-focus-cleanup`; each release APK is uploaded to Google Drive as a new uniquely named file so prior versions remain available.
 
 ## Verification completed
@@ -34,7 +36,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `npx tsc --noEmit` passed.
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
-- Browser QA passed for recording-first order, the absent percentage/clear panel, the current 36px progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
+- Browser QA passed for recording-first order, the absent percentage/clear panel, the current 36px daily progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the top flare is 36px tall and the viewport has no horizontal overflow.
@@ -42,11 +44,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA passed for the flush mobile stack: the Spin the Wheel launch control is in its own panel below the cream task board, the workspace has zero gap/side inset, and the manual card has zero vertical padding with theme-colored placeholder text.
 - The Android handoff includes a safe-area-aware mobile bottom inset for the Spin the Wheel card and removes the manual card's black border/shadow bands so its surrounding surface stays green.
 - Browser QA confirmed every outer panel has `x: 0`, full viewport width, `border: 0`, and no shadow at a 640px Android-style viewport; the body background is cream with no horizontal overflow. A simulated Android speech bridge filled the manual task field from the new mic control.
-- Browser QA at a 390px Android-style viewport confirmed the exact current dimensions: top progress flare `36px`, manual-entry surface `72px`, manual input `72px`, and the `ADD TASK` action `72px`, with no horizontal overflow.
+- Browser QA at a 390px Android-style viewport confirmed the exact current dimensions: top progress flare `36px`, manual-entry surface `72px`, manual input `72px`, `ADD TASK` action `72px`, transcript actions about `57px`, and bottom Spin panel `76px`, with no horizontal overflow. Completing then undoing a task left the daily banner value unchanged.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `96532EF4721C4518E2CFA60F25784B4B271E52A99CF71608CAF2384EB967C8BC` (1,206,466 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1XX96oKO4BJVN6I1g0E74YSQBzjf6aS1G/view?usp=drivesdk
+- APK SHA-256: `398291901410946DE70A51E38A044A6E6A0CF99E681E33EEF6EE928C64256F81` (1,206,786 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1IexSdZ8-hZSKEDMRO8HrObZtLjSay2ll/view?usp=drivesdk
 
 ## Constraints
 

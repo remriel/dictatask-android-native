@@ -5141,3 +5141,37 @@ body,
 .juice-panel .task-row::before {
   display: none;
 }
+
+/* The bottom launch band is 30% taller than its former 58px control, while
+   remaining a single flush green surface above Android's safe-area lane. */
+.juice-workspace .spin-launch-card,
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  min-height: 76px;
+}
+
+/* Keep the transcription actions compact: 40px is 20% below the current
+   50px mobile controls, with proportional type, icons, and breathing room. */
+.juice-panel .compact-scan-button,
+.juice-panel .transcript-clear-action {
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: 9px;
+}
+
+.juice-panel .compact-scan-button > span:first-child {
+  gap: 7px;
+}
+
+.juice-panel .compact-scan-button svg {
+  width: 19px;
+  height: 19px;
+}
+
+.juice-panel .transcript-clear-action {
+  min-width: 90px;
+}
+
+.juice-panel .transcript-clear-action svg {
+  width: 17px;
+  height: 17px;
+}
