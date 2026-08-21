@@ -28,7 +28,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Every task now persists `createdAt` (with a migration fallback for older records). Open task rows show a local-calendar age badge such as `OPEN 3 DAYS`; completed rows show elapsed time since `completedAt`, such as `DONE 3 DAYS AGO`. The display refreshes at the next local midnight and when the app becomes visible.
 - Completing a task shows a persistent inline `UNDO` bar beneath the task toolbar, so it remains reachable on mobile until the user dismisses it or takes another task action. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
 - Every task state change is isolated to its visible, accessible checkbox. Tapping elsewhere on a card only triggers the card's tactile press feedback; it never completes or reopens the task. The checkbox supports tapping, Enter, and Space; in `DONE`, it reopens the task, removes it from the completion history list, and returns it to `TO DO` without a completion side effect.
-- Task titles use a larger mobile-first type scale and the approved friendlier rounded stack (`Arial Rounded MT Bold`, `Trebuchet MS`, `ui-rounded`, then platform sans-serif) at a medium-bold weight with normal tracking and no heavy shadow; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
+- Task titles use a larger mobile-first type scale and the approved Soft Archivo face at a medium-bold weight with lightly relaxed negative tracking and a subtle 1px offset shadow; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
 - Completing a task checks the box first, then draws an animated strike-through across every wrapped title line before the completion transition finishes. The line is static for existing `DONE` history and reduced-motion mode.
 - Each open task keeps its `OPEN X DAYS` badge and `FOCUS` action on one horizontal detail row beneath the title, rather than spending a separate line on each.
 - Open task titles render in uppercase on the TO DO board for faster visual scanning. This is display-only: the preserved title text remains available in normal case for exports, accessibility labels, dictation, and DONE history.
@@ -70,9 +70,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK v1.5.18 SHA-256: `759FA8FB3159871CB854F5FEF54468B91B2551A0C49E3E11DE4F9E6EC280A13E` (1,209,374 bytes); verified with Android APK Signature Scheme v2. This build includes the rounded task typography, animated strike-through, and mascot removal.
-- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/11vBmqiGZGZbL1_qHxJsj6sum0mGqdRYM/view?usp=drivesdk
-- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.18
+- APK v1.5.19: to be built with Soft Archivo task typography, the animated strike-through, and mascot removal.
+- Google Drive APK (new named file; prior versions preserved): to be uploaded after the v1.5.19 build.
+- Public GitHub Release with the same APK asset: to be published as `v1.5.19` after the source commit is pushed.
 
 ## Constraints
 
