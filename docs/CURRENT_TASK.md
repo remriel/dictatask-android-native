@@ -81,6 +81,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are ready to push to `agent/spin-wheel-focus-cleanup` as the v1.5.23 egg/Vault revert.
+- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `ca1cf55` (`Remove Hatch Vault and match manual card to recorder`).
+- Public release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.23
 - Historical PR #5 is merged: https://github.com/remriel/dictatask-android-native/pull/5
 - Run a physical-device smoke test when an Android target is available.
