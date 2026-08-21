@@ -1909,14 +1909,17 @@ export default function Home() {
         </article>
 
         <form className="manual-task-card add-task-form" onSubmit={addTask}>
-          <span className="add-icon"><Icon name="plus" /></span>
-          <input
-            ref={manualTaskInputRef}
-            value={newTask}
-            onChange={(event) => setNewTask(event.target.value)}
-            placeholder="Add a task manually…"
-            aria-label="New task"
-          />
+          <span className="add-icon manual-task-icon"><Icon name="plus" /></span>
+          <label className="manual-task-copy">
+            <strong>ADD A TASK MANUALLY</strong>
+            <input
+              ref={manualTaskInputRef}
+              value={newTask}
+              onChange={(event) => setNewTask(event.target.value)}
+              placeholder="TYPE OR DICTATE YOUR NEXT MOVE"
+              aria-label="New task"
+            />
+          </label>
           <button
             className={`manual-dictate-button ${isManualDictating ? "is-dictating" : ""}`}
             type="button"
@@ -1926,7 +1929,14 @@ export default function Home() {
           >
             <Icon name="mic" />
           </button>
-          <button type="submit" disabled={!newTask.trim() || isManualDictating}>ADD TASK</button>
+          <button
+            className="manual-submit-button"
+            type="submit"
+            disabled={!newTask.trim() || isManualDictating}
+            aria-label="Add task"
+          >
+            <Icon name="arrow" />
+          </button>
         </form>
 
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
