@@ -69,6 +69,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the green manual composer now sits inside the extended yellow recording panel in the same inset-card relationship as TAP TO RECORD. It retains its 3px solid ink frame, 5px hard ink shadow, framed yellow plus/mic/arrow controls, and bold title hierarchy without a subline. At 320px it measures 294.5px by 68px, exactly matching the 68px recording card, exposes yellow on every side including a lower clearance beneath its shadow, ends the yellow panel with a full-width 4px ink divider, produces no horizontal overflow, and a real type-and-submit flow created a new TO DO row. The active dictation state retains a yellow mic glyph on an inverted black tile instead of replacing it with text.
 - Browser QA at a narrow Android-style viewport confirmed the compact `Add task manually…` label remains one unbroken line and that all visible TO DO card titles render in uppercase without horizontal overflow.
 - Browser QA confirmed newest task ordering, a left swipe revealing an enabled DELETE control, deletion reducing TO DO without changing DONE or exposing UNDO, touch-style pointer support, consequence-free card taps, checkbox completion/undo, and no delete affordance in DONE.
+- `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.24. The APK reports `versionCode=10` / `versionName=1.5.24`, is v2-signed, and has SHA-256 `A078D1E0CC4D2AC226B8E156454809807077A245A4283FD00F3FF642443C5A59` (1,210,350 bytes). No Android device is attached.
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed after the egg/Vault removal. Unit tests remain `NO-SOURCE` because the project has no test files. The release manifest contains only `MainActivity` as the app destination; the generated WebView asset directory is single-page and contains no Vault document or collectible assets.
@@ -83,7 +84,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `ca1cf55` (`Remove Hatch Vault and match manual card to recorder`).
+- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `6a8f5ce` (`Add safe swipe delete and newest task ordering`).
+- Public v1.5.24 release and APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.24
+- Google Drive APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1KaC4aTHpHgJgrslEL_zq1WSSV2nrWEPD/view?usp=drivesdk
 - Public release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.23
 - Historical PR #5 is merged: https://github.com/remriel/dictatask-android-native/pull/5
 - Run a physical-device smoke test when an Android target is available.
