@@ -70,9 +70,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK v1.5.19: to be built with Soft Archivo task typography, the animated strike-through, and mascot removal.
-- Google Drive APK (new named file; prior versions preserved): to be uploaded after the v1.5.19 build.
-- Public GitHub Release with the same APK asset: to be published as `v1.5.19` after the source commit is pushed.
+- APK v1.5.19 SHA-256: `1C929EF9FC9EE6857A36D9058DEE156B03F6726311CBA734F272E947C418D3B8` (1,209,346 bytes); verified with Android APK Signature Scheme v2. This build uses Soft Archivo task typography while retaining the animated strike-through and mascot removal.
+- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/14hwg3LB9B3we9netdICc7T6NW1BIrU1N/view?usp=drivesdk
+- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.19
 
 ## Constraints
 
