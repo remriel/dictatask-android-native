@@ -1906,38 +1906,37 @@ export default function Home() {
               <Icon name="trash" /> CLEAR TEXT
             </button>
           </div>
+          <form className="manual-task-card add-task-form" onSubmit={addTask}>
+            <span className="add-icon manual-task-icon"><Icon name="plus" /></span>
+            <label className="manual-task-copy">
+              <strong>ADD A TASK MANUALLY</strong>
+              <input
+                ref={manualTaskInputRef}
+                value={newTask}
+                onChange={(event) => setNewTask(event.target.value)}
+                placeholder="TYPE OR DICTATE YOUR NEXT MOVE"
+                aria-label="New task"
+              />
+            </label>
+            <button
+              className={`manual-dictate-button ${isManualDictating ? "is-dictating" : ""}`}
+              type="button"
+              onClick={toggleManualDictation}
+              aria-label={isManualDictating ? "Stop dictating the new task" : "Dictate the new task"}
+              aria-pressed={isManualDictating}
+            >
+              <Icon name="mic" />
+            </button>
+            <button
+              className="manual-submit-button"
+              type="submit"
+              disabled={!newTask.trim() || isManualDictating}
+              aria-label="Add task"
+            >
+              <Icon name="arrow" />
+            </button>
+          </form>
         </article>
-
-        <form className="manual-task-card add-task-form" onSubmit={addTask}>
-          <span className="add-icon manual-task-icon"><Icon name="plus" /></span>
-          <label className="manual-task-copy">
-            <strong>ADD A TASK MANUALLY</strong>
-            <input
-              ref={manualTaskInputRef}
-              value={newTask}
-              onChange={(event) => setNewTask(event.target.value)}
-              placeholder="TYPE OR DICTATE YOUR NEXT MOVE"
-              aria-label="New task"
-            />
-          </label>
-          <button
-            className={`manual-dictate-button ${isManualDictating ? "is-dictating" : ""}`}
-            type="button"
-            onClick={toggleManualDictation}
-            aria-label={isManualDictating ? "Stop dictating the new task" : "Dictate the new task"}
-            aria-pressed={isManualDictating}
-          >
-            <Icon name="mic" />
-          </button>
-          <button
-            className="manual-submit-button"
-            type="submit"
-            disabled={!newTask.trim() || isManualDictating}
-            aria-label="Add task"
-          >
-            <Icon name="arrow" />
-          </button>
-        </form>
 
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
           <div className={`task-board-flip ${wheelPhase !== "list" ? "is-wheel-revealed" : ""}`}>

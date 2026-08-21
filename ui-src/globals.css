@@ -5593,6 +5593,13 @@ button:active:not(:disabled) {
   color: var(--juice-black);
 }
 
+/* The yellow recording panel intentionally continues below its transcript
+   actions. This gives the green composer the same inset-card presentation as
+   TAP TO RECORD, with yellow visible above, beside, and below the card. */
+.juice-workspace .transcript-card .manual-task-card {
+  margin: 14px 0 0;
+}
+
 .juice-workspace .manual-task-card .manual-task-icon,
 .juice-workspace .manual-task-card .manual-dictate-button,
 .juice-workspace .manual-task-card .manual-submit-button {
