@@ -40,19 +40,11 @@ type TaskHistoryEntry = Task & {
   completedAt: number | null;
 };
 
-type HatchVaultEntry = {
-  taskId: string;
-  title: string;
-  color: TaskColor;
-  hatchedAt: number;
-};
-
 type UndoCompletion = {
   id: string;
   title: string;
   previousHistory: TaskHistoryEntry | null;
   wasDismissed: boolean;
-  hatchCreated: boolean;
 };
 
 type SpeechRecognitionLike = {
@@ -89,7 +81,6 @@ declare global {
       setStoredState?: (key: string, raw: string) => void;
       exportTaskHistory?: (contents: string) => void;
       setColorScheme?: (scheme: "dark" | "light") => void;
-      openHatchVault?: () => void;
     };
   }
 }
@@ -170,7 +161,6 @@ const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
 const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
-const EMPTY_HATCH_VAULT: HatchVaultEntry[] = [];
 const TASK_AGE_REFRESH_PADDING_MS = 250;
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
 const WHEEL_CONVERGE_DURATION_MS = 560;
@@ -467,54 +457,6 @@ function normalizeWheelChallenge(value: unknown): WheelChallenge | null {
   };
 }
 
-function normalizeHatchVault(value: unknown): HatchVaultEntry[] {
-  if (!Array.isArray(value)) return EMPTY_HATCH_VAULT;
-
-  const byTaskId = new Map<string, HatchVaultEntry>();
-  value.forEach((value, index) => {
-    if (!value || typeof value !== "object") return;
-    const entry = value as Record<string, unknown>;
-    const taskId = typeof entry.taskId === "string" ? entry.taskId.trim() : "";
-    if (!taskId) return;
-
-    const title = typeof entry.title === "string" && entry.title.trim()
-      ? entry.title.trim()
-      : "Completed task";
-    const candidate: HatchVaultEntry = {
-      taskId,
-      title,
-      color: normalizeTaskColor(entry.color, `${taskId}:${title}`, index),
-      hatchedAt: typeof entry.hatchedAt === "number" && Number.isFinite(entry.hatchedAt)
-        ? entry.hatchedAt
-        : 0,
-    };
-    const previous = byTaskId.get(taskId);
-    if (!previous || candidate.hatchedAt >= previous.hatchedAt) byTaskId.set(taskId, candidate);
-  });
-
-  return Array.from(byTaskId.values())
-    .sort((left, right) => right.hatchedAt - left.hatchedAt);
-}
-
-function makeHatchVaultEntry(task: Pick<Task, "id" | "title" | "color" | "completedAt">, hatchedAt = Date.now()): HatchVaultEntry {
-  return {
-    taskId: task.id,
-    title: task.title,
-    color: task.color,
-    hatchedAt: task.completedAt ?? hatchedAt,
-  };
-}
-
-function mergeHatchVault(current: HatchVaultEntry[], completedTasks: Task[]) {
-  const collectedTaskIds = new Set(current.map((entry) => entry.taskId));
-  const additions = completedTasks
-    .filter((task) => !collectedTaskIds.has(task.id))
-    .map((task) => makeHatchVaultEntry(task));
-
-  if (!additions.length) return current;
-  return normalizeHatchVault([...current, ...additions]);
-}
-
 function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
   const now = Date.now();
   const byId = new Map(current.map((entry) => [entry.id, {
@@ -744,8 +686,6 @@ const TaskRow = memo(function TaskRow({
   index,
   daysOpen,
   celebrating,
-  hatched,
-  hatching,
   onToggle,
   onFocus,
 }: {
@@ -753,8 +693,6 @@ const TaskRow = memo(function TaskRow({
   index: number;
   daysOpen: number;
   celebrating: boolean;
-  hatched: boolean;
-  hatching: boolean;
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
 }) {
@@ -807,16 +745,6 @@ const TaskRow = memo(function TaskRow({
           </div>
         </div>
       </div>
-      <span
-        className={`task-egg-token ${hatched ? "is-hatched" : ""} ${hatching ? "is-hatching" : ""}`}
-        aria-label={hatching ? "Task egg hatching" : hatched ? "Hatched relic collected in the vault" : "Unhatched task egg"}
-      >
-        <span className="task-egg-art" aria-hidden="true">
-          <img className="task-egg-shell" src="./collectibles/task-egg-unhatched.png" alt="" />
-          <img className="task-egg-relic" src="./collectibles/task-egg-hatched-relic.png" alt="" />
-        </span>
-        <span className="task-egg-copy">{hatching ? "HATCH!" : hatched ? "VAULT" : "EGG"}</span>
-      </span>
       <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
       <span className="task-swipe" aria-hidden="true">→</span>
     </div>
@@ -918,11 +846,6 @@ export default function Home() {
   const [transcript, setTranscript, flushTranscript] = useDebouncedStoredString("dictatask-transcript", starterTranscript);
   const [tasks, setTasks] = useNormalizedStoredState("dictatask-tasks", starterTasks, normalizeTasks);
   const [taskHistory, setTaskHistory] = useNormalizedStoredState("dictatask-task-history", starterTaskHistory, normalizeTaskHistory);
-  const [hatchVault, setHatchVault] = useNormalizedStoredState(
-    "dictatask-hatch-vault",
-    EMPTY_HATCH_VAULT,
-    normalizeHatchVault,
-  );
   const [theme, setTheme] = useNormalizedStoredState("dictatask-theme", "midnight" as Theme, normalizeTheme);
   const [wheelSettings, setWheelSettings] = useNormalizedStoredState(
     "dictatask-wheel-settings",
@@ -942,7 +865,6 @@ export default function Home() {
   const setNotice = useCallback((_message: string) => undefined, []);
   const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
   const [celebratingTaskId, setCelebratingTaskId] = useState<string | null>(null);
-  const [hatchingTaskId, setHatchingTaskId] = useState<string | null>(null);
   const [dismissedTaskIds, setDismissedTaskIds] = useStoredState<string[]>("dictatask-dismissed-task-ids", EMPTY_STRING_ARRAY);
   const [celebrationVariant, setCelebrationVariant] = useState<CelebrationVariant>("burst");
   const [celebrationNonce, setCelebrationNonce] = useState(0);
@@ -1104,21 +1026,6 @@ export default function Home() {
       }));
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
-  const hatchVaultEntries = useMemo(() => (
-    [...hatchVault].sort((left, right) => right.hatchedAt - left.hatchedAt)
-  ), [hatchVault]);
-  const hatchVaultTaskIdSet = useMemo(
-    () => new Set(hatchVaultEntries.map((entry) => entry.taskId)),
-    [hatchVaultEntries],
-  );
-
-  /* Existing completed history predates the experimental vault. Backfill it
-     once, so the count immediately reflects work already completed without
-     rewriting any task records or asking the user to finish them again. */
-  useEffect(() => {
-    if (!doneHistoryTasks.length) return;
-    setHatchVault((current) => mergeHatchVault(current, doneHistoryTasks));
-  }, [doneHistoryTasks, setHatchVault]);
 
   const totalCount = tasks.length;
   const createdAtByTaskId = useMemo(() => {
@@ -1706,11 +1613,7 @@ export default function Home() {
       celebrationTimerRef.current = null;
     }
     setCelebratingTaskId(null);
-    setHatchingTaskId(null);
     setMilestone(null);
-    if (action.hatchCreated) {
-      setHatchVault((current) => current.filter((entry) => entry.taskId !== action.id));
-    }
 
     if (wheelFocusTaskId === action.id) {
       wheelRunIdRef.current += 1;
@@ -1729,14 +1632,11 @@ export default function Home() {
     const willComplete = Boolean(task && !task.completed);
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
     const completionTimestamp = willComplete ? Date.now() : null;
-    const willHatch = Boolean(willComplete && task && !hatchVaultTaskIdSet.has(id));
 
     if (celebrationTimerRef.current !== null) {
       window.clearTimeout(celebrationTimerRef.current);
       celebrationTimerRef.current = null;
     }
-    setHatchingTaskId(null);
-
     setTasks((current) => {
       if (current.some((item) => item.id === id)) {
         return current.map((item) => (item.id === id
@@ -1764,19 +1664,7 @@ export default function Home() {
         title: task?.title ?? "Task",
         previousHistory: taskHistory.find((entry) => entry.id === id) ?? null,
         wasDismissed: dismissedTaskIdSet.has(id),
-        hatchCreated: willHatch,
       });
-      if (willHatch && task) {
-        const hatchTimestamp = completionTimestamp ?? Date.now();
-        setHatchVault((current) => {
-          if (current.some((entry) => entry.taskId === id)) return current;
-          return normalizeHatchVault([
-            ...current,
-            makeHatchVaultEntry({ ...task, completedAt: hatchTimestamp }, hatchTimestamp),
-          ]);
-        });
-        setHatchingTaskId(id);
-      }
       const previousPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
       const nextDoneCount = completedCount + 1;
       const nextPercent = totalCount ? Math.round((nextDoneCount / totalCount) * 100) : 100;
@@ -1833,7 +1721,6 @@ export default function Home() {
           return current.includes(id) ? current : [...current, id];
         });
         setCelebratingTaskId(null);
-        setHatchingTaskId((current) => current === id ? null : current);
         celebrationTimerRef.current = null;
       }, 1050);
     } else {
@@ -1845,7 +1732,6 @@ export default function Home() {
         return current.includes(id) ? current.filter((taskId) => taskId !== id) : current;
       });
       setCelebratingTaskId(null);
-      setHatchingTaskId((current) => current === id ? null : current);
       setNotice("Task reopened.");
     }
   }
@@ -1890,7 +1776,6 @@ export default function Home() {
     setFilter("open");
     setDismissedTaskIds([]);
     setCombo(0);
-    setHatchingTaskId(null);
     setWheelChallenge(null);
     setWheelPhase("list");
     setFocusEntryMode("wheel");
@@ -1928,20 +1813,6 @@ export default function Home() {
     setNotice(`Exported ${records.length} task ${records.length === 1 ? "record" : "records"}.`);
   }
 
-  function openHatchVault() {
-    if (typeof window === "undefined") return;
-    try {
-      if (window.DictaTaskAndroid?.openHatchVault) {
-        window.DictaTaskAndroid.openHatchVault();
-        return;
-      }
-    } catch {
-      // Fall through to the separately bundled browser destination.
-    }
-
-    window.location.assign("./vault.html");
-  }
-
   toggleTaskRef.current = toggleTask;
   focusTaskRef.current = focusTaskDirectly;
 
@@ -1964,15 +1835,6 @@ export default function Home() {
         <span className="top-banner-block top-banner-block-orange" />
         <span className="top-banner-block top-banner-block-blue" />
         <span className="top-banner-block top-banner-block-lime" />
-        <button
-          className={`top-banner-vault-button ${hatchingTaskId ? "has-fresh-hatch" : ""}`}
-          type="button"
-          onClick={openHatchVault}
-          aria-label={`Open Hatch Vault. ${hatchVaultEntries.length} ${hatchVaultEntries.length === 1 ? "task hatched" : "tasks hatched"}.`}
-        >
-          <img src="./collectibles/task-egg-hatched-relic.png" alt="" />
-          <span>{hatchVaultEntries.length}</span>
-        </button>
       </header>
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
@@ -2104,8 +1966,6 @@ export default function Home() {
                         ? getTaskOpenDays(task.completedAt, taskAgeNow)
                         : getTaskOpenDays(task.createdAt ?? createdAtByTaskId.get(task.id), taskAgeNow)}
                       celebrating={celebratingTaskId === task.id}
-                      hatched={hatchVaultTaskIdSet.has(task.id)}
-                      hatching={hatchingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}
                     />

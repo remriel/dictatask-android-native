@@ -591,18 +591,6 @@ public final class MainActivity extends ComponentActivity {
         }
 
         @JavascriptInterface
-        public void openHatchVault() {
-            runOnUiThread(() -> {
-                if (isFinishing() || isDestroyed()) {
-                    return;
-                }
-                Intent intent = new Intent(MainActivity.this, VaultActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                startActivity(intent);
-            });
-        }
-
-        @JavascriptInterface
         public void exportTaskHistory(String contents) {
             runOnUiThread(() -> launchTaskHistoryExport(contents == null ? "" : contents));
         }

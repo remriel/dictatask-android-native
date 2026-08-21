@@ -14,8 +14,8 @@ android {
         applicationId = "com.remriel.dictatask"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.5.22"
+        versionCode = 9
+        versionName = "1.5.23"
     }
 
     buildTypes {

@@ -13,10 +13,6 @@
         android:theme="@style/Theme.DicTaTask"
         android:usesCleartextTraffic="false">
         <activity
-            android:name=".VaultActivity"
-            android:exported="false"
-            android:launchMode="singleTop" />
-        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
