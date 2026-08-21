@@ -14,7 +14,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Task tiles now use a 4px darkened version of their own fill color for the border (dark green around green, dark blue around blue, and so on), while retaining their bright shadow color.
 - The Spin the Wheel launch label is centered and larger, with the wheel icon anchored to the left edge of its green launch band.
 - TO DO and DONE filters are compacted by roughly 40% with smaller labels and count badges while remaining keyboard and touch accessible.
-- The former percentage/clear board panel and its daily progress indicator are removed. The top of the mobile workspace now uses a static 42px geometric color banner with no progress semantics, fill state, timer, or completion-dependent behavior.
+- The former percentage/clear board panel and its daily progress indicator are removed. The top of the mobile workspace now uses a static 42px geometric color banner with a centered `DICTA`/`TASK` wordmark in a cream nameplate, with no progress semantics, fill state, timer, or completion-dependent behavior.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
 - The Spin the Wheel launch row has an 8px top and bottom gap so its borders stay clear of the task cards and actions below it.
@@ -53,10 +53,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA at a mobile Android-style viewport confirmed the exact current dimensions: static top banner `42px`, manual-entry surface `72px`, manual input `72px`, `ADD TASK` action `72px`, transcript actions about `57px`, compact TO DO/DONE controls `29px`, centered Spin the Wheel launch band `76px`, and no horizontal overflow.
 - Browser QA held representative controls in hover and pressed states: the TO DO tab computed to a straight `-1px, -1px` lift, the recording button computed to a straight `2px, 2px` press, and no rendered button had a rotational transform.
 - Browser QA confirmed an active task created three calendar days earlier renders `OPEN 3 DAYS`, while a task created five days earlier and completed two days earlier renders `OPEN FOR 3 DAYS` in `DONE`.
+- Browser QA confirmed the banner wordmark is visible at a 360px mobile viewport, remains inside the 42px banner, preserves zero horizontal overflow, and exposes an accessible `DictaTask` banner label.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `020DD54A699CA2D3E73D5AC62AEA4DDC72A70AA2161D559C8B82897FACB8B96` (1,207,326 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1xn37nUaOuOzUBJlO9BglRudZv-udGUO4/view?usp=drivesdk
+- APK SHA-256: `018F39CBC1F9AC88FC7B894BBD4CB2E7150E5D8B9BA36D066CAF05DE590C9732` (1,207,474 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1UI_ohWrrf1vUqikKF5AqnjrBuZdPTEnc/view?usp=drivesdk
 
 ## Constraints
 

@@ -1823,7 +1823,11 @@ export default function Home() {
           <span className="milestone-sub">{milestone === "LEVEL COMPLETE" ? "YOU CLEARED THE WHOLE BOARD" : "KEEP THE MOMENTUM"}</span>
         </div>
       )}
-      <div className="top-banner" aria-hidden="true">
+      <div className="top-banner" role="img" aria-label="DictaTask">
+        <span className="top-banner-name" aria-hidden="true">
+          <span className="top-banner-name-dicta">DICTA</span>
+          <span className="top-banner-name-task">TASK</span>
+        </span>
         <span className="top-banner-block top-banner-block-orange" />
         <span className="top-banner-block top-banner-block-blue" />
         <span className="top-banner-block top-banner-block-lime" />
