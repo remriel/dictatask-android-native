@@ -8,13 +8,13 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 - The shipped UI is the bundled React/Vite app in `ui-src/`, copied into `app/src/main/assets/`.
 - Spin the Wheel uses a persisted configurable countdown, cancel-safe run IDs, bright task-card shadow colors, and a WebView-safe `requestAnimationFrame` rotation loop.
-- The Spin the Wheel face now has a layered 90s arcade treatment: patterned stage paper, concentric symmetric rings, color-ray halo, textured wedge shading, a highlighted hub marked `SPIN`, a pointer arrow, and a 3-second-only orbit/light-pulse animation. The rotor, hub, and landing marker share one measured center so the wheel spins symmetrically around its axis; reduced-motion mode disables the decorative loops.
+- The Spin the Wheel face now uses a coherent 90s arcade-console redesign: a cream cabinet with a four-color header stripe, symmetric blue/orange circular frame, yellow ray ring, task-colored wedges, restrained texture, centered `SPIN` hub, and a clear yellow landing marker. The rotor, hub, and landing marker share one measured center so the wheel spins symmetrically around its axis; the orbit, ring-spin, halo, light sweep, marker pulse, and hub pulse run only during the exact three-second spin, while reduced-motion mode disables the decorative loops.
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
 - Manual task entry is a standalone green card between the recording and task panels on mobile, with its own `ADD TASK` action. The band is 72px tall (50% taller than its prior 48px layout), has no outer black border bars, uses theme ink for its placeholder, and includes a dedicated mic button that dictates directly into the new-task field.
 - On mobile the workspace is a flush full-width stack: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. At every WebView width, the old black canvas/grid and all outer panel border/shadow bands are removed; a safe-area-aware bottom lane keeps the final card clear of Android navigation controls.
 - Task tiles now use a 4px darkened version of their own fill color for the border (dark green around green, dark blue around blue, and so on), while retaining their bright shadow color.
 - The Spin the Wheel launch label is centered and larger, with the wheel icon anchored to the left edge of its green launch band.
-- TO DO and DONE filters are compacted by roughly 40% with smaller labels and count badges while remaining keyboard and touch accessible.
+- TO DO and DONE filters are now an equal-width, centered pair that fills the task toolbar. They use visible cream/orange cards with black borders, 35px mobile controls (about 20% above the former compact 29px height), and enlarged count badges while remaining keyboard and touch accessible.
 - The former percentage/clear board panel and its daily progress indicator are removed. The top of the mobile workspace now uses a static 42px geometric color banner with a larger rustic `DICTA`/`TASK` sticker: its skewed cream plate and offset black border intentionally break across the banner's lower line and render above the yellow recording surface, with no progress semantics, fill state, timer, or completion-dependent behavior.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
@@ -57,11 +57,12 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the banner wordmark is visible at a 360px mobile viewport, remains inside the 42px banner, preserves zero horizontal overflow, and exposes an accessible `DictaTask` banner label.
 - Browser QA confirmed the larger sticker measures about 180px wide and 39px tall at 360px, visibly extends past the banner's lower edge, and still preserves zero horizontal overflow.
 - Browser QA confirmed the sticker's lower edge remains the topmost element over the yellow surface at the overlap points after the banner stacking layer was raised.
-- Browser QA confirmed the Android-style wheel screen renders the layered face without horizontal overflow, the spinning state exposes `wheel-orbit` and `wheel-light-sweep` animations, and the measured machine/rotor/hub centers all align at the same viewport coordinates.
+- Browser QA confirmed the Android-style wheel screen renders the redesigned console face without horizontal overflow, the active state exposes `wheel-orbit`, `wheel-halo`, `wheel-ring-spin`, and `wheel-light-sweep`, and the measured machine/rotor/hub centers all align at the same viewport coordinates during the spin.
+- Browser QA confirmed TO DO and DONE each render as a centered, equal-width 35px card spanning the task toolbar, with the inactive DONE card visibly outlined instead of collapsing to text-only styling.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `AF1BACE6768CB826E9931B68756821EA0D025CA06DFF1D23529CDE44891A7E83` (1,208,346 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1s0Hv7AiUtfJVxgqRtoFvk52cn6P534yL/view?usp=drivesdk
+- APK SHA-256: `2A8DDCF7DBDFF4631D53F6A20A377CFD89C490D79AE4EA240110EB5077BBE238` (1,208,478 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/12wsCITIT4jl_c4UHAJeMaS10YGiokh4W/view?usp=drivesdk
 
 ## Constraints
 

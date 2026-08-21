@@ -4521,19 +4521,44 @@ textarea {
 }
 
 .wheel-stage {
+  position: relative;
   display: grid;
   min-height: 620px;
   align-content: start;
   gap: 18px;
-  border: 3px solid var(--juice-black);
-  background-color: var(--theme-tasks-panel);
-  background-image:
-    linear-gradient(135deg, rgba(21, 94, 234, 0.1) 25%, transparent 25% 50%, rgba(255, 116, 23, 0.1) 50% 75%, transparent 75%),
-    repeating-linear-gradient(0deg, transparent 0 18px, rgba(13, 13, 18, 0.05) 18px 19px);
-  background-size: 64px 64px, 100% 100%;
-  box-shadow: 7px 7px 0 var(--juice-black);
+  overflow: hidden;
+  border: 5px solid var(--juice-black);
+  background: var(--juice-cream);
+  box-shadow: 9px 9px 0 var(--juice-orange);
   color: var(--juice-black);
   padding: clamp(18px, 2.5vw, 28px);
+  isolation: isolate;
+}
+
+.wheel-stage::before {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 20px;
+  border-bottom: 4px solid var(--juice-black);
+  background: linear-gradient(90deg, var(--juice-orange) 0 25%, var(--juice-yellow) 25% 50%, var(--juice-blue) 50% 75%, var(--juice-lime) 75% 100%);
+  content: "";
+}
+
+.wheel-stage::after {
+  position: absolute;
+  z-index: 0;
+  inset: 24px;
+  border: 2px solid rgba(13, 13, 18, 0.15);
+  content: "";
+  pointer-events: none;
+}
+
+.wheel-stage > * {
+  position: relative;
+  z-index: 1;
 }
 
 .direct-focus-panel {
@@ -4577,26 +4602,31 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-bottom: 3px solid var(--juice-black);
+  border-bottom: 4px solid var(--juice-black);
   color: var(--juice-black);
   font-family: "Space Mono", monospace;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
   line-height: 1.25;
-  padding-bottom: 11px;
+  padding: 11px 0 12px;
 }
 
 .wheel-stage-kicker span:last-child {
-  border: 2px solid var(--juice-black);
+  border: 3px solid var(--juice-black);
   background: var(--juice-yellow);
-  box-shadow: 3px 3px 0 var(--juice-black);
+  box-shadow: 4px 4px 0 var(--juice-blue);
   padding: 5px 6px;
 }
 
 .wheel-stage-kicker span:first-child {
-  color: var(--juice-orange);
-  font-size: 11px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-black);
+  box-shadow: 4px 4px 0 var(--juice-orange);
+  color: var(--juice-cream);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 5px 8px;
   text-shadow: 1px 1px 0 var(--juice-black);
   transform: rotate(-2deg);
 }
@@ -4643,8 +4673,17 @@ textarea {
   isolation: isolate;
   place-items: center;
   justify-self: center;
-  margin-top: 10px;
-  padding: 9px;
+  margin: 12px auto 4px;
+  padding: 20px;
+  border: 5px solid var(--juice-black);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(247, 240, 223, 0.22), transparent 52%),
+    var(--juice-blue);
+  box-shadow:
+    0 0 0 4px var(--juice-cream),
+    0 0 0 9px var(--juice-black),
+    0 0 0 14px var(--juice-orange);
 }
 
 .wheel-machine::before,
@@ -4657,24 +4696,28 @@ textarea {
 
 .wheel-machine::before {
   z-index: 0;
-  inset: 1%;
-  border: 5px solid var(--juice-black);
+  inset: 4%;
+  border: 4px solid var(--juice-black);
   background:
-    repeating-conic-gradient(from -8deg, rgba(255, 210, 31, 0.92) 0 2deg, transparent 2deg 18deg),
-    var(--juice-blue);
-  box-shadow: 0 0 0 8px var(--juice-orange), 0 0 0 13px var(--juice-violet);
+    repeating-conic-gradient(from -90deg, var(--juice-orange) 0 3deg, transparent 3deg 18deg),
+    var(--juice-yellow);
+  box-shadow:
+    0 0 0 4px var(--juice-cream),
+    0 0 0 7px var(--juice-black);
   transform-origin: center;
-  transform: rotate(-4deg) scale(0.98);
+  transform: rotate(0deg);
 }
 
 .wheel-machine::after {
   z-index: 0;
-  inset: -4%;
-  border: 3px dashed rgba(13, 13, 18, 0.72);
-  box-shadow: inset 0 0 0 5px var(--juice-cream), 0 0 0 4px var(--juice-black);
-  opacity: 0.82;
+  inset: 10%;
+  border: 2px solid rgba(247, 240, 223, 0.68);
+  box-shadow:
+    inset 0 0 0 3px rgba(13, 13, 18, 0.22),
+    0 0 0 2px rgba(13, 13, 18, 0.72);
+  opacity: 0.78;
   transform-origin: center;
-  transform: rotate(2deg);
+  transform: scale(1);
 }
 
 .wheel-machine.is-spinning::before {
@@ -4688,18 +4731,18 @@ textarea {
 .wheel-landing-marker {
   position: absolute;
   z-index: 4;
-  top: -2px;
+  top: -18px;
   left: 50%;
   border: 3px solid var(--juice-black);
-  background: var(--juice-orange);
+  background: var(--juice-yellow);
   box-shadow: 4px 4px 0 var(--juice-black);
   color: var(--juice-black);
   font-family: "Space Mono", monospace;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
-  padding: 5px 7px;
-  transform: translateX(-50%) rotate(-2deg);
+  padding: 5px 8px;
+  transform: translateX(-50%);
 }
 
 .wheel-landing-marker::after {
@@ -4709,7 +4752,7 @@ textarea {
   width: 17px;
   height: 14px;
   border: 3px solid var(--juice-black);
-  background: var(--juice-orange);
+  background: var(--juice-yellow);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   content: "";
   transform: translateX(-50%);
@@ -4729,7 +4772,10 @@ textarea {
   border: 6px solid var(--juice-black);
   border-radius: 50%;
   background: var(--juice-cream);
-  box-shadow: 0 0 0 8px var(--juice-orange), 0 0 0 12px var(--juice-blue);
+  box-shadow:
+    0 0 0 6px var(--juice-cream),
+    0 0 0 10px var(--juice-black),
+    0 0 0 14px var(--juice-orange);
   transform-origin: center;
   will-change: transform;
 }
@@ -4756,9 +4802,9 @@ textarea {
 .wheel-ink-overlay {
   z-index: 1;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.55) brightness(0.78);
+  filter: grayscale(1) contrast(1.35) brightness(0.92);
   mix-blend-mode: multiply;
-  opacity: 0.52;
+  opacity: 0.32;
 }
 
 .wheel-light-sweep {
@@ -4766,9 +4812,9 @@ textarea {
   z-index: 2;
   inset: -18%;
   border-radius: 50%;
-  background: conic-gradient(from -34deg, transparent 0 47deg, rgba(247, 240, 223, 0.52) 50deg 61deg, transparent 65deg 360deg);
+  background: conic-gradient(from -28deg, transparent 0 42deg, rgba(247, 240, 223, 0.56) 46deg 58deg, transparent 62deg 360deg);
   mix-blend-mode: screen;
-  opacity: 0.2;
+  opacity: 0.14;
   pointer-events: none;
   transform: rotate(-20deg);
 }
@@ -4782,17 +4828,26 @@ textarea {
   opacity: 0.72;
 }
 
+.wheel-machine.is-spinning .wheel-rotor::before {
+  animation: wheel-ring-spin 640ms linear infinite;
+}
+
 .wheel-rotor::before {
   content: "";
   position: absolute;
   z-index: 2;
-  inset: 6%;
-  border: 3px solid rgba(23, 21, 29, 0.78);
+  inset: 5%;
+  border: 3px solid var(--juice-black);
   border-radius: 50%;
   box-shadow:
-    inset 0 0 0 3px rgba(255, 248, 231, 0.32),
-    inset 0 0 0 7px rgba(21, 94, 234, 0.34),
-    0 0 0 3px rgba(255, 116, 23, 0.78);
+    inset 0 0 0 3px rgba(247, 240, 223, 0.78),
+    inset 0 0 0 7px rgba(13, 13, 18, 0.2),
+    0 0 0 2px var(--juice-cream);
+  border-top-color: var(--juice-orange);
+  border-right-color: var(--juice-blue);
+  border-bottom-color: var(--juice-lime);
+  border-left-color: var(--juice-violet);
+  transform-origin: center;
   pointer-events: none;
 }
 
@@ -4802,12 +4857,14 @@ textarea {
   z-index: 3;
   top: 50%;
   left: 50%;
-  width: 17%;
+  width: 19%;
   aspect-ratio: 1;
   border: 4px solid var(--juice-black);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 28%, var(--juice-cream) 0 10%, var(--juice-yellow) 11% 53%, var(--juice-orange) 54% 74%, var(--juice-black) 75% 100%);
-  box-shadow: 4px 4px 0 var(--juice-black), inset 0 0 0 3px rgba(21, 94, 234, 0.72);
+  background: radial-gradient(circle at 35% 28%, var(--juice-cream) 0 10%, var(--juice-yellow) 11% 45%, var(--juice-orange) 46% 68%, var(--juice-blue) 69% 83%, var(--juice-black) 84% 100%);
+  box-shadow:
+    0 0 0 3px var(--juice-cream),
+    0 0 0 6px var(--juice-black);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -4818,7 +4875,7 @@ textarea {
   top: 50%;
   left: 50%;
   display: grid;
-  width: 17%;
+  width: 19%;
   aspect-ratio: 1;
   place-items: center;
   color: var(--juice-black);
@@ -4829,7 +4886,7 @@ textarea {
   line-height: 1;
   pointer-events: none;
   text-shadow: 1px 1px 0 var(--juice-cream);
-  transform: translate(-50%, -50%) rotate(-2deg);
+  transform: translate(-50%, -50%);
 }
 
 .wheel-machine.is-spinning .wheel-hub-mark {
@@ -4980,10 +5037,10 @@ textarea {
 
 @keyframes wheel-orbit {
   from {
-    transform: rotate(-4deg) scale(0.98);
+    transform: rotate(0deg);
   }
   to {
-    transform: rotate(356deg) scale(0.98);
+    transform: rotate(360deg);
   }
 }
 
@@ -4991,11 +5048,11 @@ textarea {
   0%,
   100% {
     opacity: 0.58;
-    transform: rotate(2deg) scale(0.98);
+    transform: scale(1);
   }
   50% {
     opacity: 1;
-    transform: rotate(-2deg) scale(1.05);
+    transform: scale(1.035);
   }
 }
 
@@ -5004,27 +5061,36 @@ textarea {
     transform: rotate(-20deg) scale(1);
   }
   to {
-    transform: rotate(340deg) scale(1);
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes wheel-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
 @keyframes wheel-marker-pulse {
   0%,
   100% {
-    transform: translateX(-50%) rotate(-2deg) scale(1);
+    transform: translateX(-50%) scale(1);
   }
   50% {
-    transform: translateX(-50%) rotate(2deg) scale(1.08);
+    transform: translateX(-50%) scale(1.08);
   }
 }
 
 @keyframes wheel-hub-pulse {
   0%,
   100% {
-    transform: translate(-50%, -50%) rotate(-2deg) scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
   50% {
-    transform: translate(-50%, -50%) rotate(2deg) scale(1.16);
+    transform: translate(-50%, -50%) scale(1.16);
   }
 }
 
@@ -5247,6 +5313,7 @@ textarea {
   .wheel-machine.is-spinning::after,
   .wheel-machine.is-spinning .wheel-landing-marker,
   .wheel-machine.is-spinning .wheel-light-sweep,
+  .wheel-machine.is-spinning .wheel-rotor::before,
   .wheel-machine.is-spinning .wheel-hub-mark,
   .tasks-card.is-wheel-converging .task-row,
   .tasks-card.is-wheel-converging .card-heading,
@@ -5427,32 +5494,42 @@ body,
   height: 32px;
 }
 
-/* Make TO DO and DONE about 40% smaller than the previous mobile controls,
-   without stretching them across the entire task toolbar. */
+/* Give TO DO and DONE equal visual weight: the pair is centered and fills the
+   toolbar, with controls about 20% taller than the compact mobile baseline. */
 .juice-panel .filter-tabs {
-  width: fit-content;
-  gap: 2px;
+  width: 100%;
+  max-width: 560px;
+  justify-content: center;
+  gap: 8px;
+  margin-inline: auto;
 }
 
 .juice-panel .filter-tabs button {
-  min-width: 46px;
-  min-height: 29px;
-  flex: 0 0 auto;
-  padding: 4px 5px;
-  font-size: 7px;
+  min-width: 0;
+  min-height: 35px;
+  flex: 1 1 0;
+  border: 2px solid var(--juice-black);
+  background: rgba(247, 240, 223, 0.72);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  padding: 6px 10px;
+  font-size: 9px;
   line-height: 1;
 }
 
+.juice-panel .filter-tabs button:hover {
+  background: var(--juice-yellow);
+}
+
 .juice-panel .filter-tabs button.active {
-  padding: 3px 5px;
+  padding: 5px 10px;
 }
 
 .juice-panel .filter-tabs button span {
-  min-width: 12px;
-  height: 12px;
-  margin-left: 2px;
-  border-width: 1px;
-  font-size: 7px;
+  min-width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border-width: 2px;
+  font-size: 8px;
 }
 
 /* Keep the transcription actions compact: 40px is 20% below the current

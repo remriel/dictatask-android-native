@@ -8,4 +8,5 @@ captures/
 .playwright-cli/
 output/
 ui-src/node_modules/
+dist/DictaTask-*.apk
 
