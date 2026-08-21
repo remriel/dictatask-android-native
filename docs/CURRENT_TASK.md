@@ -11,7 +11,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
 - Manual task entry is a standalone green card between the recording and task panels on mobile, with its own `ADD TASK` action. The band is 72px tall (50% taller than its prior 48px layout), has no outer black border bars, uses theme ink for its placeholder, and includes a dedicated mic button that dictates directly into the new-task field.
 - On mobile the workspace is a flush full-width stack: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. At every WebView width, the old black canvas/grid and all outer panel border/shadow bands are removed; a safe-area-aware bottom lane keeps the final card clear of Android navigation controls.
-- TO DO task tiles now use a 4px theme-ink border instead of the former cream/white outline, while retaining their bright shadow color.
+- Task tiles now use a 4px darkened version of their own fill color for the border (dark green around green, dark blue around blue, and so on), while retaining their bright shadow color.
+- The Spin the Wheel launch label is centered and larger, with the wheel icon anchored to the left edge of its green launch band.
+- TO DO and DONE filters are compacted by roughly 40% with smaller labels and count badges while remaining keyboard and touch accessible.
 - The former percentage/clear board panel and its daily progress indicator are removed. The top of the mobile workspace now uses a static 42px geometric color banner with no progress semantics, fill state, timer, or completion-dependent behavior.
 - Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
@@ -41,6 +43,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the static top banner is 42px tall and the viewport has no horizontal overflow.
+- Browser QA at a mobile viewport confirmed task borders resolve to dark color-mixes of each tile (including dark green around the green tile), TO DO/DONE controls render at 29px tall with 7px labels, and the Spin the Wheel label is centered at 14px with its icon anchored left.
 - TypeScript and Vite production build passed after replacing the top progress flare with the static decorative banner; the packaged bundle contains no `top-flare`, daily-cycle state, or top progress-bar markup.
 - Browser QA passed for the standalone manual-task card: it renders between the recording and task panels, the task list remains in its own panel, and submitting the `ADD TASK` form creates a new TO DO row.
 - Browser QA passed for the flush mobile stack: the Spin the Wheel launch control is in its own panel below the cream task board, the workspace has zero gap/side inset, and the manual card has zero vertical padding with theme-colored placeholder text.
@@ -50,8 +53,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA held representative controls in hover and pressed states: the TO DO tab computed to a straight `-1px, -1px` lift, the recording button computed to a straight `2px, 2px` press, and no rendered button had a rotational transform.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `CA723B3E6126A475D36C971EC0B900314DBD8D14FF15218D7AC8CD01BB099FC2` (1,206,802 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1rJNjnFsjYdovQaIc36_CMlhuuV-HTG7S/view?usp=drivesdk
+- APK SHA-256: `27CA1AB0E1A4F7F4D8CAFCB2D74B31BA30E462A477F035949E383C3C07E44904` (1,206,794 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1GBPhdMdX8Q3XrFXbgjWWUGa7fQUH5tm7/view?usp=drivesdk
 
 ## Constraints
 

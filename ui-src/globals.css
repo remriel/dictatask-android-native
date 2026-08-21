@@ -3428,7 +3428,8 @@ body {
   --task-card-shadow: var(--juice-cyan);
   --task-checkbox-bg: var(--juice-yellow);
   --task-checkbox-text: var(--juice-black);
-  border-color: var(--juice-cream);
+  border-color: #0b2846;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
   background: var(--task-card-bg) !important;
   box-shadow: 7px 7px 0 var(--task-card-shadow);
   color: var(--task-card-text);
@@ -3441,6 +3442,8 @@ body {
   --task-card-shadow: #2d86c7;
   --task-checkbox-bg: var(--juice-yellow);
   --task-checkbox-text: var(--juice-black);
+  border-color: #142c4a;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-orange {
@@ -3448,6 +3451,8 @@ body {
   --task-card-shadow: #ff7a18;
   --task-checkbox-bg: #ffd21f;
   --task-checkbox-text: var(--juice-black);
+  border-color: #5d2500;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-blue {
@@ -3455,6 +3460,8 @@ body {
   --task-card-shadow: #236cf3;
   --task-checkbox-bg: #236cf3;
   --task-checkbox-text: var(--juice-cream);
+  border-color: #0b2560;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-cyan {
@@ -3462,6 +3469,8 @@ body {
   --task-card-shadow: #25c7e9;
   --task-checkbox-bg: #25c7e9;
   --task-checkbox-text: var(--juice-black);
+  border-color: #00404f;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-lime {
@@ -3469,6 +3478,8 @@ body {
   --task-card-shadow: #49b878;
   --task-checkbox-bg: #49b878;
   --task-checkbox-text: var(--juice-black);
+  border-color: #15502f;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-violet {
@@ -3476,6 +3487,8 @@ body {
   --task-card-shadow: #8060d5;
   --task-checkbox-bg: #8060d5;
   --task-checkbox-text: var(--juice-cream);
+  border-color: #2e1e52;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row:hover {
@@ -5151,10 +5164,11 @@ body,
   transform: translate(1px, 1px);
 }
 
-/* Task tiles retain the tactile treatment, but their edge is now the theme
-   ink rather than the former cream/white outline. */
+/* Task tiles retain the tactile treatment, but their edge is a darkened tone
+   of the tile color rather than a shared black outline. */
 .juice-panel .task-row {
-  border: 4px solid var(--juice-black);
+  border-width: 4px;
+  border-style: solid;
 }
 
 .juice-panel .task-row::before {
@@ -5166,6 +5180,53 @@ body,
 .juice-workspace .spin-launch-card,
 .juice-workspace .spin-launch-card .wheel-launch-button {
   min-height: 76px;
+}
+
+/* Center the launch label while keeping the wheel mark anchored as a visual
+   cue on the left side of the green launch band. */
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  position: relative;
+  justify-content: center;
+  gap: 0;
+  padding-right: 56px;
+  padding-left: 56px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-art {
+  position: absolute;
+  left: 14px;
+  width: 32px;
+  height: 32px;
+}
+
+/* Make TO DO and DONE about 40% smaller than the previous mobile controls,
+   without stretching them across the entire task toolbar. */
+.juice-panel .filter-tabs {
+  width: fit-content;
+  gap: 2px;
+}
+
+.juice-panel .filter-tabs button {
+  min-width: 46px;
+  min-height: 29px;
+  flex: 0 0 auto;
+  padding: 4px 5px;
+  font-size: 7px;
+  line-height: 1;
+}
+
+.juice-panel .filter-tabs button.active {
+  padding: 3px 5px;
+}
+
+.juice-panel .filter-tabs button span {
+  min-width: 12px;
+  height: 12px;
+  margin-left: 2px;
+  border-width: 1px;
+  font-size: 7px;
 }
 
 /* Keep the transcription actions compact: 40px is 20% below the current
