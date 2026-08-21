@@ -903,6 +903,9 @@ export default function Home() {
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
   const colorScheme = theme === "paper" ? "light" : "dark";
+  const recordingProgress = isListening
+    ? Math.min(100, (recordingSeconds / RECORDING_LIMIT_SECONDS) * 100)
+    : 0;
 
   useEffect(() => {
     document.documentElement.dataset.dictataskTheme = theme;
@@ -1839,9 +1842,13 @@ export default function Home() {
             <button
               className={`record-button ${isListening ? "is-listening" : ""}`}
               type="button"
-              aria-label={isListening ? "Stop voice recording" : "Start a 30-second voice recording"}
+              aria-label={isListening
+                ? `Stop voice recording. ${RECORDING_LIMIT_SECONDS - recordingSeconds} seconds remaining`
+                : "Start a 30-second voice recording"}
+              style={{ "--recording-progress": `${recordingProgress}%` } as CSSProperties}
               onClick={toggleListening}
             >
+              <span className="record-button-progress" aria-hidden="true" />
               <span className="record-button-icon"><Icon name="mic" /></span>
               <span className="record-button-copy">
                 <strong>{isListening ? "LISTENING NOW" : "TAP TO RECORD"}</strong>
@@ -1850,18 +1857,6 @@ export default function Home() {
               <span className="shortcut">{isListening ? `${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")}s LEFT` : "30s MAX"}</span>
             </button>
             <span className="recording-hint">{isListening ? "Live transcript appears as you speak" : "or paste a transcription"}</span>
-          </div>
-
-          <div
-            className={`recording-limit ${isListening ? "is-active" : ""}`}
-            role="progressbar"
-            aria-label="Voice recording time"
-            aria-valuemin={0}
-            aria-valuemax={RECORDING_LIMIT_SECONDS}
-            aria-valuenow={isListening ? recordingSeconds : 0}
-          >
-            <span>{isListening ? `AUTO-STOPS IN ${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")} SEC` : "VOICE SESSION: 30 SEC MAX"}</span>
-            <span className="recording-progress"><i style={{ width: isListening ? `${(recordingSeconds / RECORDING_LIMIT_SECONDS) * 100}%` : "0%" }} /></span>
           </div>
 
           <textarea

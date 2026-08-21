@@ -16,7 +16,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The Spin the Wheel launch label is centered and larger, with the wheel icon anchored to the left edge of its green launch band.
 - TO DO and DONE filters are now an equal-width, centered pair that fills the task toolbar. They use visible cream/orange cards with black borders, 35px mobile controls (about 20% above the former compact 29px height), and enlarged count badges while remaining keyboard and touch accessible.
 - The former percentage/clear board panel and its daily progress indicator are removed. The top of the mobile workspace now uses a static 42px geometric color banner with a larger rustic `DICTA`/`TASK` sticker: its skewed cream plate and offset black border intentionally break across the banner's lower line and render above the yellow recording surface, with no progress semantics, fill state, timer, or completion-dependent behavior.
-- Recording-panel spacing is reduced, and the transcription field is 154px on larger layouts / 133px on mobile (a 30% reduction from the previous compact field values).
+- Recording-panel spacing is reduced, the separate `VOICE SESSION: 30 SEC MAX` label/progress row is removed, and the TAP TO RECORD card itself fills left-to-right while recording. The transcription field is 184px on larger layouts / 160px on mobile so it uses more of its vertical space.
 - Each open task row has a `FOCUS` action. It starts the same countdown directly, persists a `source: "direct"` challenge, and shows a direct-focus card without the wheel face.
 - The Spin the Wheel launch row has an 8px top and bottom gap so its borders stay clear of the task cards and actions below it.
 - Direct focus cancellation uses the same consequence-free path as wheel cancellation and leaves task counts unchanged.
@@ -45,7 +45,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `npx tsc --noEmit` passed.
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
-- Browser QA passed for recording-first order, the absent percentage/clear panel, the current static 42px theme banner, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
+- Browser QA passed for recording-first order, the absent percentage/clear panel, the current static 42px theme banner, the in-button recording fill with no `VOICE SESSION: 30 SEC MAX` label or `.recording-progress` row, the 160px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the static top banner is 42px tall and the viewport has no horizontal overflow.
@@ -70,9 +70,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK v1.5.19 SHA-256: `1C929EF9FC9EE6857A36D9058DEE156B03F6726311CBA734F272E947C418D3B8` (1,209,346 bytes); verified with Android APK Signature Scheme v2. This build uses Soft Archivo task typography while retaining the animated strike-through and mascot removal.
-- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/14hwg3LB9B3we9netdICc7T6NW1BIrU1N/view?usp=drivesdk
-- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.19
+- APK v1.5.20 SHA-256: `E68015F47884991347DE10BA69F5BD4F642BA4DEAA5108DF4BB2AEF85E56C368` (1,209,270 bytes); verified with Android APK Signature Scheme v2. This build moves recording progress into the TAP TO RECORD card and gives the mobile transcription field 160px of vertical space.
+- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/1s5Rh4FMLLSgzznx8xmgBBAsnjXLXXQie/view?usp=drivesdk
+- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.20
 
 ## Constraints
 

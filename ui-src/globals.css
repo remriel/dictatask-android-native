@@ -396,8 +396,11 @@ a:focus-visible {
 
 .record-button {
   display: inline-flex;
+  position: relative;
   align-items: center;
   gap: 8px;
+  overflow: hidden;
+  isolation: isolate;
   padding: 9px 11px 9px 9px;
   border: 2px solid var(--ink);
   background: var(--orange);
@@ -407,6 +410,40 @@ a:focus-visible {
   font-weight: 950;
   letter-spacing: -0.02em;
   transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.record-button-progress {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--recording-progress, 0%);
+  overflow: visible;
+  background: var(--orange);
+  opacity: 0;
+  pointer-events: none;
+  transition: width 220ms linear, opacity 120ms ease;
+}
+
+.record-button-progress::after {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 5px;
+  background: var(--yellow);
+  content: "";
+}
+
+.record-button.is-listening .record-button-progress {
+  opacity: 1;
+  transition: width 1000ms linear, opacity 120ms ease;
+}
+
+.record-button > :not(.record-button-progress) {
+  position: relative;
+  z-index: 1;
 }
 
 .record-button:hover {
@@ -572,38 +609,6 @@ a:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
-}
-
-.recording-limit {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 11px;
-  color: #8c857d;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.recording-limit.is-active {
-  color: var(--ink);
-}
-
-.recording-progress {
-  display: block;
-  width: 74px;
-  height: 7px;
-  overflow: hidden;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-}
-
-.recording-progress i {
-  display: block;
-  height: 100%;
-  background: var(--orange);
-  transition: width 220ms linear;
 }
 
 .voice-wave {
@@ -2319,29 +2324,16 @@ body {
   text-transform: uppercase;
 }
 
-.juice-panel .recording-limit {
-  margin-top: 10px;
-  color: var(--juice-black);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 9px;
-  font-weight: 950;
-  letter-spacing: 0.08em;
+.juice-panel .record-button-progress {
+  background: var(--juice-orange);
 }
 
-.juice-panel .recording-progress {
-  height: 9px;
-  margin-top: 7px;
-  border: 2px solid var(--juice-black);
-  background: rgba(23, 21, 29, 0.14);
-}
-
-.juice-panel .recording-progress i {
-  background: var(--juice-blue);
-  box-shadow: 5px 0 0 var(--juice-orange);
+.juice-panel .record-button-progress::after {
+  background: var(--juice-yellow);
 }
 
 .juice-panel .transcript-input {
-  min-height: 154px;
+  min-height: 184px;
   margin-top: 10px;
   padding: 14px;
   border: 3px solid var(--juice-black);
@@ -3366,7 +3358,7 @@ body {
   }
 
   .juice-panel .transcript-input {
-    min-height: 133px;
+    min-height: 160px;
     font-size: 15px;
   }
 
@@ -5311,7 +5303,7 @@ textarea {
   }
 
   .juice-panel .transcript-input {
-    min-height: 133px;
+    min-height: 160px;
     resize: none;
   }
 
