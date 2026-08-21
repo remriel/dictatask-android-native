@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make the manual-entry surface 50% taller, make the top banner another 50% taller, make that banner reset independently every day, and keep all button press feedback straight rather than tilted.
+Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make the manual-entry surface 50% taller, replace the former daily progress flare with a static theme banner, compact the task filters, and keep all button press feedback straight rather than tilted.
 
 ## Current implementation
 
@@ -20,7 +20,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The Spin the Wheel launch row has an 8px top and bottom gap so its borders stay clear of the task cards and actions below it.
 - Direct focus cancellation uses the same consequence-free path as wheel cancellation and leaves task counts unchanged.
 - The bottom orange status panel and its stats row are removed.
-- XP state, XP accumulation, XP display, and floating XP rewards are removed for now; completion progress is represented only by the thin top flare.
+- XP state, XP accumulation, XP display, and floating XP rewards are removed for now; the top banner is decorative and does not represent completion progress.
 - The task board has only `TO DO` and `DONE` tabs, with `TO DO` as the default.
 - Completed records remain available in `DONE` through persistent task history, even after active completed rows are cleared.
 - `DONE` history is sorted by `completedAt` descending, so the most recently completed task is always at the top. Re-completing a reopened task refreshes its completion timestamp.
@@ -39,7 +39,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `npx tsc --noEmit` passed.
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
-- Browser QA passed for recording-first order, the absent percentage/clear panel, the current 36px daily progress flare, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
+- Browser QA passed for recording-first order, the absent percentage/clear panel, the current static 42px theme banner, the 133px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the static top banner is 42px tall and the viewport has no horizontal overflow.
@@ -49,7 +49,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA passed for the flush mobile stack: the Spin the Wheel launch control is in its own panel below the cream task board, the workspace has zero gap/side inset, and the manual card has zero vertical padding with theme-colored placeholder text.
 - The Android handoff includes a safe-area-aware mobile bottom inset for the Spin the Wheel card and removes the manual card's black border/shadow bands so its surrounding surface stays green.
 - Browser QA confirmed every outer panel has `x: 0`, full viewport width, `border: 0`, and no shadow at a 640px Android-style viewport; the body background is cream with no horizontal overflow. A simulated Android speech bridge filled the manual task field from the new mic control.
-- Browser QA at a 390px Android-style viewport confirmed the exact current dimensions: top progress flare `36px`, manual-entry surface `72px`, manual input `72px`, `ADD TASK` action `72px`, transcript actions about `57px`, and bottom Spin panel `76px`, with no horizontal overflow. Completing then undoing a task left the daily banner value unchanged.
+- Browser QA at a mobile Android-style viewport confirmed the exact current dimensions: static top banner `42px`, manual-entry surface `72px`, manual input `72px`, `ADD TASK` action `72px`, transcript actions about `57px`, compact TO DO/DONE controls `29px`, centered Spin the Wheel launch band `76px`, and no horizontal overflow.
 - Browser QA held representative controls in hover and pressed states: the TO DO tab computed to a straight `-1px, -1px` lift, the recording button computed to a straight `2px, 2px` press, and no rendered button had a rotational transform.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
