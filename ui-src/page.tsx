@@ -2051,7 +2051,7 @@ export default function Home() {
                     </div>
                   )
                 ) : (
-                  <div className="wheel-machine">
+                  <div className={`wheel-machine ${wheelPhase === "spinning" ? "is-spinning" : ""}`}>
                     <span className="wheel-landing-marker">LAND HERE</span>
                     <div
                       ref={wheelRotorRef}
@@ -2065,6 +2065,8 @@ export default function Home() {
                     >
                       <span className="wheel-color-field" aria-hidden="true" />
                       <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
+                      <span className="wheel-light-sweep" aria-hidden="true" />
+                      <span className="wheel-hub-mark" aria-hidden="true">SPIN</span>
                     </div>
                   </div>
                 )}

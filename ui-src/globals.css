@@ -4526,7 +4526,11 @@ textarea {
   align-content: start;
   gap: 18px;
   border: 3px solid var(--juice-black);
-  background: var(--theme-tasks-panel);
+  background-color: var(--theme-tasks-panel);
+  background-image:
+    linear-gradient(135deg, rgba(21, 94, 234, 0.1) 25%, transparent 25% 50%, rgba(255, 116, 23, 0.1) 50% 75%, transparent 75%),
+    repeating-linear-gradient(0deg, transparent 0 18px, rgba(13, 13, 18, 0.05) 18px 19px);
+  background-size: 64px 64px, 100% 100%;
   box-shadow: 7px 7px 0 var(--juice-black);
   color: var(--juice-black);
   padding: clamp(18px, 2.5vw, 28px);
@@ -4590,6 +4594,13 @@ textarea {
   padding: 5px 6px;
 }
 
+.wheel-stage-kicker span:first-child {
+  color: var(--juice-orange);
+  font-size: 11px;
+  text-shadow: 1px 1px 0 var(--juice-black);
+  transform: rotate(-2deg);
+}
+
 .wheel-cancel-button {
   justify-self: start;
   min-height: 40px;
@@ -4629,10 +4640,49 @@ textarea {
   display: grid;
   width: min(100%, 430px);
   aspect-ratio: 1;
+  isolation: isolate;
   place-items: center;
   justify-self: center;
   margin-top: 10px;
   padding: 9px;
+}
+
+.wheel-machine::before,
+.wheel-machine::after {
+  position: absolute;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.wheel-machine::before {
+  z-index: 0;
+  inset: 1%;
+  border: 5px solid var(--juice-black);
+  background:
+    repeating-conic-gradient(from -8deg, rgba(255, 210, 31, 0.92) 0 2deg, transparent 2deg 18deg),
+    var(--juice-blue);
+  box-shadow: 0 0 0 8px var(--juice-orange), 0 0 0 13px var(--juice-violet);
+  transform-origin: center;
+  transform: rotate(-4deg) scale(0.98);
+}
+
+.wheel-machine::after {
+  z-index: 0;
+  inset: -4%;
+  border: 3px dashed rgba(13, 13, 18, 0.72);
+  box-shadow: inset 0 0 0 5px var(--juice-cream), 0 0 0 4px var(--juice-black);
+  opacity: 0.82;
+  transform-origin: center;
+  transform: rotate(2deg);
+}
+
+.wheel-machine.is-spinning::before {
+  animation: wheel-orbit 720ms linear infinite;
+}
+
+.wheel-machine.is-spinning::after {
+  animation: wheel-halo 900ms ease-in-out infinite;
 }
 
 .wheel-landing-marker {
@@ -4649,19 +4699,37 @@ textarea {
   font-weight: 900;
   letter-spacing: 0.08em;
   padding: 5px 7px;
+  transform: translateX(-50%) rotate(-2deg);
+}
+
+.wheel-landing-marker::after {
+  position: absolute;
+  bottom: -13px;
+  left: 50%;
+  width: 17px;
+  height: 14px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-orange);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  content: "";
   transform: translateX(-50%);
+}
+
+.wheel-machine.is-spinning .wheel-landing-marker {
+  animation: wheel-marker-pulse 420ms steps(2, end) infinite;
 }
 
 .wheel-rotor {
   /* Rotation is driven frame-by-frame in page.tsx for Android WebView parity. */
   position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 4px solid var(--juice-black);
+  border: 6px solid var(--juice-black);
   border-radius: 50%;
   background: var(--juice-cream);
-  box-shadow: 9px 9px 0 var(--juice-orange);
+  box-shadow: 0 0 0 8px var(--juice-orange), 0 0 0 12px var(--juice-blue);
   transform-origin: center;
   will-change: transform;
 }
@@ -4679,25 +4747,52 @@ textarea {
 
 .wheel-color-field {
   z-index: 0;
-  background: var(--wheel-color-gradient, conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg));
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.34), transparent 26%),
+    radial-gradient(circle at 72% 82%, rgba(13, 13, 18, 0.26), transparent 48%),
+    var(--wheel-color-gradient, conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg));
 }
 
 .wheel-ink-overlay {
   z-index: 1;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.35) brightness(0.7);
+  filter: grayscale(1) contrast(1.55) brightness(0.78);
   mix-blend-mode: multiply;
-  opacity: 0.42;
+  opacity: 0.52;
+}
+
+.wheel-light-sweep {
+  position: absolute;
+  z-index: 2;
+  inset: -18%;
+  border-radius: 50%;
+  background: conic-gradient(from -34deg, transparent 0 47deg, rgba(247, 240, 223, 0.52) 50deg 61deg, transparent 65deg 360deg);
+  mix-blend-mode: screen;
+  opacity: 0.2;
+  pointer-events: none;
+  transform: rotate(-20deg);
+}
+
+.wheel-machine.is-spinning .wheel-rotor {
+  filter: saturate(1.16) contrast(1.08);
+}
+
+.wheel-machine.is-spinning .wheel-light-sweep {
+  animation: wheel-light-sweep 520ms linear infinite;
+  opacity: 0.72;
 }
 
 .wheel-rotor::before {
   content: "";
   position: absolute;
   z-index: 2;
-  inset: 7%;
-  border: 3px solid rgba(23, 21, 29, 0.72);
+  inset: 6%;
+  border: 3px solid rgba(23, 21, 29, 0.78);
   border-radius: 50%;
-  box-shadow: inset 0 0 0 3px rgba(255, 248, 231, 0.26);
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 248, 231, 0.32),
+    inset 0 0 0 7px rgba(21, 94, 234, 0.34),
+    0 0 0 3px rgba(255, 116, 23, 0.78);
   pointer-events: none;
 }
 
@@ -4711,10 +4806,34 @@ textarea {
   aspect-ratio: 1;
   border: 4px solid var(--juice-black);
   border-radius: 50%;
-  background: var(--juice-yellow);
-  box-shadow: 4px 4px 0 var(--juice-black);
+  background: radial-gradient(circle at 35% 28%, var(--juice-cream) 0 10%, var(--juice-yellow) 11% 53%, var(--juice-orange) 54% 74%, var(--juice-black) 75% 100%);
+  box-shadow: 4px 4px 0 var(--juice-black), inset 0 0 0 3px rgba(21, 94, 234, 0.72);
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.wheel-hub-mark {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 17%;
+  aspect-ratio: 1;
+  place-items: center;
+  color: var(--juice-black);
+  font-family: "Space Mono", monospace;
+  font-size: clamp(7px, 1.4vw, 11px);
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 1px 1px 0 var(--juice-cream);
+  transform: translate(-50%, -50%) rotate(-2deg);
+}
+
+.wheel-machine.is-spinning .wheel-hub-mark {
+  animation: wheel-hub-pulse 520ms steps(2, end) infinite;
 }
 
 .wheel-result-card {
@@ -4856,6 +4975,56 @@ textarea {
   100% {
     opacity: 0;
     transform: scale(0.94);
+  }
+}
+
+@keyframes wheel-orbit {
+  from {
+    transform: rotate(-4deg) scale(0.98);
+  }
+  to {
+    transform: rotate(356deg) scale(0.98);
+  }
+}
+
+@keyframes wheel-halo {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: rotate(2deg) scale(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(-2deg) scale(1.05);
+  }
+}
+
+@keyframes wheel-light-sweep {
+  from {
+    transform: rotate(-20deg) scale(1);
+  }
+  to {
+    transform: rotate(340deg) scale(1);
+  }
+}
+
+@keyframes wheel-marker-pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(-2deg) scale(1);
+  }
+  50% {
+    transform: translateX(-50%) rotate(2deg) scale(1.08);
+  }
+}
+
+@keyframes wheel-hub-pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(-2deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(2deg) scale(1.16);
   }
 }
 
@@ -5074,6 +5243,11 @@ textarea {
   .juice-panel .record-button.is-listening .record-button-wave i,
   .task-board-flip,
   .wheel-rotor,
+  .wheel-machine.is-spinning::before,
+  .wheel-machine.is-spinning::after,
+  .wheel-machine.is-spinning .wheel-landing-marker,
+  .wheel-machine.is-spinning .wheel-light-sweep,
+  .wheel-machine.is-spinning .wheel-hub-mark,
   .tasks-card.is-wheel-converging .task-row,
   .tasks-card.is-wheel-converging .card-heading,
   .tasks-card.is-wheel-converging .task-toolbar,

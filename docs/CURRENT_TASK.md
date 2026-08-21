@@ -8,6 +8,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 - The shipped UI is the bundled React/Vite app in `ui-src/`, copied into `app/src/main/assets/`.
 - Spin the Wheel uses a persisted configurable countdown, cancel-safe run IDs, bright task-card shadow colors, and a WebView-safe `requestAnimationFrame` rotation loop.
+- The Spin the Wheel face now has a layered 90s arcade treatment: patterned stage paper, concentric symmetric rings, color-ray halo, textured wedge shading, a highlighted hub marked `SPIN`, a pointer arrow, and a 3-second-only orbit/light-pulse animation. The rotor, hub, and landing marker share one measured center so the wheel spins symmetrically around its axis; reduced-motion mode disables the decorative loops.
 - The recording panel is first on open; the task board follows with Spin the Wheel directly below the task list and task actions below the wheel control.
 - Manual task entry is a standalone green card between the recording and task panels on mobile, with its own `ADD TASK` action. The band is 72px tall (50% taller than its prior 48px layout), has no outer black border bars, uses theme ink for its placeholder, and includes a dedicated mic button that dictates directly into the new-task field.
 - On mobile the workspace is a flush full-width stack: yellow recording, green manual entry, cream task board, then a separate green Spin the Wheel card. At every WebView width, the old black canvas/grid and all outer panel border/shadow bands are removed; a safe-area-aware bottom lane keeps the final card clear of Android navigation controls.
@@ -56,10 +57,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the banner wordmark is visible at a 360px mobile viewport, remains inside the 42px banner, preserves zero horizontal overflow, and exposes an accessible `DictaTask` banner label.
 - Browser QA confirmed the larger sticker measures about 180px wide and 39px tall at 360px, visibly extends past the banner's lower edge, and still preserves zero horizontal overflow.
 - Browser QA confirmed the sticker's lower edge remains the topmost element over the yellow surface at the overlap points after the banner stacking layer was raised.
+- Browser QA confirmed the Android-style wheel screen renders the layered face without horizontal overflow, the spinning state exposes `wheel-orbit` and `wheel-light-sweep` animations, and the measured machine/rotor/hub centers all align at the same viewport coordinates.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `C9DE9127D6370AB1FDEA802E46AF2A4619EA732C29F1C34B28B37CDB0DA1D878` (1,207,566 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1mR94xA_D4seKLXxUl4-PjgArsZxLh_vX/view?usp=drivesdk
+- APK SHA-256: `AF1BACE6768CB826E9931B68756821EA0D025CA06DFF1D23529CDE44891A7E83` (1,208,346 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1s0Hv7AiUtfJVxgqRtoFvk52cn6P534yL/view?usp=drivesdk
 
 ## Constraints
 
