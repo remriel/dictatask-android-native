@@ -159,7 +159,6 @@ const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
 const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
-const DAILY_CYCLE_TICK_MS = 60 * 1000;
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
 const WHEEL_CONVERGE_DURATION_MS = 560;
 const WHEEL_SPIN_DURATION_MS = 3000;
@@ -187,25 +186,6 @@ const storageListeners = new Map<string, Set<() => void>>();
 const storageSnapshots = new Map<string, { raw: string | null; value: unknown }>();
 const nativeRawSnapshots = new Map<string, string | null>();
 const memoryValues = new Map<string, unknown>();
-
-function getLocalDayBounds(timestamp: number) {
-  const date = new Date(timestamp);
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
-  return { start, end };
-}
-
-function getDailyCycleProgress(timestamp: number) {
-  const { start, end } = getLocalDayBounds(timestamp);
-  const progress = ((timestamp - start) / (end - start)) * 100;
-  return Math.max(0, Math.min(100, Math.round(progress)));
-}
-
-function getDailyCycleRefreshDelay(timestamp: number) {
-  const { end } = getLocalDayBounds(timestamp);
-  const nextMinute = timestamp - (timestamp % DAILY_CYCLE_TICK_MS) + DAILY_CYCLE_TICK_MS;
-  return Math.max(250, Math.min(nextMinute, end) - timestamp);
-}
 
 function getStorage() {
   if (typeof window === "undefined") return null;
@@ -854,7 +834,6 @@ export default function Home() {
   const [wheelCandidates, setWheelCandidates] = useState<Task[]>([]);
   const [pendingWheelTaskId, setPendingWheelTaskId] = useState<string | null>(null);
   const [wheelSettingsOpen, setWheelSettingsOpen] = useState(false);
-  const [dailyCycleNow, setDailyCycleNow] = useState(() => Date.now());
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const manualTaskInputRef = useRef<HTMLInputElement | null>(null);
   const manualRecognitionTimerRef = useRef<number | null>(null);
@@ -895,25 +874,6 @@ export default function Home() {
       document.documentElement.style.removeProperty("color-scheme");
     };
   }, [colorScheme, theme]);
-
-  useEffect(() => {
-    let timer: number | null = null;
-    const refresh = () => {
-      const now = Date.now();
-      setDailyCycleNow(now);
-      timer = window.setTimeout(refresh, getDailyCycleRefreshDelay(now));
-    };
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") setDailyCycleNow(Date.now());
-    };
-
-    refresh();
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () => {
-      if (timer !== null) window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, []);
 
   useEffect(() => {
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
@@ -979,7 +939,6 @@ export default function Home() {
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
   const totalCount = tasks.length;
-  const dailyCycleProgress = useMemo(() => getDailyCycleProgress(dailyCycleNow), [dailyCycleNow]);
   const filteredTasks = useMemo(() => {
     if (filter === "done") return doneHistoryTasks;
     return tasks
@@ -1755,17 +1714,10 @@ export default function Home() {
           <span className="milestone-sub">{milestone === "LEVEL COMPLETE" ? "YOU CLEARED THE WHOLE BOARD" : "KEEP THE MOMENTUM"}</span>
         </div>
       )}
-      <div
-        className="top-flare"
-        role="progressbar"
-        aria-label="Daily progress cycle"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={dailyCycleProgress}
-        aria-valuetext={`${dailyCycleProgress}% through today's cycle; resets at midnight`}
-        style={{ "--completion-progress": `${dailyCycleProgress}%` } as CSSProperties}
-      >
-        <span className="top-flare-fill" aria-hidden="true" />
+      <div className="top-banner" aria-hidden="true">
+        <span className="top-banner-block top-banner-block-orange" />
+        <span className="top-banner-block top-banner-block-blue" />
+        <span className="top-banner-block top-banner-block-lime" />
       </div>
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">

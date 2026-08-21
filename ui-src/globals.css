@@ -1874,43 +1874,62 @@ body {
   max-width: 1440px;
 }
 
-.top-flare {
+.top-banner {
   position: relative;
   z-index: 1;
   width: 100%;
   max-width: 1440px;
-  height: 36px;
+  height: 42px;
   margin: 0 auto 12px;
   overflow: hidden;
   border: 2px solid var(--juice-black);
-  background: linear-gradient(
-    90deg,
-    var(--juice-orange) 0 25%,
-    var(--juice-blue) 25% 50%,
-    var(--juice-lime) 50% 75%,
-    var(--juice-violet) 75% 100%
-  );
+  background: linear-gradient(112deg, var(--juice-yellow) 0 22%, var(--juice-orange) 22% 47%, var(--juice-blue) 47% 73%, var(--juice-lime) 73% 100%);
   box-shadow: 3px 3px 0 var(--juice-black);
 }
 
-.top-flare::before {
+.top-banner::before {
   position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 2px, transparent 2px 12px);
+  inset: 0 0 0 0;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0 3px, transparent 3px 18px);
   content: "";
-  opacity: 0.58;
+  opacity: 0.6;
   pointer-events: none;
 }
 
-.top-flare-fill {
+.top-banner::after {
+  position: absolute;
+  top: 6px;
+  right: 10%;
+  bottom: 6px;
+  left: 10%;
+  border-top: 3px solid var(--juice-cream);
+  border-bottom: 3px solid var(--juice-cream);
+  content: "";
+  opacity: 0.72;
+  pointer-events: none;
+  transform: skewX(-18deg);
+}
+
+.top-banner-block {
   position: relative;
   z-index: 1;
-  display: block;
-  width: var(--completion-progress, 0%);
+  display: inline-block;
+  width: 10px;
   height: 100%;
-  background: linear-gradient(90deg, var(--juice-yellow), var(--juice-orange) 52%, var(--juice-lime));
+  margin-left: 10px;
+  background: var(--juice-cream);
   box-shadow: 3px 0 0 var(--juice-black);
-  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform: skewX(-18deg);
+}
+
+.top-banner-block-blue {
+  margin-left: 26px;
+  background: var(--juice-yellow);
+}
+
+.top-banner-block-lime {
+  margin-left: 26px;
+  background: var(--juice-orange);
 }
 
 .undo-inline {
@@ -5022,7 +5041,7 @@ textarea {
     max-width: none;
   }
 
-  .top-flare {
+  .top-banner {
     margin-bottom: 0;
   }
 
@@ -5037,7 +5056,7 @@ textarea {
     box-shadow: none;
   }
 
-  .top-flare {
+  .top-banner {
     box-shadow: none;
   }
 }
