@@ -69,8 +69,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK v1.5.15 SHA-256: `8C4D405C38C2D03AF45673D4D49EB8E186B0A08CA7B14382899983B8DFDF4449` (1,480,078 bytes); `apksigner` verified its Android APK Signature Scheme v2 signature.
-- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/1tg2p6aRIGrEuyQYyvRJ5L1qNt_Jmcgmn/view?usp=drivesdk
+- APK v1.5.16 SHA-256: `376EBAEFA3B01996639084B467F3CAE3274DC507B5FC0DF0D2E625695E77C171` (1,480,078 bytes); rebuilt from pushed commit `6a8e603d86abd7f9aa0f8f3487be142bc09ab66d` and verified with Android APK Signature Scheme v2.
+- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/1dbLlnSkFwFAw6hCqdyfh6jNVibOMWHL4/view?usp=drivesdk
 
 ## Constraints
 
