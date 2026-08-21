@@ -25,7 +25,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The task board has only `TO DO` and `DONE` tabs, with `TO DO` as the default.
 - Completed records remain available in `DONE` through persistent task history, even after active completed rows are cleared.
 - `DONE` history is sorted by `completedAt` descending, so the most recently completed task is always at the top. Re-completing a reopened task refreshes its completion timestamp.
-- Every task now persists `createdAt` (with a migration fallback for older records). Task rows show a local-calendar age badge such as `OPEN 3 DAYS`; completed history freezes the duration at completion as `OPEN FOR 3 DAYS`. The display refreshes at the next local midnight and when the app becomes visible.
+- Every task now persists `createdAt` (with a migration fallback for older records). Open task rows show a local-calendar age badge such as `OPEN 3 DAYS`; completed rows show elapsed time since `completedAt`, such as `DONE 3 DAYS AGO`. The display refreshes at the next local midnight and when the app becomes visible.
 - Completing a task shows a persistent inline `UNDO` bar beneath the task toolbar, so it remains reachable on mobile until the user dismisses it or takes another task action. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
 - Every task state change is isolated to its visible, accessible checkbox. Tapping elsewhere on a card only triggers the card's tactile press feedback; it never completes or reopens the task. The checkbox supports tapping, Enter, and Space; in `DONE`, it reopens the task, removes it from the completion history list, and returns it to `TO DO` without a completion side effect.
 - Task titles use a larger mobile-first type scale so they fill more of each card; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
@@ -56,7 +56,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the workspace bands remain flush at `x: 0` and full viewport width at a 640px Android-style viewport; the green manual composer intentionally retains its 3px frame and 5px hard shadow within the yellow recording panel, the body background is cream, and there is no horizontal overflow. A simulated Android speech bridge filled the manual task field from the dedicated mic control.
 - Browser QA at a mobile Android-style viewport confirmed the exact current dimensions: static top banner `42px`, inset manual composer `72px` with 42px framed controls, transcript actions about `57px`, compact TO DO/DONE controls `29px`, centered Spin the Wheel launch band `76px`, and no horizontal overflow.
 - Browser QA held representative controls in hover and pressed states: the TO DO tab computed to a straight `-1px, -1px` lift, the recording button computed to a straight `2px, 2px` press, and no rendered button had a rotational transform.
-- Browser QA confirmed an active task created three calendar days earlier renders `OPEN 3 DAYS`, while a task created five days earlier and completed two days earlier renders `OPEN FOR 3 DAYS` in `DONE`.
+- Browser QA confirmed active tasks still render `OPEN 0 DAYS` in the current mobile flow, and a task completed today renders `DONE 0 DAYS AGO` in `DONE`; the completed-row calculation now derives the number from `completedAt`.
 - Browser QA confirmed the banner wordmark is visible at a 360px mobile viewport, remains inside the 42px banner, preserves zero horizontal overflow, and exposes an accessible `DictaTask` banner label.
 - Browser QA confirmed the larger sticker measures about 180px wide and 39px tall at 360px, visibly extends past the banner's lower edge, and still preserves zero horizontal overflow.
 - Browser QA confirmed the sticker's lower edge remains the topmost element over the yellow surface at the overlap points after the banner stacking layer was raised.
@@ -69,9 +69,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK v1.5.16 SHA-256: `376EBAEFA3B01996639084B467F3CAE3274DC507B5FC0DF0D2E625695E77C171` (1,480,078 bytes); rebuilt from pushed commit `6a8e603d86abd7f9aa0f8f3487be142bc09ab66d` and verified with Android APK Signature Scheme v2.
-- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/1dbLlnSkFwFAw6hCqdyfh6jNVibOMWHL4/view?usp=drivesdk
-- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.16
+- APK v1.5.17 SHA-256: `5C11E1C5D0B263AED5C74E76CBE8F6561A11D6F7A54FE758D679ECD8E75E54D0` (1,480,090 bytes); verified with Android APK Signature Scheme v2.
+- Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/1OiFFP9QQBbPKpEoyXcx5w6roMLMq9_Nv/view?usp=drivesdk
 
 ## Constraints
 

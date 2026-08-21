@@ -536,7 +536,10 @@ function getTaskOpenDays(createdAt: number | null | undefined, now: number) {
 }
 
 function formatTaskOpenAge(daysOpen: number, completed: boolean) {
-  return `${completed ? "OPEN FOR" : "OPEN"} ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"}`;
+  if (completed) {
+    return `DONE ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"} AGO`;
+  }
+  return `OPEN ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"}`;
 }
 
 function getNextLocalMidnightDelay(timestamp: number) {
@@ -722,7 +725,7 @@ const TaskRow = memo(function TaskRow({
         <div>
           <p className="task-title">{task.title}</p>
           <div className="task-detail-row">
-            <div className="task-meta" aria-label={`${formatTaskOpenAge(daysOpen, task.completed)} since this task was created`}>
+            <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}>
               <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
             </div>
             {!task.completed && (
@@ -1980,10 +1983,9 @@ export default function Home() {
                       key={task.id}
                       task={task}
                       index={index}
-                      daysOpen={getTaskOpenDays(
-                        task.createdAt ?? createdAtByTaskId.get(task.id),
-                        task.completed ? task.completedAt ?? taskAgeNow : taskAgeNow,
-                      )}
+                      daysOpen={task.completed
+                        ? getTaskOpenDays(task.completedAt, taskAgeNow)
+                        : getTaskOpenDays(task.createdAt ?? createdAtByTaskId.get(task.id), taskAgeNow)}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}
