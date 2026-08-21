@@ -703,45 +703,43 @@ const TaskRow = memo(function TaskRow({
         "--task-stack-index": index,
         "--task-stack-offset": `${(2 - index) * 94}px`,
       } as CSSProperties}
-      role="checkbox"
-      aria-checked={task.completed}
-      tabIndex={0}
-      aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
-      onClick={() => onToggle(task.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onToggle(task.id);
-        }
-      }}
     >
-      <span
+      <button
         className={`task-checkbox ${task.completed ? "checked" : ""} ${celebrating ? "is-celebrating" : ""}`}
-        aria-hidden="true"
+        type="button"
+        role="checkbox"
+        aria-checked={task.completed}
+        aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle(task.id);
+        }}
       >
         {task.completed && <Icon name="check" />}
-      </span>
+      </button>
       <div className="task-content">
         <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
         <div>
           <p className="task-title">{task.title}</p>
-          <div className="task-meta" aria-label={`${formatTaskOpenAge(daysOpen, task.completed)} since this task was created`}>
-            <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+          <div className="task-detail-row">
+            <div className="task-meta" aria-label={`${formatTaskOpenAge(daysOpen, task.completed)} since this task was created`}>
+              <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+            </div>
+            {!task.completed && (
+              <button
+                className="task-focus-button"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFocus(task.id);
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
+                aria-label={`Focus ${task.title} without spinning the wheel`}
+              >
+                FOCUS
+              </button>
+            )}
           </div>
-          {!task.completed && (
-            <button
-              className="task-focus-button"
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onFocus(task.id);
-              }}
-              onKeyDown={(event) => event.stopPropagation()}
-              aria-label={`Focus ${task.title} without spinning the wheel`}
-            >
-              FOCUS
-            </button>
-          )}
         </div>
       </div>
       <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>

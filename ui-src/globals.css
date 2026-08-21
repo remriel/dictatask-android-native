@@ -2678,6 +2678,13 @@ body {
   transform: translate(-3px, -3px) rotate(-0.6deg);
 }
 
+/* A task card may still feel tactile when tapped, but only its dedicated
+   checkbox performs a state-changing action. */
+.juice-panel .task-row:active {
+  box-shadow: 2px 2px 0 var(--juice-black);
+  transform: translate(4px, 4px);
+}
+
 .juice-panel .task-row.is-complete {
   filter: saturate(0.85);
 }
@@ -2745,7 +2752,7 @@ body {
   min-height: 30px;
   align-items: center;
   justify-content: center;
-  margin-top: 6px;
+  margin-top: 0;
   border: 2px solid var(--juice-black);
   background: var(--juice-yellow);
   box-shadow: 2px 2px 0 var(--juice-black);
@@ -2777,12 +2784,20 @@ body {
 
 .juice-panel .task-meta {
   max-width: 470px;
-  margin-top: 8px;
+  margin-top: 0;
   color: rgba(23, 21, 29, 0.67);
   font-family: var(--font-geist-mono), monospace;
   font-size: 8px;
   font-weight: 950;
   letter-spacing: 0.02em;
+}
+
+.juice-panel .task-detail-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .juice-panel .task-meta span {
@@ -3578,6 +3593,8 @@ body {
 }
 
 .juice-panel .task-row .task-checkbox {
+  position: relative;
+  z-index: 2;
   border-color: var(--juice-cream);
   background: var(--task-checkbox-bg) !important;
   box-shadow: 3px 3px 0 var(--juice-black);
@@ -3848,7 +3865,9 @@ body {
 }
 
 .juice-panel .task-row .task-checkbox {
-  pointer-events: none;
+  /* The old row-wide checkbox made this decorative. It is now the only
+     state-changing target, so it must sit above and receive the tap. */
+  pointer-events: auto;
 }
 
 /* Persistent app-wide color themes. Each option keeps the same structural
@@ -5500,6 +5519,25 @@ body,
   height: 32px;
 }
 
+/* The wheel launcher is a tactile green card in its own right, matching the
+   framed visual weight of the other primary controls while keeping the green
+   panel color requested for this action. */
+.juice-workspace .spin-launch-card {
+  width: calc(100% - 28px);
+  min-height: 76px;
+  margin: 12px 14px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-lime);
+  box-shadow: 5px 5px 0 var(--juice-black);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  min-height: 76px;
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+}
+
 /* Give TO DO and DONE equal visual weight: the pair is centered and fills the
    toolbar, with controls about 20% taller than the compact mobile baseline. */
 .juice-panel .filter-tabs {
@@ -5668,7 +5706,7 @@ button:active:not(:disabled) {
 .juice-workspace .manual-task-card .manual-task-copy strong {
   grid-area: 1 / 1;
   color: var(--juice-black);
-  font-size: 10px;
+  font-size: 12.5px;
   font-weight: 950;
   letter-spacing: 0.04em;
   line-height: 1;
