@@ -3561,6 +3561,12 @@ body {
   text-shadow: 1px 1px 0 rgba(23, 21, 29, 0.65);
 }
 
+/* Keep the active board loud and scannable without changing the task text
+   kept for export or its completed-history record. */
+.juice-panel .task-row:not(.is-complete) .task-title {
+  text-transform: uppercase;
+}
+
 .juice-panel .task-row .task-meta {
   color: rgba(241, 230, 209, 0.82);
 }
@@ -5583,7 +5589,7 @@ button:active:not(:disabled) {
    immediately available rather than turning the card into decoration. */
 .juice-workspace .manual-task-card {
   display: flex;
-  min-height: 72px;
+  min-height: 94px;
   align-items: center;
   gap: 8px;
   padding: 9px 10px;
@@ -5631,7 +5637,7 @@ button:active:not(:disabled) {
   color: var(--juice-black);
 }
 
-/* Override the old full-height submit rule: this framed control is a 72px
+/* Override the old full-height submit rule: this framed control is a 94px
    composer, matching the recording control rather than stretching a final
    button through the entire band. */
 .juice-workspace .manual-task-card > button.manual-submit-button:last-child {
@@ -5662,10 +5668,11 @@ button:active:not(:disabled) {
 .juice-workspace .manual-task-card .manual-task-copy strong {
   grid-area: 1 / 1;
   color: var(--juice-black);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 950;
   letter-spacing: 0.04em;
   line-height: 1;
+  white-space: nowrap;
   transition: opacity 120ms ease;
 }
 
@@ -5770,10 +5777,6 @@ button:active:not(:disabled) {
 
   .juice-workspace .manual-task-card > button.manual-submit-button:last-child {
     min-height: 38px;
-  }
-
-  .juice-workspace .manual-task-card .manual-task-copy strong {
-    font-size: 12px;
   }
 
   .juice-workspace .manual-task-card .manual-task-copy input {

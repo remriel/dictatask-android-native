@@ -1908,7 +1908,7 @@ export default function Home() {
           <form className="manual-task-card add-task-form" onSubmit={addTask}>
             <span className="add-icon manual-task-icon"><Icon name="plus" /></span>
             <label className={`manual-task-copy ${newTask ? "has-value" : ""} ${isManualDictating ? "is-dictating" : ""}`}>
-              <strong>ADD A TASK MANUALLY</strong>
+              <strong>Add task manually…</strong>
               <input
                 ref={manualTaskInputRef}
                 value={newTask}
