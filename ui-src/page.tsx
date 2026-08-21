@@ -47,6 +47,13 @@ type UndoCompletion = {
   wasDismissed: boolean;
 };
 
+type UndoRemoveAll = {
+  tasks: Task[];
+  taskHistory: TaskHistoryEntry[];
+  dismissedTaskIds: string[];
+  filter: Filter;
+};
+
 type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
@@ -745,7 +752,6 @@ const TaskRow = memo(function TaskRow({
       axis: null,
       active: true,
     };
-    setIsSwiping(true);
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
@@ -766,7 +772,10 @@ const TaskRow = memo(function TaskRow({
         closeSwipe();
         return;
       }
-      if (Math.abs(deltaX) > 8) start.axis = "horizontal";
+      if (Math.abs(deltaX) > 8) {
+        start.axis = "horizontal";
+        setIsSwiping(true);
+      }
     }
     if (start.axis !== "horizontal") return;
 
@@ -1012,6 +1021,8 @@ export default function Home() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const setNotice = useCallback((_message: string) => undefined, []);
   const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
+  const [removeAllConfirmOpen, setRemoveAllConfirmOpen] = useState(false);
+  const [undoRemoveAll, setUndoRemoveAll] = useState<UndoRemoveAll | null>(null);
   const [celebratingTaskId, setCelebratingTaskId] = useState<string | null>(null);
   const [dismissedTaskIds, setDismissedTaskIds] = useStoredState<string[]>("dictatask-dismissed-task-ids", EMPTY_STRING_ARRAY);
   const [celebrationVariant, setCelebrationVariant] = useState<CelebrationVariant>("burst");
@@ -1778,6 +1789,8 @@ export default function Home() {
   }
 
   function toggleTask(id: string) {
+    if (undoRemoveAll) setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
     const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
@@ -1890,6 +1903,9 @@ export default function Home() {
     const task = tasks.find((item) => item.id === id);
     if (!task || task.completed) return;
 
+    if (undoRemoveAll) setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
+
     if (undoCompletion?.id === id) clearUndoCompletion();
     if (celebrationTimerRef.current !== null) {
       window.clearTimeout(celebrationTimerRef.current);
@@ -1918,6 +1934,8 @@ export default function Home() {
     event.preventDefault();
     const title = tidyTask(newTask);
     if (!title) return;
+    if (undoRemoveAll) setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
     setTasks((current) => [
       ...current,
       {
@@ -1933,19 +1951,19 @@ export default function Home() {
     setNotice("Added to the list.");
   }
 
-  function clearCompleted() {
-    const completedTasks = tasks.filter((task) => task.completed);
-    if (undoCompletion && completedTasks.some((task) => task.id === undoCompletion.id)) {
-      clearUndoCompletion();
-    }
-    if (completedTasks.length) {
-      setTaskHistory((current) => mergeTaskHistory(current, completedTasks));
-    }
-    setTasks((current) => current.filter((task) => !task.completed));
-    setNotice("Finished items cleared.");
+  function requestClearAllTasks() {
+    if (!tasks.length) return;
+    setRemoveAllConfirmOpen(true);
   }
 
   function clearAllTasks() {
+    if (!tasks.length) return;
+    setUndoRemoveAll({
+      tasks: tasks.map((task) => ({ ...task })),
+      taskHistory: taskHistory.map((entry) => ({ ...entry })),
+      dismissedTaskIds: [...dismissedTaskIds],
+      filter,
+    });
     clearUndoCompletion();
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
     wheelRunIdRef.current += 1;
@@ -1960,7 +1978,21 @@ export default function Home() {
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
+    setRemoveAllConfirmOpen(false);
     setNotice("All tasks removed.");
+  }
+
+  function undoClearAllTasks() {
+    const action = undoRemoveAll;
+    if (!action) return;
+
+    setTasks(action.tasks.map((task) => ({ ...task })));
+    setTaskHistory(action.taskHistory.map((entry) => ({ ...entry })));
+    setDismissedTaskIds([...action.dismissedTaskIds]);
+    setFilter(action.filter);
+    setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
+    setNotice(`Restored ${action.tasks.length} ${action.tasks.length === 1 ? "task" : "tasks"}.`);
   }
 
   function clearTranscript() {
@@ -2134,6 +2166,18 @@ export default function Home() {
                 </div>
               )}
 
+              {undoRemoveAll && (
+                <div className="undo-inline undo-remove-all-inline" role="status" aria-live="polite">
+                  <div className="undo-inline-copy">
+                    <strong>BOARD CLEARED</strong>
+                    <span>{undoRemoveAll.tasks.length} {undoRemoveAll.tasks.length === 1 ? "task" : "tasks"} removed</span>
+                  </div>
+                  <button type="button" onClick={undoClearAllTasks} aria-label="Undo removing all tasks">
+                    UNDO
+                  </button>
+                </div>
+              )}
+
               <div className="task-list">
                 {filteredTasks.length ? (
                   filteredTasks.map((task, index) => (
@@ -2172,13 +2216,27 @@ export default function Home() {
                 <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
                   <Icon name="download" /> Export .txt
                 </button>
-                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!completedCount}>
-                  <Icon name="trash" /> Clear done
-                </button>
-                <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
+                <button className="clear-button remove-all-button" type="button" onClick={requestClearAllTasks} disabled={!tasks.length}>
                   <Icon name="trash" /> Remove all
                 </button>
               </div>
+
+              {removeAllConfirmOpen && (
+                <div className="remove-all-confirm" role="alertdialog" aria-labelledby="remove-all-confirm-title" aria-describedby="remove-all-confirm-copy">
+                  <div className="remove-all-confirm-copy">
+                    <strong id="remove-all-confirm-title">REMOVE ALL TASKS?</strong>
+                    <span id="remove-all-confirm-copy">This clears the current board. You can undo it right after.</span>
+                  </div>
+                  <div className="remove-all-confirm-actions">
+                    <button type="button" className="remove-all-confirm-cancel" onClick={() => setRemoveAllConfirmOpen(false)}>
+                      CANCEL
+                    </button>
+                    <button type="button" className="remove-all-confirm-delete" onClick={clearAllTasks}>
+                      REMOVE ALL
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {wheelSettingsOpen && (
                   <section className="wheel-settings-inline" id="wheel-settings" aria-label="Focus countdown settings">
