@@ -1876,7 +1876,7 @@ body {
 
 .top-banner {
   position: relative;
-  z-index: 1;
+  z-index: 5;
   width: 100%;
   max-width: 1440px;
   height: 42px;
@@ -1890,7 +1890,7 @@ body {
 .top-banner-name {
   position: absolute;
   z-index: 3;
-  top: 67%;
+  top: 78%;
   left: 50%;
   display: inline-flex;
   gap: 0.06em;
