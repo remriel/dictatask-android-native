@@ -6185,3 +6185,10 @@ button:active:not(:disabled) {
   border-color: var(--task-card-border);
   box-shadow: 3px 3px 0 var(--task-card-shadow);
 }
+
+/* Keep the hidden swipe-to-delete layer from peeking out as a black frame when
+   a task tile presses down. The delete action itself still gets its own
+   intentional divider once the row is swiped open. */
+.juice-panel .task-delete-reveal {
+  border: 0;
+}

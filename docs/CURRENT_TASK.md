@@ -74,8 +74,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed newest task ordering, a left swipe revealing an enabled DELETE control, deletion reducing TO DO without changing DONE or exposing UNDO, touch-style pointer support, consequence-free card taps, checkbox completion/undo, and no delete affordance in DONE.
 - Browser QA at 390px and 320px confirmed both transcript actions render at 28px with no horizontal overflow and labels intact. Pressed-state checks confirmed record, scan, clear, filters, focus, and task cards move their shadows with the control; the manual card stayed at a fixed 5px shadow while focused.
 - Task-card styling now uses only a darkened hue-matched border and the brighter hue-matched moving shadow; the legacy black card border/outline/press layer is overridden, so pressing a tile cannot reveal a second black shadow behind it.
+- The hidden swipe-to-delete reveal no longer carries a black frame, so its layer cannot peek out when a task card shifts during a press; the delete action's own divider remains available after a deliberate swipe.
 - The Remove all action now opens an inline confirmation instead of mutating immediately; confirming clears the board and shows an undo control, while cancel leaves every task untouched. The Clear done button is no longer rendered.
-- `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.26. The APK reports `versionCode=12` / `versionName=1.5.26`, is v2-signed, and has SHA-256 `0BB3C6F8F0B8C97BA13E4E0BF1645021DBDBDF5B2FE837C71EE578CA4E7914CC` (1,211,138 bytes). No Android device is attached.
+- `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.27. The APK reports `versionCode=13` / `versionName=1.5.27`, is v2-signed, and has SHA-256 `7F5F6DBA9A016880B18B5ED37A25C1DC461676297FBD537E8BEA449CCB662935` (1,211,142 bytes). No Android device is attached.
 - `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.24. The APK reports `versionCode=10` / `versionName=1.5.24`, is v2-signed, and has SHA-256 `A078D1E0CC4D2AC226B8E156454809807077A245A4283FD00F3FF642443C5A59` (1,210,350 bytes). No Android device is attached.
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
@@ -91,7 +92,10 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `4941298` (`Add safe remove-all flow and unify task shadows`).
+- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `4941298` (`Add safe remove-all flow and unify task shadows`); the latest release-only CSS fix is staged for the next commit.
+- Public v1.5.27 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.27
+- Direct v1.5.27 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.27/DictaTask-v1.5.27-no-black-card-layer.apk
+- Google Drive v1.5.27 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1aFBUrn0gELaPVFH6k4ZeOpdT0X0luQM4/view?usp=drivesdk
 - Public v1.5.26 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.26
 - Direct v1.5.26 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.26/DictaTask-v1.5.26-safety-shadows.apk
 - Google Drive v1.5.26 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1sv55om8PlZdoDmWDYJ9X2tmFrpNu3h4L/view?usp=drivesdk
