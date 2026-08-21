@@ -75,6 +75,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA at 390px and 320px confirmed both transcript actions render at 28px with no horizontal overflow and labels intact. Pressed-state checks confirmed record, scan, clear, filters, focus, and task cards move their shadows with the control; the manual card stayed at a fixed 5px shadow while focused.
 - Task-card styling now uses only a darkened hue-matched border and the brighter hue-matched moving shadow; the legacy black card border/outline/press layer is overridden, so pressing a tile cannot reveal a second black shadow behind it.
 - The Remove all action now opens an inline confirmation instead of mutating immediately; confirming clears the board and shows an undo control, while cancel leaves every task untouched. The Clear done button is no longer rendered.
+- `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.26. The APK reports `versionCode=12` / `versionName=1.5.26`, is v2-signed, and has SHA-256 `0BB3C6F8F0B8C97BA13E4E0BF1645021DBDBDF5B2FE837C71EE578CA4E7914CC` (1,211,138 bytes). No Android device is attached.
 - `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.24. The APK reports `versionCode=10` / `versionName=1.5.24`, is v2-signed, and has SHA-256 `A078D1E0CC4D2AC226B8E156454809807077A245A4283FD00F3FF642443C5A59` (1,210,350 bytes). No Android device is attached.
 - Browser QA confirmed the `OPEN X DAYS` badge and `FOCUS` control share one horizontal row below each open task title, and the separate Spin the Wheel launcher renders as a green 76px card with a 3px ink border and 5px hard ink shadow.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
@@ -90,7 +91,10 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `6a8f5ce` (`Add safe swipe delete and newest task ordering`).
+- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `4941298` (`Add safe remove-all flow and unify task shadows`).
+- Public v1.5.26 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.26
+- Direct v1.5.26 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.26/DictaTask-v1.5.26-safety-shadows.apk
+- Google Drive v1.5.26 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1sv55om8PlZdoDmWDYJ9X2tmFrpNu3h4L/view?usp=drivesdk
 - Public v1.5.24 release and APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.24
 - Google Drive APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1KaC4aTHpHgJgrslEL_zq1WSSV2nrWEPD/view?usp=drivesdk
 - Public release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.23
