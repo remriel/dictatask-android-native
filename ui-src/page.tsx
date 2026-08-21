@@ -1860,7 +1860,6 @@ export default function Home() {
               <span className="record-button-icon"><Icon name="mic" /></span>
               <span className="record-button-copy">
                 <strong>{isListening ? "LISTENING NOW" : "TAP TO RECORD"}</strong>
-                <small>{isListening ? "Speak naturally" : "VOICE NOTE / 30 SEC MAX"}</small>
               </span>
               <span className="record-button-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
               <span className="shortcut">{isListening ? `${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")}s LEFT` : "30s MAX"}</span>
@@ -1908,13 +1907,13 @@ export default function Home() {
           </div>
           <form className="manual-task-card add-task-form" onSubmit={addTask}>
             <span className="add-icon manual-task-icon"><Icon name="plus" /></span>
-            <label className="manual-task-copy">
+            <label className={`manual-task-copy ${newTask ? "has-value" : ""} ${isManualDictating ? "is-dictating" : ""}`}>
               <strong>ADD A TASK MANUALLY</strong>
               <input
                 ref={manualTaskInputRef}
                 value={newTask}
                 onChange={(event) => setNewTask(event.target.value)}
-                placeholder="TYPE OR DICTATE YOUR NEXT MOVE"
+                placeholder=""
                 aria-label="New task"
               />
             </label>
@@ -1936,6 +1935,7 @@ export default function Home() {
               <Icon name="arrow" />
             </button>
           </form>
+          <span className="transcript-end-divider" aria-hidden="true" />
         </article>
 
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>

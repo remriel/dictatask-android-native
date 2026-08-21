@@ -5600,6 +5600,24 @@ button:active:not(:disabled) {
   margin: 14px 0 0;
 }
 
+/* End the extended yellow surface with a true edge-to-edge divider. A small
+   yellow clearance lets the green card's hard shadow land cleanly; there is
+   still no padding below the divider at the panel edge. */
+.juice-workspace .transcript-card .transcript-end-divider {
+  display: block;
+  height: 4px;
+  margin: 12px -14px -14px;
+  background: var(--juice-black);
+}
+
+@media (min-width: 641px) {
+  .juice-workspace .transcript-card .transcript-end-divider {
+    margin-right: calc(-1 * clamp(16px, 2vw, 24px));
+    margin-bottom: calc(-1 * clamp(16px, 2vw, 24px));
+    margin-left: calc(-1 * clamp(16px, 2vw, 24px));
+  }
+}
+
 .juice-workspace .manual-task-card .manual-task-icon,
 .juice-workspace .manual-task-card .manual-dictate-button,
 .juice-workspace .manual-task-card .manual-submit-button {
@@ -5633,42 +5651,61 @@ button:active:not(:disabled) {
 }
 
 .juice-workspace .manual-task-card .manual-task-copy {
-  display: flex;
+  position: relative;
+  display: grid;
   min-width: 0;
   flex: 1 1 auto;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
+  min-height: 42px;
+  align-items: center;
 }
 
 .juice-workspace .manual-task-card .manual-task-copy strong {
+  grid-area: 1 / 1;
   color: var(--juice-black);
   font-size: 14px;
   font-weight: 950;
   letter-spacing: 0.04em;
   line-height: 1;
+  transition: opacity 120ms ease;
 }
 
 .juice-workspace .manual-task-card .manual-task-copy input {
+  grid-area: 1 / 1;
   width: 100%;
-  min-height: 0;
-  height: 15px;
+  min-height: 42px;
+  height: 42px;
   padding: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--juice-black);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.07em;
-  line-height: 15px;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  line-height: 42px;
+  opacity: 0;
+  transition: opacity 120ms ease;
 }
 
-.juice-workspace .manual-task-card .manual-task-copy input::placeholder {
-  color: var(--juice-black);
-  opacity: 0.74;
+.juice-workspace .manual-task-card .manual-task-copy:focus-within strong,
+.juice-workspace .manual-task-card .manual-task-copy.has-value strong {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy:focus-within input,
+.juice-workspace .manual-task-card .manual-task-copy.has-value input {
+  opacity: 1;
+}
+
+/* Dictation focuses the invisible field so live words can arrive immediately.
+   Until the first word does, keep the manual title visible beside its inverted mic tile. */
+.juice-workspace .manual-task-card .manual-task-copy.is-dictating:not(.has-value) strong {
+  opacity: 1;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy.is-dictating:not(.has-value) input {
+  opacity: 0;
 }
 
 .juice-workspace .manual-task-card .manual-dictate-button,
@@ -5687,9 +5724,9 @@ button:active:not(:disabled) {
 }
 
 .juice-workspace .manual-task-card .manual-dictate-button.is-dictating {
-  background: var(--juice-blue);
-  color: var(--juice-cream);
-  box-shadow: none;
+  background: var(--juice-black);
+  color: var(--juice-yellow);
+  box-shadow: 3px 3px 0 var(--juice-black);
 }
 
 .juice-workspace .manual-task-card .manual-dictate-button.is-dictating svg {
@@ -5740,7 +5777,7 @@ button:active:not(:disabled) {
   }
 
   .juice-workspace .manual-task-card .manual-task-copy input {
-    font-size: 7px;
+    font-size: 11px;
   }
 }
 
