@@ -48,8 +48,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 - `npx tsc --noEmit` passed.
 - `npm run build` passed and refreshed the packaged WebView assets.
-- Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, Clear done history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
-- Browser QA passed for recording-first order, the absent percentage/clear panel, the current static 42px theme banner, the in-button recording fill with no `VOICE SESSION: 30 SEC MAX` label or `.recording-progress` row, the 160px mobile transcription field, and a four-button action row with one shared top coordinate at 390px and 320px widths.
+- Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, permanent DONE history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.
+- Browser QA passed for recording-first order, the absent percentage/clear panel, the current static 42px theme banner, the in-button recording fill with no `VOICE SESSION: 30 SEC MAX` label or `.recording-progress` row, the 160px mobile transcription field, and the three-button action row with one shared top coordinate at 390px and 320px widths.
 - Browser QA passed for the accidental-completion `UNDO` flow (persistent inline control appeared, task restored, counts/progress restored, control dismissed) and deterministic DONE ordering with the newest completion first.
 - Browser QA passed for reopening a completed row from `DONE` (accessible `Reopen …` checkbox, row removed from `DONE`, task returned to `TO DO`) plus mobile typography sizing (16px title / 26px focus button at 390px with no horizontal overflow).
 - Browser QA passed for the footerless mobile shell: no `<footer>`, `LOCAL-FIRST FOCUS`, or `DT_` copy remains in the rendered page; the static top banner is 42px tall and the viewport has no horizontal overflow.
