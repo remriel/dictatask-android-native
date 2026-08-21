@@ -944,12 +944,36 @@ a:focus-visible {
   font-weight: 900;
   letter-spacing: -0.035em;
   line-height: 1.15;
+  position: relative;
+  text-decoration: none;
 }
 
 .is-complete .task-title {
   color: #8c857d;
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
+}
+
+.task-row:not(.is-complete) .task-title::after {
+  content: none;
+}
+
+.task-row.is-complete .task-title::after {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: transparent;
+  content: attr(data-title);
+  pointer-events: none;
+  text-decoration-color: var(--task-strike-color, currentColor);
+  text-decoration-line: line-through;
+  text-decoration-thickness: 3px;
+  text-transform: inherit;
+  white-space: inherit;
+  clip-path: inset(0);
+}
+
+.task-row.is-complete.is-celebrating .task-title::after {
+  animation: task-title-strike 560ms 190ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  clip-path: inset(0 100% 0 0);
 }
 
 .task-meta {
@@ -1127,6 +1151,15 @@ a:focus-visible {
   100% {
     opacity: 1;
     transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes task-title-strike {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0);
   }
 }
 
@@ -2741,10 +2774,11 @@ body {
 
 .juice-panel .task-title {
   color: var(--juice-black);
+  font-family: "Arial Rounded MT Bold", "Trebuchet MS", ui-rounded, Arial, Helvetica, sans-serif;
   font-size: clamp(18px, 1.7vw, 20px);
-  font-weight: 950;
-  letter-spacing: -0.045em;
-  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.08;
 }
 
 .task-focus-button {
@@ -2779,7 +2813,7 @@ body {
 
 .juice-panel .is-complete .task-title {
   color: rgba(17, 16, 24, 0.62);
-  text-decoration-thickness: 3px;
+  text-decoration: none;
 }
 
 .juice-panel .task-meta {
@@ -3480,6 +3514,11 @@ body {
     opacity: 1;
     transform: none;
   }
+
+  .juice-shell .task-row.is-complete .task-title::after {
+    animation: none !important;
+    clip-path: inset(0);
+  }
 }
 
 /* The removed mission deck should not leave decorative ghosts behind. */
@@ -3573,7 +3612,11 @@ body {
 }
 
 .juice-panel .task-row .task-title {
-  text-shadow: 1px 1px 0 rgba(23, 21, 29, 0.65);
+  --task-strike-color: var(--task-card-text);
+}
+
+.juice-panel .task-row .task-title {
+  text-shadow: none;
 }
 
 /* Keep the active board loud and scannable without changing the task text
@@ -5822,28 +5865,8 @@ button:active:not(:disabled) {
   }
 }
 
-/* A real illustrated task champion makes every completed task feel like an
-   event. The art is preloaded after first paint, then exists for this brief
-   completion-only layer rather than adding any idle rendering cost. */
-.screen-celebration .completion-mascot {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: 50%;
-  display: block;
-  width: min(78vw, 356px);
-  height: auto;
-  max-height: 58vh;
-  object-fit: contain;
-  opacity: 0;
-  pointer-events: none;
-  filter: drop-shadow(6px 8px 0 rgba(13, 13, 18, 0.86));
-  transform: translate(-50%, -50%) scale(0.16) rotate(-12deg);
-  transform-origin: 50% 62%;
-  user-select: none;
-  animation: completion-mascot-celebrate 1050ms cubic-bezier(0.18, 0.92, 0.26, 1) both;
-}
-
+/* Keep the completion word and reward as the focal point after removing the
+   character art; confetti and rings still provide the celebratory motion. */
 .screen-celebration .burst-word,
 .screen-celebration .burst-reward {
   z-index: 4;
@@ -5865,35 +5888,7 @@ button:active:not(:disabled) {
   z-index: 2;
 }
 
-@keyframes completion-mascot-celebrate {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -34%) scale(0.16) rotate(-12deg);
-  }
-  14% {
-    opacity: 1;
-    transform: translate(-50%, -54%) scale(1.13) rotate(4deg);
-  }
-  30% {
-    opacity: 1;
-    transform: translate(-50%, -48%) scale(0.96) rotate(-2deg);
-  }
-  60% {
-    opacity: 1;
-    transform: translate(-50%, -53%) scale(1.03) rotate(1deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -78%) scale(0.91) rotate(-3deg);
-  }
-}
-
 @media (max-width: 420px) {
-  .screen-celebration .completion-mascot {
-    width: min(84vw, 330px);
-    max-height: 54vh;
-  }
-
   .screen-celebration .burst-word {
     top: 14%;
     font-size: clamp(27px, 9vw, 42px);
@@ -5901,13 +5896,5 @@ button:active:not(:disabled) {
 
   .screen-celebration .burst-reward {
     top: 82%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .screen-celebration .completion-mascot {
-    animation: none !important;
-    opacity: 1;
-    transform: translate(-50%, -50%);
   }
 }
