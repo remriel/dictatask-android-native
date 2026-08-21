@@ -77,7 +77,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files. The manifest inspection confirms both `MainActivity` and the separate `VaultActivity` are present in the release APK.
 - APK v1.5.22 SHA-256: `17344069E13ABF3555794D4905511E45763DB3C10BC7455F6C6AB807098474B8` (1,910,140 bytes); verified with Android APK Signature Scheme v2. It reports `versionCode=8` / `versionName=1.5.22` and packages the new native Vault destination plus its independently bundled `vault.html` UI.
 - Google Drive APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/18OQBmtoFMYS6Y4pgXgNijd2EmeeU-PDa/view?usp=drivesdk
-- Public GitHub Release with the same APK asset: pending creation for `v1.5.22`.
+- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.22
 
 ## Constraints
 
@@ -87,6 +87,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are pushed to `agent/spin-wheel-focus-cleanup`.
-- Draft PR: https://github.com/remriel/dictatask-android-native/pull/5
+- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `28d5de8` (`Add native Hatch Vault destination`).
+- Public release: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.22
+- Historical PR #5 is merged: https://github.com/remriel/dictatask-android-native/pull/5
 - Run a physical-device smoke test when an Android target is available.
