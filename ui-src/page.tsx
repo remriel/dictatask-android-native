@@ -30,6 +30,8 @@ type Task = {
   title: string;
   color: TaskColor;
   completed: boolean;
+  createdAt?: number | null;
+  completedAt?: number | null;
   historyOnly?: boolean;
 };
 
@@ -159,6 +161,7 @@ const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
 const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
+const TASK_AGE_REFRESH_PADDING_MS = 250;
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
 const WHEEL_CONVERGE_DURATION_MS = 560;
 const WHEEL_SPIN_DURATION_MS = 3000;
@@ -380,6 +383,12 @@ function normalizeTaskEntry(value: unknown, index: number): Task | null {
     title,
     color: normalizeTaskColor(entry.color, `${id}:${title}`, index),
     completed: entry.completed === true,
+    createdAt: typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)
+      ? entry.createdAt
+      : null,
+    completedAt: typeof entry.completedAt === "number" && Number.isFinite(entry.completedAt)
+      ? entry.completedAt
+      : null,
   };
 }
 
@@ -463,10 +472,10 @@ function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
     const previous = byId.get(task.id);
     byId.set(task.id, {
       ...task,
-      createdAt: previous?.createdAt ?? now,
+      createdAt: task.createdAt ?? previous?.createdAt ?? now,
       completedAt: task.completed
-        ? (previous?.completed ? previous.completedAt ?? now : now)
-        : previous?.completedAt ?? null,
+        ? task.completedAt ?? (previous?.completed ? previous.completedAt ?? now : now)
+        : null,
     });
   });
 
@@ -514,6 +523,30 @@ function buildWheelGradient(tasks: Task[]) {
 
 function formatHistoryDate(timestamp: number | null) {
   return timestamp ? new Date(timestamp).toLocaleString() : "Not recorded";
+}
+
+function getLocalDayNumber(timestamp: number) {
+  const date = new Date(timestamp);
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
+}
+
+function getTaskOpenDays(createdAt: number | null | undefined, now: number) {
+  if (!createdAt || !Number.isFinite(createdAt)) return 0;
+  return Math.max(0, getLocalDayNumber(now) - getLocalDayNumber(createdAt));
+}
+
+function formatTaskOpenAge(daysOpen: number, completed: boolean) {
+  return `${completed ? "OPEN FOR" : "OPEN"} ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"}`;
+}
+
+function getNextLocalMidnightDelay(timestamp: number) {
+  const date = new Date(timestamp);
+  const nextMidnight = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + 1,
+  ).getTime();
+  return Math.max(1000, nextMidnight - timestamp + TASK_AGE_REFRESH_PADDING_MS);
 }
 
 function formatTaskHistory(entries: TaskHistoryEntry[]) {
@@ -575,12 +608,15 @@ function extractTasks(transcript: string): Task[] {
 
   const usable = candidates.length ? candidates : sentences.filter((sentence) => sentence.length > 9);
   const unique = Array.from(new Set(usable.map(tidyTask))).filter((title) => title.length > 3);
+  const createdAt = Date.now();
 
   return unique.slice(0, 12).map((title, index) => ({
     id: createId(),
     title,
     color: colors[index % colors.length],
     completed: false,
+    createdAt,
+    completedAt: null,
   }));
 }
 
@@ -645,12 +681,14 @@ function Icon({ name }: { name: "mic" | "spark" | "arrow" | "plus" | "trash" | "
 const TaskRow = memo(function TaskRow({
   task,
   index,
+  daysOpen,
   celebrating,
   onToggle,
   onFocus,
 }: {
   task: Task;
   index: number;
+  daysOpen: number;
   celebrating: boolean;
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
@@ -687,6 +725,9 @@ const TaskRow = memo(function TaskRow({
         <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
         <div>
           <p className="task-title">{task.title}</p>
+          <div className="task-meta" aria-label={`${formatTaskOpenAge(daysOpen, task.completed)} since this task was created`}>
+            <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+          </div>
           {!task.completed && (
             <button
               className="task-focus-button"
@@ -834,6 +875,7 @@ export default function Home() {
   const [wheelCandidates, setWheelCandidates] = useState<Task[]>([]);
   const [pendingWheelTaskId, setPendingWheelTaskId] = useState<string | null>(null);
   const [wheelSettingsOpen, setWheelSettingsOpen] = useState(false);
+  const [taskAgeNow, setTaskAgeNow] = useState(() => Date.now());
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const manualTaskInputRef = useRef<HTMLInputElement | null>(null);
   const manualRecognitionTimerRef = useRef<number | null>(null);
@@ -876,8 +918,48 @@ export default function Home() {
   }, [colorScheme, theme]);
 
   useEffect(() => {
+    let timer: number | null = null;
+    const refresh = () => {
+      const now = Date.now();
+      setTaskAgeNow(now);
+      timer = window.setTimeout(refresh, getNextLocalMidnightDelay(now));
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") setTaskAgeNow(Date.now());
+    };
+
+    refresh();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, []);
+
+  useEffect(() => {
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
   }, [setTaskHistory, tasks]);
+
+  useEffect(() => {
+    const historyById = new Map(taskHistory.map((entry) => [entry.id, entry]));
+    const now = Date.now();
+    setTasks((current) => {
+      let changed = false;
+      const next = current.map((task) => {
+        const history = historyById.get(task.id);
+        const createdAt = typeof task.createdAt === "number" && Number.isFinite(task.createdAt)
+          ? task.createdAt
+          : history?.createdAt ?? now;
+        const completedAt = task.completed
+          ? task.completedAt ?? history?.completedAt ?? null
+          : null;
+        if (createdAt === task.createdAt && completedAt === task.completedAt) return task;
+        changed = true;
+        return { ...task, createdAt, completedAt };
+      });
+      return changed ? next : current;
+    });
+  }, [setTasks, taskHistory]);
 
   const dismissedTaskIdSet = useMemo(() => new Set(dismissedTaskIds), [dismissedTaskIds]);
 
@@ -917,8 +999,8 @@ export default function Home() {
         const previous = history.get(task.id);
         history.set(task.id, {
           ...task,
-          createdAt: previous?.createdAt ?? null,
-          completedAt: previous?.completedAt ?? fallbackCompletionTime,
+          createdAt: task.createdAt ?? previous?.createdAt ?? null,
+          completedAt: task.completedAt ?? previous?.completedAt ?? fallbackCompletionTime,
           historyOnly: false,
         });
       }
@@ -929,16 +1011,32 @@ export default function Home() {
         (right.completedAt ?? 0) - (left.completedAt ?? 0)
         || (right.createdAt ?? 0) - (left.createdAt ?? 0)
       ))
-      .map(({ id, title, color, completed, historyOnly }) => ({
+      .map(({ id, title, color, completed, createdAt, completedAt, historyOnly }) => ({
         id,
         title,
         color,
         completed,
+        createdAt,
+        completedAt,
         historyOnly,
       }));
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
   const totalCount = tasks.length;
+  const createdAtByTaskId = useMemo(() => {
+    const timestamps = new Map<string, number>();
+    taskHistory.forEach((entry) => {
+      if (typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)) {
+        timestamps.set(entry.id, entry.createdAt);
+      }
+    });
+    tasks.forEach((task) => {
+      if (typeof task.createdAt === "number" && Number.isFinite(task.createdAt)) {
+        timestamps.set(task.id, task.createdAt);
+      }
+    });
+    return timestamps;
+  }, [taskHistory, tasks]);
   const filteredTasks = useMemo(() => {
     if (filter === "done") return doneHistoryTasks;
     return tasks
@@ -1489,7 +1587,7 @@ export default function Home() {
     if (!activeTask || !activeTask.completed) return;
 
     setTasks((current) => current.map((task) => (
-      task.id === action.id ? { ...task, completed: false } : task
+      task.id === action.id ? { ...task, completed: false, completedAt: null } : task
     )));
     setTaskHistory((current) => {
       if (!action.previousHistory) return current.filter((entry) => entry.id !== action.id);
@@ -1528,6 +1626,7 @@ export default function Home() {
     const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
+    const completionTimestamp = willComplete ? Date.now() : null;
 
     if (celebrationTimerRef.current !== null) {
       window.clearTimeout(celebrationTimerRef.current);
@@ -1536,7 +1635,13 @@ export default function Home() {
 
     setTasks((current) => {
       if (current.some((item) => item.id === id)) {
-        return current.map((item) => (item.id === id ? { ...item, completed: !item.completed } : item));
+        return current.map((item) => (item.id === id
+          ? {
+              ...item,
+              completed: !item.completed,
+              completedAt: item.completed ? null : completionTimestamp,
+            }
+          : item));
       }
       if (!task || !task.completed) return current;
       return [...current, {
@@ -1544,6 +1649,8 @@ export default function Home() {
         title: task.title,
         color: task.color,
         completed: false,
+        createdAt: task.createdAt ?? taskHistory.find((entry) => entry.id === task.id)?.createdAt ?? Date.now(),
+        completedAt: null,
       }];
     });
 
@@ -1636,6 +1743,8 @@ export default function Home() {
         title,
         color: colors[current.length % colors.length],
         completed: false,
+        createdAt: Date.now(),
+        completedAt: null,
       },
     ]);
     setNewTask("");
@@ -1844,6 +1953,10 @@ export default function Home() {
                       key={task.id}
                       task={task}
                       index={index}
+                      daysOpen={getTaskOpenDays(
+                        task.createdAt ?? createdAtByTaskId.get(task.id),
+                        task.completed ? task.completedAt ?? taskAgeNow : taskAgeNow,
+                      )}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}

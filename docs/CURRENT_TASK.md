@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make the manual-entry surface 50% taller, replace the former daily progress flare with a static theme banner, compact the task filters, and keep all button press feedback straight rather than tilted.
+Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make the manual-entry surface 50% taller, replace the former daily progress flare with a static theme banner, compact the task filters, keep all button press feedback straight rather than tilted, and show how many calendar days each task has been open.
 
 ## Current implementation
 
@@ -24,6 +24,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The task board has only `TO DO` and `DONE` tabs, with `TO DO` as the default.
 - Completed records remain available in `DONE` through persistent task history, even after active completed rows are cleared.
 - `DONE` history is sorted by `completedAt` descending, so the most recently completed task is always at the top. Re-completing a reopened task refreshes its completion timestamp.
+- Every task now persists `createdAt` (with a migration fallback for older records). Task rows show a local-calendar age badge such as `OPEN 3 DAYS`; completed history freezes the duration at completion as `OPEN FOR 3 DAYS`. The display refreshes at the next local midnight and when the app becomes visible.
 - Completing a task shows a persistent inline `UNDO` bar beneath the task toolbar, so it remains reachable on mobile until the user dismisses it or takes another task action. Undo restores the task, dismiss state, and prior history entry without leaving a false completion behind.
 - Every `DONE` row is an accessible checkbox. Tapping, pressing Enter, or pressing Space on a completed row reopens it, removes it from the completion history list, and returns it to `TO DO` without a completion side effect.
 - Task titles use a larger mobile-first type scale so they fill more of each card; the per-row `FOCUS` action is intentionally smaller to keep the title dominant.
@@ -51,10 +52,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed every outer panel has `x: 0`, full viewport width, `border: 0`, and no shadow at a 640px Android-style viewport; the body background is cream with no horizontal overflow. A simulated Android speech bridge filled the manual task field from the new mic control.
 - Browser QA at a mobile Android-style viewport confirmed the exact current dimensions: static top banner `42px`, manual-entry surface `72px`, manual input `72px`, `ADD TASK` action `72px`, transcript actions about `57px`, compact TO DO/DONE controls `29px`, centered Spin the Wheel launch band `76px`, and no horizontal overflow.
 - Browser QA held representative controls in hover and pressed states: the TO DO tab computed to a straight `-1px, -1px` lift, the recording button computed to a straight `2px, 2px` press, and no rendered button had a rotational transform.
+- Browser QA confirmed an active task created three calendar days earlier renders `OPEN 3 DAYS`, while a task created five days earlier and completed two days earlier renders `OPEN FOR 3 DAYS` in `DONE`.
 - The wheel control is the task list's immediate next sibling in the DOM, and the bottom status panel is absent.
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
-- APK SHA-256: `27CA1AB0E1A4F7F4D8CAFCB2D74B31BA30E462A477F035949E383C3C07E44904` (1,206,794 bytes).
-- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1GBPhdMdX8Q3XrFXbgjWWUGa7fQUH5tm7/view?usp=drivesdk
+- APK SHA-256: `020DD54A699CA2D3E73D5AC62AEA4DDC72A70AA2161D559C8B82897FACB8B96` (1,207,326 bytes).
+- Google Drive APK (new file; prior versions preserved): https://drive.google.com/file/d/1xn37nUaOuOzUBJlO9BglRudZv-udGUO4/view?usp=drivesdk
 
 ## Constraints
 
