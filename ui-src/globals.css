@@ -5569,3 +5569,100 @@ button:focus-visible:not(:disabled) {
 button:active:not(:disabled) {
   transform: translate(2px, 2px) !important;
 }
+
+/* Manual entry is again a true card: the black frame is part of the green
+   surface itself, not a separate spacer band above or below it. */
+.juice-workspace .manual-task-card {
+  border: 5px solid var(--juice-black);
+  box-shadow: none;
+}
+
+/* A real illustrated task champion makes every completed task feel like an
+   event. The art is preloaded after first paint, then exists for this brief
+   completion-only layer rather than adding any idle rendering cost. */
+.screen-celebration .completion-mascot {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: min(78vw, 356px);
+  height: auto;
+  max-height: 58vh;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(6px 8px 0 rgba(13, 13, 18, 0.86));
+  transform: translate(-50%, -50%) scale(0.16) rotate(-12deg);
+  transform-origin: 50% 62%;
+  user-select: none;
+  animation: completion-mascot-celebrate 1050ms cubic-bezier(0.18, 0.92, 0.26, 1) both;
+}
+
+.screen-celebration .burst-word,
+.screen-celebration .burst-reward {
+  z-index: 4;
+}
+
+.screen-celebration .burst-word {
+  top: 16%;
+  max-width: 84vw;
+  font-size: clamp(30px, 9vw, 70px);
+}
+
+.screen-celebration .burst-reward {
+  top: 83%;
+  background: var(--juice-yellow);
+}
+
+.screen-celebration .burst-ring,
+.screen-celebration .burst-particle {
+  z-index: 2;
+}
+
+@keyframes completion-mascot-celebrate {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -34%) scale(0.16) rotate(-12deg);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -54%) scale(1.13) rotate(4deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -48%) scale(0.96) rotate(-2deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -53%) scale(1.03) rotate(1deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -78%) scale(0.91) rotate(-3deg);
+  }
+}
+
+@media (max-width: 420px) {
+  .screen-celebration .completion-mascot {
+    width: min(84vw, 330px);
+    max-height: 54vh;
+  }
+
+  .screen-celebration .burst-word {
+    top: 14%;
+    font-size: clamp(27px, 9vw, 42px);
+  }
+
+  .screen-celebration .burst-reward {
+    top: 82%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-celebration .completion-mascot {
+    animation: none !important;
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}

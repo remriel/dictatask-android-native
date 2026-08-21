@@ -821,6 +821,12 @@ function CelebrationBurst({ variant, nonce }: { variant: CelebrationVariant; non
         ))}
       </div>
       <div className={`celebration-burst burst-${variant}`}>
+        <img
+          className="completion-mascot"
+          src="./dictatask-task-champion-512.png"
+          alt=""
+          draggable={false}
+        />
         <span className="burst-word">{word}</span>
         <span className="burst-reward">+1 DONE</span>
         <span className="burst-ring ring-one" />
@@ -916,6 +922,16 @@ export default function Home() {
       document.documentElement.style.removeProperty("color-scheme");
     };
   }, [colorScheme, theme]);
+
+  useEffect(() => {
+    // Warm the small raster once after the first paint so checking a task feels
+    // instantaneous even on a cold Android WebView cache.
+    const preloadTimer = window.setTimeout(() => {
+      const mascot = new Image();
+      mascot.src = "./dictatask-task-champion-512.png";
+    }, 350);
+    return () => window.clearTimeout(preloadTimer);
+  }, []);
 
   useEffect(() => {
     let timer: number | null = null;
