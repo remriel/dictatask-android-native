@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import { createPortal } from "react-dom";
 
 type TaskColor = "orange" | "blue" | "cyan" | "lime" | "violet";
-type Filter = "all" | "open" | "done";
+type Filter = "open" | "done";
 type Theme = "midnight" | "paper";
 type CelebrationVariant = "burst" | "stamp" | "jackpot" | "massacre";
 
@@ -13,11 +13,14 @@ type WheelSettings = {
   durationMinutes: number;
 };
 
+type FocusEntry = "wheel" | "direct";
+
 type WheelChallenge = {
   taskId: string;
   startedAt: number;
   durationSeconds: number;
   expired: boolean;
+  source: FocusEntry;
 };
 
 type WheelPhase = "list" | "converging" | "wheel" | "spinning" | "challenge" | "complete";
@@ -27,11 +30,21 @@ type Task = {
   title: string;
   color: TaskColor;
   completed: boolean;
+  createdAt?: number | null;
+  completedAt?: number | null;
+  historyOnly?: boolean;
 };
 
 type TaskHistoryEntry = Task & {
   createdAt: number | null;
   completedAt: number | null;
+};
+
+type UndoCompletion = {
+  id: string;
+  title: string;
+  previousHistory: TaskHistoryEntry | null;
+  wasDismissed: boolean;
 };
 
 type SpeechRecognitionLike = {
@@ -148,6 +161,7 @@ const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
 const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
+const TASK_AGE_REFRESH_PADDING_MS = 250;
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
 const WHEEL_CONVERGE_DURATION_MS = 560;
 const WHEEL_SPIN_DURATION_MS = 3000;
@@ -369,6 +383,12 @@ function normalizeTaskEntry(value: unknown, index: number): Task | null {
     title,
     color: normalizeTaskColor(entry.color, `${id}:${title}`, index),
     completed: entry.completed === true,
+    createdAt: typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)
+      ? entry.createdAt
+      : null,
+    completedAt: typeof entry.completedAt === "number" && Number.isFinite(entry.completedAt)
+      ? entry.completedAt
+      : null,
   };
 }
 
@@ -433,6 +453,7 @@ function normalizeWheelChallenge(value: unknown): WheelChallenge | null {
     startedAt,
     durationSeconds,
     expired: record.expired === true,
+    source: record.source === "direct" ? "direct" : "wheel",
   };
 }
 
@@ -451,14 +472,21 @@ function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
     const previous = byId.get(task.id);
     byId.set(task.id, {
       ...task,
-      createdAt: previous?.createdAt ?? now,
-      completedAt: task.completed ? previous?.completedAt ?? now : previous?.completedAt ?? null,
+      createdAt: task.createdAt ?? previous?.createdAt ?? now,
+      completedAt: task.completed
+        ? task.completedAt ?? (previous?.completed ? previous.completedAt ?? now : now)
+        : null,
     });
   });
 
-  return Array.from(byId.values())
-    .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0))
+  const sorted = Array.from(byId.values())
+    .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0));
+  const permanentDoneHistory = sorted.filter((entry) => entry.completed || entry.completedAt !== null);
+  const openHistory = sorted
+    .filter((entry) => !entry.completed && entry.completedAt === null)
     .slice(0, MAX_HISTORY_RECORDS);
+
+  return [...permanentDoneHistory, ...openHistory];
 }
 
 function getRemainingFocusSeconds(challenge: WheelChallenge) {
@@ -495,6 +523,30 @@ function buildWheelGradient(tasks: Task[]) {
 
 function formatHistoryDate(timestamp: number | null) {
   return timestamp ? new Date(timestamp).toLocaleString() : "Not recorded";
+}
+
+function getLocalDayNumber(timestamp: number) {
+  const date = new Date(timestamp);
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000;
+}
+
+function getTaskOpenDays(createdAt: number | null | undefined, now: number) {
+  if (!createdAt || !Number.isFinite(createdAt)) return 0;
+  return Math.max(0, getLocalDayNumber(now) - getLocalDayNumber(createdAt));
+}
+
+function formatTaskOpenAge(daysOpen: number, completed: boolean) {
+  return `${completed ? "OPEN FOR" : "OPEN"} ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"}`;
+}
+
+function getNextLocalMidnightDelay(timestamp: number) {
+  const date = new Date(timestamp);
+  const nextMidnight = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + 1,
+  ).getTime();
+  return Math.max(1000, nextMidnight - timestamp + TASK_AGE_REFRESH_PADDING_MS);
 }
 
 function formatTaskHistory(entries: TaskHistoryEntry[]) {
@@ -556,12 +608,15 @@ function extractTasks(transcript: string): Task[] {
 
   const usable = candidates.length ? candidates : sentences.filter((sentence) => sentence.length > 9);
   const unique = Array.from(new Set(usable.map(tidyTask))).filter((title) => title.length > 3);
+  const createdAt = Date.now();
 
   return unique.slice(0, 12).map((title, index) => ({
     id: createId(),
     title,
     color: colors[index % colors.length],
     completed: false,
+    createdAt,
+    completedAt: null,
   }));
 }
 
@@ -626,47 +681,68 @@ function Icon({ name }: { name: "mic" | "spark" | "arrow" | "plus" | "trash" | "
 const TaskRow = memo(function TaskRow({
   task,
   index,
+  daysOpen,
   celebrating,
   onToggle,
+  onFocus,
 }: {
   task: Task;
   index: number;
+  daysOpen: number;
   celebrating: boolean;
   onToggle: (id: string) => void;
+  onFocus: (id: string) => void;
 }) {
+  const historyOnly = task.historyOnly === true;
+
   return (
     <div
-      className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${celebrating ? "is-celebrating" : ""}`}
+      className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${historyOnly ? "is-history" : ""} ${celebrating ? "is-celebrating" : ""}`}
       id={`task-${task.id}`}
       style={{
         "--task-stack-index": index,
         "--task-stack-offset": `${(2 - index) * 94}px`,
       } as CSSProperties}
-      role="checkbox"
-      aria-checked={task.completed}
-      tabIndex={0}
-      aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
-      onClick={() => onToggle(task.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onToggle(task.id);
-        }
-      }}
     >
-      <span
+      <button
         className={`task-checkbox ${task.completed ? "checked" : ""} ${celebrating ? "is-celebrating" : ""}`}
-        aria-hidden="true"
+        type="button"
+        role="checkbox"
+        aria-checked={task.completed}
+        aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle(task.id);
+        }}
       >
         {task.completed && <Icon name="check" />}
-      </span>
+      </button>
       <div className="task-content">
         <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
         <div>
           <p className="task-title">{task.title}</p>
+          <div className="task-detail-row">
+            <div className="task-meta" aria-label={`${formatTaskOpenAge(daysOpen, task.completed)} since this task was created`}>
+              <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+            </div>
+            {!task.completed && (
+              <button
+                className="task-focus-button"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFocus(task.id);
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
+                aria-label={`Focus ${task.title} without spinning the wheel`}
+              >
+                FOCUS
+              </button>
+            )}
+          </div>
         </div>
       </div>
-      <span className="task-badge">{task.completed ? "DONE" : "NEXT"}</span>
+      <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
       <span className="task-swipe" aria-hidden="true">→</span>
     </div>
   );
@@ -743,6 +819,12 @@ function CelebrationBurst({ variant, nonce }: { variant: CelebrationVariant; non
         ))}
       </div>
       <div className={`celebration-burst burst-${variant}`}>
+        <img
+          className="completion-mascot"
+          src="./dictatask-task-champion-512.png"
+          alt=""
+          draggable={false}
+        />
         <span className="burst-word">{word}</span>
         <span className="burst-reward">+1 DONE</span>
         <span className="burst-ring ring-one" />
@@ -778,25 +860,29 @@ export default function Home() {
     null,
     normalizeWheelChallenge,
   );
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("open");
   const [newTask, setNewTask] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isManualDictating, setIsManualDictating] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [notice, setNotice] = useState("Ready when you are.");
+  const setNotice = useCallback((_message: string) => undefined, []);
+  const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
   const [celebratingTaskId, setCelebratingTaskId] = useState<string | null>(null);
   const [dismissedTaskIds, setDismissedTaskIds] = useStoredState<string[]>("dictatask-dismissed-task-ids", EMPTY_STRING_ARRAY);
   const [celebrationVariant, setCelebrationVariant] = useState<CelebrationVariant>("burst");
   const [celebrationNonce, setCelebrationNonce] = useState(0);
-  const [floatingReward, setFloatingReward] = useState<{ label: string; id: number } | null>(null);
   const [milestone, setMilestone] = useState<string | null>(null);
-  const [sessionXp, setSessionXp] = useState(0);
   const [combo, setCombo] = useState(0);
   const [wheelPhase, setWheelPhase] = useState<WheelPhase>("list");
+  const [focusEntryMode, setFocusEntryMode] = useState<FocusEntry>("wheel");
   const [wheelRotation, setWheelRotation] = useState(0);
   const [wheelCandidates, setWheelCandidates] = useState<Task[]>([]);
   const [pendingWheelTaskId, setPendingWheelTaskId] = useState<string | null>(null);
   const [wheelSettingsOpen, setWheelSettingsOpen] = useState(false);
+  const [taskAgeNow, setTaskAgeNow] = useState(() => Date.now());
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const manualTaskInputRef = useRef<HTMLInputElement | null>(null);
+  const manualRecognitionTimerRef = useRef<number | null>(null);
   const voiceBufferRef = useRef("");
   const voiceInterimRef = useRef("");
   const fallbackInterimRef = useRef("");
@@ -806,16 +892,19 @@ export default function Home() {
   const restartTimerRef = useRef<number | null>(null);
   const celebrationTimerRef = useRef<number | null>(null);
   const milestoneTimerRef = useRef<number | null>(null);
-  const rewardTimerRef = useRef<number | null>(null);
   const comboTimerRef = useRef<number | null>(null);
   const wheelRevealTimerRef = useRef<number | null>(null);
   const wheelSpinTimerRef = useRef<number | null>(null);
   const wheelReturnTimerRef = useRef<number | null>(null);
+  const wheelAnimationFrameRef = useRef<number | null>(null);
+  const wheelRotorRef = useRef<HTMLDivElement | null>(null);
   const wheelRunIdRef = useRef(0);
   const lastCompletionAtRef = useRef(0);
   const milestonesSeenRef = useRef(new Set<number>());
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
+  const focusTaskRef = useRef<(id: string) => void>(() => undefined);
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
+  const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
   const colorScheme = theme === "paper" ? "light" : "dark";
 
   useEffect(() => {
@@ -833,8 +922,58 @@ export default function Home() {
   }, [colorScheme, theme]);
 
   useEffect(() => {
+    // Warm the small raster once after the first paint so checking a task feels
+    // instantaneous even on a cold Android WebView cache.
+    const preloadTimer = window.setTimeout(() => {
+      const mascot = new Image();
+      mascot.src = "./dictatask-task-champion-512.png";
+    }, 350);
+    return () => window.clearTimeout(preloadTimer);
+  }, []);
+
+  useEffect(() => {
+    let timer: number | null = null;
+    const refresh = () => {
+      const now = Date.now();
+      setTaskAgeNow(now);
+      timer = window.setTimeout(refresh, getNextLocalMidnightDelay(now));
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") setTaskAgeNow(Date.now());
+    };
+
+    refresh();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, []);
+
+  useEffect(() => {
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
   }, [setTaskHistory, tasks]);
+
+  useEffect(() => {
+    const historyById = new Map(taskHistory.map((entry) => [entry.id, entry]));
+    const now = Date.now();
+    setTasks((current) => {
+      let changed = false;
+      const next = current.map((task) => {
+        const history = historyById.get(task.id);
+        const createdAt = typeof task.createdAt === "number" && Number.isFinite(task.createdAt)
+          ? task.createdAt
+          : history?.createdAt ?? now;
+        const completedAt = task.completed
+          ? task.completedAt ?? history?.completedAt ?? null
+          : null;
+        if (createdAt === task.createdAt && completedAt === task.completedAt) return task;
+        changed = true;
+        return { ...task, createdAt, completedAt };
+      });
+      return changed ? next : current;
+    });
+  }, [setTasks, taskHistory]);
 
   const dismissedTaskIdSet = useMemo(() => new Set(dismissedTaskIds), [dismissedTaskIds]);
 
@@ -854,20 +993,70 @@ export default function Home() {
 
   const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks]);
   const openCount = openTasks.length;
-  const doneCount = tasks.filter((task) => task.completed).length;
-  const totalCount = tasks.length;
-  const progressPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-  const filteredTasks = useMemo(() => {
-    const visibleTasks = filter === "open"
-      ? tasks.filter((task) => !task.completed || task.id === celebratingTaskId)
-      : filter === "done"
-        ? tasks.filter((task) => task.completed)
-        : tasks;
+  const completedCount = tasks.filter((task) => task.completed).length;
+  const doneHistoryTasks = useMemo(() => {
+    const fallbackCompletionTime = Date.now();
+    const history = new Map<string, TaskHistoryEntry>();
 
-    return filter === "open"
-      ? visibleTasks.filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id))
-      : visibleTasks;
-  }, [celebratingTaskId, dismissedTaskIdSet, filter, tasks]);
+    taskHistory.forEach((entry) => {
+      if (entry.completed || entry.completedAt !== null) {
+        history.set(entry.id, {
+          ...entry,
+          completed: true,
+          historyOnly: true,
+        });
+      }
+    });
+
+    tasks.forEach((task) => {
+      if (task.completed) {
+        const previous = history.get(task.id);
+        history.set(task.id, {
+          ...task,
+          createdAt: task.createdAt ?? previous?.createdAt ?? null,
+          completedAt: task.completedAt ?? previous?.completedAt ?? fallbackCompletionTime,
+          historyOnly: false,
+        });
+      }
+    });
+
+    return Array.from(history.values())
+      .sort((left, right) => (
+        (right.completedAt ?? 0) - (left.completedAt ?? 0)
+        || (right.createdAt ?? 0) - (left.createdAt ?? 0)
+      ))
+      .map(({ id, title, color, completed, createdAt, completedAt, historyOnly }) => ({
+        id,
+        title,
+        color,
+        completed,
+        createdAt,
+        completedAt,
+        historyOnly,
+      }));
+  }, [taskHistory, tasks]);
+  const doneCount = doneHistoryTasks.length;
+  const totalCount = tasks.length;
+  const createdAtByTaskId = useMemo(() => {
+    const timestamps = new Map<string, number>();
+    taskHistory.forEach((entry) => {
+      if (typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)) {
+        timestamps.set(entry.id, entry.createdAt);
+      }
+    });
+    tasks.forEach((task) => {
+      if (typeof task.createdAt === "number" && Number.isFinite(task.createdAt)) {
+        timestamps.set(task.id, task.createdAt);
+      }
+    });
+    return timestamps;
+  }, [taskHistory, tasks]);
+  const filteredTasks = useMemo(() => {
+    if (filter === "done") return doneHistoryTasks;
+    return tasks
+      .filter((task) => !task.completed || task.id === celebratingTaskId)
+      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id));
+  }, [celebratingTaskId, dismissedTaskIdSet, doneHistoryTasks, filter, tasks]);
 
   const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
   const wheelColorGradient = useMemo(() => buildWheelGradient(wheelTaskPool), [wheelTaskPool]);
@@ -890,10 +1079,12 @@ export default function Home() {
     if (!activeTask || activeTask.completed) {
       setWheelChallenge(null);
       if (wheelPhase === "challenge") setWheelPhase("list");
+      setFocusEntryMode("wheel");
       return;
     }
 
     if (wheelPhase === "list") {
+      setFocusEntryMode(wheelChallenge.source);
       setWheelCandidates((current) => current.length ? current : openTasks);
       setPendingWheelTaskId(activeTask.id);
       setWheelPhase("challenge");
@@ -971,9 +1162,9 @@ export default function Home() {
     keepListeningRef.current = false;
     voiceSessionRef.current += 1;
     if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current);
+    if (manualRecognitionTimerRef.current !== null) window.clearTimeout(manualRecognitionTimerRef.current);
     if (celebrationTimerRef.current !== null) window.clearTimeout(celebrationTimerRef.current);
     if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
-    if (rewardTimerRef.current !== null) window.clearTimeout(rewardTimerRef.current);
     if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
     wheelRunIdRef.current += 1;
     clearWheelTimers();
@@ -997,17 +1188,42 @@ export default function Home() {
       window.clearTimeout(wheelReturnTimerRef.current);
       wheelReturnTimerRef.current = null;
     }
+    if (wheelAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(wheelAnimationFrameRef.current);
+      wheelAnimationFrameRef.current = null;
+    }
   }
 
-  function putWheelAway(message = "Wheel cancelled. Your tasks are unchanged.") {
+  function putWheelAway(message?: string) {
     wheelRunIdRef.current += 1;
     clearWheelTimers();
     setWheelChallenge(null);
     setWheelPhase("list");
+    setFocusEntryMode("wheel");
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
-    setNotice(message);
+    setNotice(message ?? (focusEntryMode === "direct"
+      ? "Focus cancelled. Your tasks are unchanged."
+      : "Wheel cancelled. Your tasks are unchanged."));
+  }
+
+  function finishWheelSpin(runId: number, selectedTask: Task, targetRotation: number, durationMinutes: number) {
+    if (wheelRunIdRef.current !== runId) return;
+    clearWheelTimers();
+    if (wheelRotorRef.current) {
+      wheelRotorRef.current.style.transform = `rotate(${targetRotation}deg)`;
+    }
+    setWheelRotation(targetRotation);
+    setWheelChallenge({
+      taskId: selectedTask.id,
+      startedAt: Date.now(),
+      durationSeconds: durationMinutes * 60,
+      expired: false,
+      source: "wheel",
+    });
+    setWheelPhase("challenge");
+    setNotice(`${selectedTask.title} is the move. ${durationMinutes} minutes, clean finish.`);
   }
 
   function spinTheWheel() {
@@ -1027,10 +1243,16 @@ export default function Home() {
     wheelRunIdRef.current = runId;
     clearWheelTimers();
     setWheelChallenge(null);
+    setFocusEntryMode("wheel");
     const selectedIndex = Math.floor(Math.random() * eligibleTasks.length);
     const selectedTask = eligibleTasks[selectedIndex];
     const segmentAngle = 360 / eligibleTasks.length;
     const targetAngle = selectedIndex * segmentAngle + (segmentAngle / 2);
+    const startRotation = wheelRotation;
+    const normalizedCurrent = ((startRotation % 360) + 360) % 360;
+    const alignment = (360 - targetAngle - normalizedCurrent + 360) % 360;
+    const targetRotation = startRotation + (6 * 360) + alignment;
+    const durationMinutes = wheelSettings.durationMinutes;
 
     setWheelCandidates(eligibleTasks);
     setPendingWheelTaskId(selectedTask.id);
@@ -1044,30 +1266,67 @@ export default function Home() {
       setWheelPhase("wheel");
       window.requestAnimationFrame(() => {
         if (wheelRunIdRef.current !== runId) return;
+        setWheelPhase("spinning");
         window.requestAnimationFrame(() => {
           if (wheelRunIdRef.current !== runId) return;
-          setWheelPhase("spinning");
-          setWheelRotation((current) => {
-            const normalizedCurrent = ((current % 360) + 360) % 360;
-            const alignment = (360 - targetAngle - normalizedCurrent + 360) % 360;
-            return current + (6 * 360) + alignment;
-          });
+          const animationStartedAt = window.performance.now();
+          const animateWheel = (now: number) => {
+            if (wheelRunIdRef.current !== runId) return;
+            const progress = Math.min(1, (now - animationStartedAt) / WHEEL_SPIN_DURATION_MS);
+            const easedProgress = 1 - Math.pow(1 - progress, 4);
+            const rotation = startRotation + ((targetRotation - startRotation) * easedProgress);
+            if (wheelRotorRef.current) {
+              wheelRotorRef.current.style.transform = `rotate(${rotation}deg)`;
+            }
+
+            if (progress < 1) {
+              wheelAnimationFrameRef.current = window.requestAnimationFrame(animateWheel);
+              return;
+            }
+
+            wheelAnimationFrameRef.current = null;
+            finishWheelSpin(runId, selectedTask, targetRotation, durationMinutes);
+          };
+
+          wheelAnimationFrameRef.current = window.requestAnimationFrame(animateWheel);
         });
       });
 
       wheelSpinTimerRef.current = window.setTimeout(() => {
         wheelSpinTimerRef.current = null;
-        if (wheelRunIdRef.current !== runId) return;
-        setWheelChallenge({
-          taskId: selectedTask.id,
-          startedAt: Date.now(),
-          durationSeconds: wheelSettings.durationMinutes * 60,
-          expired: false,
-        });
-        setWheelPhase("challenge");
-        setNotice(`${selectedTask.title} is the move. ${wheelSettings.durationMinutes} minutes, clean finish.`);
-      }, WHEEL_SPIN_DURATION_MS + 120);
+        finishWheelSpin(runId, selectedTask, targetRotation, durationMinutes);
+      }, WHEEL_SPIN_DURATION_MS + 240);
     }, WHEEL_CONVERGE_DURATION_MS);
+  }
+
+  function focusTaskDirectly(taskId: string) {
+    const selectedTask = tasks.find((task) => task.id === taskId);
+    if (!selectedTask || selectedTask.completed) {
+      setNotice("Choose an open task to start a focus clock.");
+      return;
+    }
+
+    if (wheelChallenge && !wheelChallenge.expired) {
+      setWheelPhase("challenge");
+      setNotice("Your focus clock is already running. Finish that task before choosing another.");
+      return;
+    }
+
+    wheelRunIdRef.current += 1;
+    clearWheelTimers();
+    setWheelChallenge({
+      taskId: selectedTask.id,
+      startedAt: Date.now(),
+      durationSeconds: wheelSettings.durationMinutes * 60,
+      expired: false,
+      source: "direct",
+    });
+    setWheelPhase("challenge");
+    setFocusEntryMode("direct");
+    setWheelCandidates([]);
+    setPendingWheelTaskId(selectedTask.id);
+    setWheelSettingsOpen(false);
+    setNotice(`${selectedTask.title} is locked in. ${wheelSettings.durationMinutes} minutes, clean finish.`);
   }
 
   function rerollWheel() {
@@ -1075,6 +1334,7 @@ export default function Home() {
     clearWheelTimers();
     setWheelChallenge(null);
     setWheelPhase("list");
+    setFocusEntryMode("wheel");
     const rerollId = wheelRunIdRef.current;
     window.setTimeout(() => {
       if (wheelRunIdRef.current !== rerollId) return;
@@ -1100,7 +1360,7 @@ export default function Home() {
     }
 
     setTasks([...(isDemoList ? [] : tasks), ...additions]);
-    setFilter("all");
+    setFilter("open");
     setNotice(`${additions.length} new ${additions.length === 1 ? "task" : "tasks"} added. Your dictated text is still here.`);
   }
 
@@ -1211,23 +1471,212 @@ export default function Home() {
     startRecognitionSegment();
   }
 
+  function stopManualDictation(message = "Task dictation stopped.") {
+    voiceSessionRef.current += 1;
+    if (manualRecognitionTimerRef.current !== null) {
+      window.clearTimeout(manualRecognitionTimerRef.current);
+      manualRecognitionTimerRef.current = null;
+    }
+
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    try {
+      recognition?.stop();
+    } catch {
+      recognition?.abort?.();
+    }
+    setIsManualDictating(false);
+    setNotice(message);
+  }
+
+  function toggleManualDictation() {
+    if (isManualDictating) {
+      stopManualDictation();
+      return;
+    }
+
+    const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setNotice("Microphone dictation is unavailable here. You can still type the task.");
+      return;
+    }
+
+    if (isListening) {
+      finishListening("Voice note stopped. Dictating a task instead.");
+    }
+
+    manualTaskInputRef.current?.focus();
+    voiceSessionRef.current += 1;
+    const sessionId = voiceSessionRef.current;
+    const initialTask = newTask.trim();
+    let finalSpeech = "";
+    let interimSpeech = "";
+    const committedFinalResults = new Set<string>();
+    const recognition = new Recognition();
+
+    const publishTaskPreview = () => {
+      const spoken = [finalSpeech, interimSpeech].filter(Boolean).join(" ").trim();
+      setNewTask([initialTask, spoken].filter(Boolean).join(" "));
+    };
+
+    const finishManualSession = (message: string) => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+      if (manualRecognitionTimerRef.current !== null) {
+        window.clearTimeout(manualRecognitionTimerRef.current);
+        manualRecognitionTimerRef.current = null;
+      }
+      recognitionRef.current = null;
+      setIsManualDictating(false);
+      setNotice(message);
+    };
+
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+
+      let nextInterim = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const spoken = result[0].transcript.trim();
+        if (!spoken) continue;
+        if (result.isFinal) {
+          const resultKey = `${index}:${spoken.toLowerCase()}`;
+          if (!committedFinalResults.has(resultKey)) {
+            committedFinalResults.add(resultKey);
+            finalSpeech = `${finalSpeech} ${spoken}`.trim();
+          }
+        } else {
+          nextInterim = `${nextInterim} ${spoken}`.trim();
+        }
+      }
+      interimSpeech = nextInterim;
+      publishTaskPreview();
+    };
+    recognition.onerror = (event) => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        finishManualSession("Microphone permission is blocked. You can still type the task.");
+      } else if (event.error !== "aborted") {
+        finishManualSession("Task dictation stopped. Try the mic again when you are ready.");
+      }
+    };
+    recognition.onend = () => {
+      finishManualSession(finalSpeech.trim()
+        ? "Task dictation is ready to add."
+        : "No task was heard. Try the mic again or type it in.");
+    };
+
+    recognitionRef.current = recognition;
+    setIsManualDictating(true);
+    setNotice("Dictating a task. Tap the mic again when you are done.");
+    manualRecognitionTimerRef.current = window.setTimeout(() => {
+      if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+      try {
+        recognition.stop();
+      } catch {
+        recognition.abort?.();
+      }
+      finishManualSession("30-second task dictation complete.");
+    }, RECORDING_LIMIT_SECONDS * 1000);
+
+    try {
+      recognition.start();
+    } catch {
+      finishManualSession("I could not start the microphone. You can still type the task.");
+    }
+  }
+
+  function clearUndoCompletion() {
+    setUndoCompletion(null);
+  }
+
+  function undoLastCompletion() {
+    const action = undoCompletion;
+    if (!action) return;
+
+    clearUndoCompletion();
+    const activeTask = tasks.find((task) => task.id === action.id);
+    if (!activeTask || !activeTask.completed) return;
+
+    setTasks((current) => current.map((task) => (
+      task.id === action.id ? { ...task, completed: false, completedAt: null } : task
+    )));
+    setTaskHistory((current) => {
+      if (!action.previousHistory) return current.filter((entry) => entry.id !== action.id);
+      const restored = { ...action.previousHistory, completed: false };
+      let restoredInPlace = false;
+      const next = current.map((entry) => {
+        if (entry.id !== action.id) return entry;
+        restoredInPlace = true;
+        return restored;
+      });
+      return restoredInPlace ? next : [...next, restored];
+    });
+    setDismissedTaskIds((current) => action.wasDismissed
+      ? current
+      : current.filter((taskId) => taskId !== action.id));
+    if (celebrationTimerRef.current !== null) {
+      window.clearTimeout(celebrationTimerRef.current);
+      celebrationTimerRef.current = null;
+    }
+    setCelebratingTaskId(null);
+    setMilestone(null);
+
+    if (wheelFocusTaskId === action.id) {
+      wheelRunIdRef.current += 1;
+      clearWheelTimers();
+      setWheelChallenge(null);
+      setWheelPhase("list");
+      setFocusEntryMode("wheel");
+      setWheelCandidates([]);
+      setPendingWheelTaskId(null);
+    }
+    setNotice("Task restored. Nothing was completed.");
+  }
+
   function toggleTask(id: string) {
-    const task = tasks.find((item) => item.id === id);
+    const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
+    const completionTimestamp = willComplete ? Date.now() : null;
 
     if (celebrationTimerRef.current !== null) {
       window.clearTimeout(celebrationTimerRef.current);
       celebrationTimerRef.current = null;
     }
 
-    setTasks((current) =>
-      current.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)),
-    );
+    setTasks((current) => {
+      if (current.some((item) => item.id === id)) {
+        return current.map((item) => (item.id === id
+          ? {
+              ...item,
+              completed: !item.completed,
+              completedAt: item.completed ? null : completionTimestamp,
+            }
+          : item));
+      }
+      if (!task || !task.completed) return current;
+      return [...current, {
+        id: task.id,
+        title: task.title,
+        color: task.color,
+        completed: false,
+        createdAt: task.createdAt ?? taskHistory.find((entry) => entry.id === task.id)?.createdAt ?? Date.now(),
+        completedAt: null,
+      }];
+    });
 
     if (willComplete) {
-      const previousPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-      const nextDoneCount = doneCount + 1;
+      setUndoCompletion({
+        id,
+        title: task?.title ?? "Task",
+        previousHistory: taskHistory.find((entry) => entry.id === id) ?? null,
+        wasDismissed: dismissedTaskIdSet.has(id),
+      });
+      const previousPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+      const nextDoneCount = completedCount + 1;
       const nextPercent = totalCount ? Math.round((nextDoneCount / totalCount) * 100) : 100;
       const now = Date.now();
       const nextCombo = now - lastCompletionAtRef.current < 3600 ? Math.min(combo + 1, 4) : 1;
@@ -1237,23 +1686,11 @@ export default function Home() {
       setCombo(nextCombo);
       setCelebrationVariant(variants[celebrationNonce % variants.length]);
       setCelebrationNonce((current) => current + 1);
-      setSessionXp((current) => current + (nextCombo >= 4 ? 50 : nextCombo * 10));
-      setFloatingReward({
-        label: nextCombo >= 4 ? "FOCUS STREAK" : `+${nextCombo * 10} XP`,
-        id: now,
-      });
-
       if (comboTimerRef.current !== null) window.clearTimeout(comboTimerRef.current);
       comboTimerRef.current = window.setTimeout(() => {
         setCombo(0);
         comboTimerRef.current = null;
       }, 4200);
-
-      if (rewardTimerRef.current !== null) window.clearTimeout(rewardTimerRef.current);
-      rewardTimerRef.current = window.setTimeout(() => {
-        setFloatingReward(null);
-        rewardTimerRef.current = null;
-      }, 1250);
 
       const crossedMilestone = [25, 50, 75, 100].find((threshold) => (
         nextPercent >= threshold && previousPercent < threshold && !milestonesSeenRef.current.has(threshold)
@@ -1276,12 +1713,14 @@ export default function Home() {
         clearWheelTimers();
         setWheelChallenge(null);
         setWheelPhase("complete");
+        setFocusEntryMode(wheelChallenge?.source ?? "wheel");
         setNotice(wheelChallenge?.expired
           ? "Task cleared after the buzzer. Still a win."
           : "Focus task cleared. You held the line.");
         wheelReturnTimerRef.current = window.setTimeout(() => {
           wheelReturnTimerRef.current = null;
           setWheelPhase("list");
+          setFocusEntryMode("wheel");
           setWheelCandidates([]);
           setPendingWheelTaskId(null);
         }, 1400);
@@ -1295,6 +1734,8 @@ export default function Home() {
         celebrationTimerRef.current = null;
       }, 1050);
     } else {
+      if (undoCompletion?.id === id) clearUndoCompletion();
+      setTaskHistory((current) => current.filter((entry) => entry.id !== id));
       lastCompletionAtRef.current = 0;
       setCombo(0);
       setDismissedTaskIds((current) => {
@@ -1316,6 +1757,8 @@ export default function Home() {
         title,
         color: colors[current.length % colors.length],
         completed: false,
+        createdAt: Date.now(),
+        completedAt: null,
       },
     ]);
     setNewTask("");
@@ -1323,19 +1766,29 @@ export default function Home() {
   }
 
   function clearCompleted() {
+    const completedTasks = tasks.filter((task) => task.completed);
+    if (undoCompletion && completedTasks.some((task) => task.id === undoCompletion.id)) {
+      clearUndoCompletion();
+    }
+    if (completedTasks.length) {
+      setTaskHistory((current) => mergeTaskHistory(current, completedTasks));
+    }
     setTasks((current) => current.filter((task) => !task.completed));
     setNotice("Finished items cleared.");
   }
 
   function clearAllTasks() {
+    clearUndoCompletion();
+    setTaskHistory((current) => mergeTaskHistory(current, tasks));
     wheelRunIdRef.current += 1;
     clearWheelTimers();
     setTasks([]);
-    setFilter("all");
+    setFilter("open");
     setDismissedTaskIds([]);
     setCombo(0);
     setWheelChallenge(null);
     setWheelPhase("list");
+    setFocusEntryMode("wheel");
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
@@ -1371,12 +1824,12 @@ export default function Home() {
   }
 
   toggleTaskRef.current = toggleTask;
+  focusTaskRef.current = focusTaskDirectly;
 
   return (
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
       <div className="noise" aria-hidden="true" />
       {celebratingTaskId && <CelebrationBurst key={celebrationNonce} variant={celebrationVariant} nonce={celebrationNonce} />}
-      {floatingReward && <div className="floating-reward" key={floatingReward.id} aria-live="polite">{floatingReward.label}</div>}
       {milestone && (
         <div className={`milestone-overlay ${milestone === "LEVEL COMPLETE" ? "is-final" : ""}`} role="status" aria-live="polite">
           <span className="milestone-kicker">PROGRESS UNLOCKED</span>
@@ -1384,14 +1837,15 @@ export default function Home() {
           <span className="milestone-sub">{milestone === "LEVEL COMPLETE" ? "YOU CLEARED THE WHOLE BOARD" : "KEEP THE MOMENTUM"}</span>
         </div>
       )}
-      <section className="focus-banner" aria-label="Task board progress">
-        <div className="focus-banner-score" aria-label={`${progressPercent} percent of tasks complete`}>
-          <span>BOARD STATUS</span>
-          <strong>{progressPercent}%</strong>
-          <small>CLEAR</small>
-        </div>
-      </section>
-
+      <div className="top-banner" role="img" aria-label="DictaTask">
+        <span className="top-banner-name" aria-hidden="true">
+          <span className="top-banner-name-dicta">DICTA</span>
+          <span className="top-banner-name-task">TASK</span>
+        </span>
+        <span className="top-banner-block top-banner-block-orange" />
+        <span className="top-banner-block top-banner-block-blue" />
+        <span className="top-banner-block top-banner-block-lime" />
+      </div>
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">
@@ -1404,7 +1858,6 @@ export default function Home() {
               <span className="record-button-icon"><Icon name="mic" /></span>
               <span className="record-button-copy">
                 <strong>{isListening ? "LISTENING NOW" : "TAP TO RECORD"}</strong>
-                <small>{isListening ? "Speak naturally" : "VOICE NOTE / 30 SEC MAX"}</small>
               </span>
               <span className="record-button-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
               <span className="shortcut">{isListening ? `${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")}s LEFT` : "30s MAX"}</span>
@@ -1443,38 +1896,52 @@ export default function Home() {
 
           <div className="transcript-action-row">
             <button className="scan-button compact-scan-button" type="button" onClick={generateTasks} disabled={!transcript.trim() || isListening}>
-              <span><Icon name="spark" /> CONVERT</span>
+              <span><Icon name="spark" /> CONVERT TO TASKS</span>
               <span className="button-arrow"><Icon name="arrow" /></span>
             </button>
             <button className="clear-transcript-button transcript-clear-action" type="button" onClick={clearTranscript} disabled={!transcript.trim()}>
               <Icon name="trash" /> CLEAR TEXT
             </button>
           </div>
+          <form className="manual-task-card add-task-form" onSubmit={addTask}>
+            <span className="add-icon manual-task-icon"><Icon name="plus" /></span>
+            <label className={`manual-task-copy ${newTask ? "has-value" : ""} ${isManualDictating ? "is-dictating" : ""}`}>
+              <strong>Add task manually…</strong>
+              <input
+                ref={manualTaskInputRef}
+                value={newTask}
+                onChange={(event) => setNewTask(event.target.value)}
+                placeholder=""
+                aria-label="New task"
+              />
+            </label>
+            <button
+              className={`manual-dictate-button ${isManualDictating ? "is-dictating" : ""}`}
+              type="button"
+              onClick={toggleManualDictation}
+              aria-label={isManualDictating ? "Stop dictating the new task" : "Dictate the new task"}
+              aria-pressed={isManualDictating}
+            >
+              <Icon name="mic" />
+            </button>
+            <button
+              className="manual-submit-button"
+              type="submit"
+              disabled={!newTask.trim() || isManualDictating}
+              aria-label="Add task"
+            >
+              <Icon name="arrow" />
+            </button>
+          </form>
+          <span className="transcript-end-divider" aria-hidden="true" />
         </article>
 
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
           <div className={`task-board-flip ${wheelPhase !== "list" ? "is-wheel-revealed" : ""}`}>
             <div className="task-board-face task-board-face-front" aria-hidden={wheelPhase !== "list"}>
-              <div className="card-heading task-heading">
-                <div className="task-heading-copy">
-                  <div className="task-actions">
-                    <button
-                      className="clear-button wheel-launch-button"
-                      type="button"
-                      onClick={spinTheWheel}
-                      disabled={!openCount}
-                      aria-label="Spin the wheel to choose an open task"
-                    >
-                      <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
-                      <span>Spin the wheel</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <div className="task-toolbar">
                 <div className="filter-tabs" role="group" aria-label="Filter tasks">
-                  {(["all", "open", "done"] as Filter[]).map((item) => (
+                  {(["open", "done"] as Filter[]).map((item) => (
                     <button
                       className={filter === item ? "active" : ""}
                       key={item}
@@ -1482,13 +1949,29 @@ export default function Home() {
                       aria-pressed={filter === item}
                       onClick={() => setFilter(item)}
                     >
-                      {item === "all" ? "All" : item === "open" ? "To do" : "Done"}
-                      <span>{item === "all" ? tasks.length : item === "open" ? openCount : doneCount}</span>
+                      {item === "open" ? "TO DO" : "DONE"}
+                      <span>{item === "open" ? openCount : doneCount}</span>
                     </button>
                   ))}
                 </div>
                 <span className="task-sort">AUTO-SORTED ↕</span>
               </div>
+
+              {undoCompletion && (
+                <div className="undo-inline" role="status" aria-live="polite">
+                  <div className="undo-inline-copy">
+                    <strong>LAST MOVE</strong>
+                    <span>{undoCompletion.title}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={undoLastCompletion}
+                    aria-label={`Undo marking ${undoCompletion.title} done`}
+                  >
+                    UNDO
+                  </button>
+                </div>
+              )}
 
               <div className="task-list">
                 {filteredTasks.length ? (
@@ -1497,8 +1980,13 @@ export default function Home() {
                       key={task.id}
                       task={task}
                       index={index}
+                      daysOpen={getTaskOpenDays(
+                        task.createdAt ?? createdAtByTaskId.get(task.id),
+                        task.completed ? task.completedAt ?? taskAgeNow : taskAgeNow,
+                      )}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
+                      onFocus={handleTaskFocus}
                     />
                   ))
                 ) : (
@@ -1523,7 +2011,7 @@ export default function Home() {
                 <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
                   <Icon name="download" /> Export .txt
                 </button>
-                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!doneCount}>
+                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!completedCount}>
                   <Icon name="trash" /> Clear done
                 </button>
                 <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
@@ -1532,11 +2020,11 @@ export default function Home() {
               </div>
 
               {wheelSettingsOpen && (
-                <section className="wheel-settings-inline" id="wheel-settings" aria-label="Spin the Wheel settings">
-                  <div className="wheel-settings-copy">
-                    <span>SPIN THE WHEEL / SETTINGS</span>
-                    <strong>Focus countdown</strong>
-                    <small>Choose the clock for your next selected task.</small>
+                  <section className="wheel-settings-inline" id="wheel-settings" aria-label="Focus countdown settings">
+                    <div className="wheel-settings-copy">
+                      <span>FOCUS CLOCK / SETTINGS</span>
+                      <strong>Focus countdown</strong>
+                      <small>Choose the clock for your next focus run.</small>
                   </div>
                   <div className="wheel-duration-options" role="group" aria-label="Focus countdown duration">
                     {WHEEL_DURATION_OPTIONS.map((minutes) => (
@@ -1547,7 +2035,7 @@ export default function Home() {
                         aria-pressed={wheelSettings.durationMinutes === minutes}
                         onClick={() => {
                           setWheelSettings({ durationMinutes: minutes });
-                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next spin.`);
+                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next focus run.`);
                         }}
                       >
                         {minutes} MIN
@@ -1557,17 +2045,12 @@ export default function Home() {
                 </section>
               )}
 
-              <form className="add-task-form" onSubmit={addTask}>
-                <span className="add-icon"><Icon name="plus" /></span>
-                <input value={newTask} onChange={(event) => setNewTask(event.target.value)} placeholder="Add a task manually…" aria-label="New task" />
-                <button type="submit" disabled={!newTask.trim()}>ADD TASK</button>
-              </form>
             </div>
 
             <div className="task-board-face task-board-face-back" aria-hidden={wheelPhase === "list"}>
               <section className="wheel-stage" aria-label="Spin the Wheel focus challenge">
                 <div className="wheel-stage-kicker">
-                  <span>SPIN THE WHEEL</span>
+                  <span>{focusEntryMode === "direct" ? "DIRECT FOCUS" : "SPIN THE WHEEL"}</span>
                   <span>FOCUS CLOCK · {wheelSettings.durationMinutes} MIN</span>
                 </div>
 
@@ -1576,27 +2059,40 @@ export default function Home() {
                     className="wheel-cancel-button"
                     type="button"
                     onClick={() => putWheelAway()}
-                    aria-label="Cancel the wheel and return to the current tasks"
+                    aria-label="Cancel focus and return to the current tasks"
                   >
                     <span aria-hidden="true">×</span> CANCEL / KEEP TASKS
                   </button>
                 )}
 
-                <div className="wheel-machine">
-                  <span className="wheel-landing-marker">LAND HERE</span>
-                  <div
-                    className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
-                    style={{
-                      "--wheel-color-gradient": wheelColorGradient,
-                      transform: `rotate(${wheelRotation}deg)`,
-                    } as CSSProperties}
-                    role="img"
-                    aria-label="A colorful task-selection wheel"
-                  >
-                    <span className="wheel-color-field" aria-hidden="true" />
-                    <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
+                {focusEntryMode === "direct" ? (
+                  wheelPhase === "challenge" && wheelFocusTask && (
+                    <div className={`direct-focus-panel task-${wheelFocusTask.color}`} role="status">
+                      <span>DIRECT FOCUS</span>
+                      <strong>YOUR CHOICE</strong>
+                      <small>No spin. Start with the task you picked.</small>
+                    </div>
+                  )
+                ) : (
+                  <div className={`wheel-machine ${wheelPhase === "spinning" ? "is-spinning" : ""}`}>
+                    <span className="wheel-landing-marker">LAND HERE</span>
+                    <div
+                      ref={wheelRotorRef}
+                      className={`wheel-rotor ${wheelPhase === "spinning" ? "is-spinning" : ""}`}
+                      style={{
+                        "--wheel-color-gradient": wheelColorGradient,
+                        transform: `rotate(${wheelRotation}deg)`,
+                      } as CSSProperties}
+                      role="img"
+                      aria-label="A colorful task-selection wheel"
+                    >
+                      <span className="wheel-color-field" aria-hidden="true" />
+                      <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
+                      <span className="wheel-light-sweep" aria-hidden="true" />
+                      <span className="wheel-hub-mark" aria-hidden="true">SPIN</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {(wheelPhase === "wheel" || wheelPhase === "spinning") && (
                   <div className="wheel-result-card is-spinning" role="status" aria-live="polite">
@@ -1640,22 +2136,23 @@ export default function Home() {
             </div>
           </div>
         </article>
+
+        {wheelPhase === "list" && (
+          <section className="spin-launch-card juice-panel" aria-label="Focus selection">
+            <button
+              className="clear-button wheel-launch-button"
+              type="button"
+              onClick={spinTheWheel}
+              disabled={!openCount}
+              aria-label="Spin the wheel to choose an open task"
+            >
+              <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
+              <span>Spin the wheel</span>
+            </button>
+          </section>
+        )}
       </section>
 
-      <section className="status-strip juice-status-strip">
-        <div className="status-message" role="status" aria-live="polite" aria-atomic="true"><span className="status-message-dot" /> <strong>{notice}</strong></div>
-        <div className="stats-row">
-          <span><b>{totalCount.toString().padStart(2, "0")}</b> TOTAL</span>
-          <span><b>{doneCount.toString().padStart(2, "0")}</b> DONE</span>
-          <span><b>{progressPercent}%</b> CLEAR</span>
-          <span><b>{sessionXp.toString().padStart(4, "0")}</b> XP</span>
-        </div>
-      </section>
-
-      <footer className="footer">
-        <span>DICTATASK / LOCAL-FIRST FOCUS</span>
-        <span className="footer-mark">DT<span>_</span></span>
-      </footer>
     </main>
   );
 }

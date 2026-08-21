@@ -836,6 +836,14 @@ a:focus-visible {
   transform: translateX(3px);
 }
 
+.task-row.is-history {
+  cursor: pointer;
+}
+
+.task-row.is-history:hover {
+  transform: translateX(3px);
+}
+
 .task-row.is-celebrating {
   position: relative;
   z-index: 1;
@@ -1267,31 +1275,6 @@ a:focus-visible {
   font-size: 9px;
 }
 
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1320px;
-  margin: 20px auto 0;
-  color: #77716a;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-}
-
-.footer-mark {
-  color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 16px;
-  font-weight: 950;
-  letter-spacing: -0.12em;
-}
-
-.footer-mark span {
-  color: var(--orange);
-}
-
 @media (max-width: 900px) {
   .hero {
     grid-template-columns: 1fr 210px;
@@ -1420,11 +1403,6 @@ a:focus-visible {
     gap: 8px;
   }
 
-  .footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1896,8 +1874,247 @@ body {
   max-width: 1440px;
 }
 
+.top-banner {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  max-width: 1440px;
+  height: 42px;
+  margin: 0 auto 12px;
+  overflow: visible;
+  border: 2px solid var(--juice-black);
+  background: linear-gradient(112deg, var(--juice-yellow) 0 22%, var(--juice-orange) 22% 47%, var(--juice-blue) 47% 73%, var(--juice-lime) 73% 100%);
+  box-shadow: 3px 3px 0 var(--juice-black);
+}
+
+.top-banner-name {
+  position: absolute;
+  z-index: 3;
+  top: 78%;
+  left: 50%;
+  display: inline-flex;
+  gap: 0.06em;
+  align-items: center;
+  padding: 5px 16px 4px;
+  border: 3px solid var(--juice-black);
+  border-radius: 1px 3px 0 2px;
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.36) 0 18%, transparent 18% 79%, rgba(13, 13, 18, 0.08) 79% 100%),
+    var(--juice-cream);
+  box-shadow: 5px 5px 0 var(--juice-black);
+  color: var(--juice-black);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(18px, 5.2vw, 30px);
+  font-weight: 950;
+  letter-spacing: 0.09em;
+  line-height: 0.95;
+  white-space: nowrap;
+  transform: translate(-50%, -50%) skewX(-12deg) rotate(-2deg);
+}
+
+.top-banner-name > span {
+  display: inline-block;
+  transform: skewX(10deg);
+}
+
+.top-banner-name::after {
+  position: absolute;
+  right: 12px;
+  bottom: -6px;
+  width: 16px;
+  height: 5px;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-orange);
+  content: "";
+  transform: rotate(-7deg);
+}
+
+.top-banner-name-dicta {
+  color: var(--juice-orange);
+  text-shadow: 1px 1px 0 var(--juice-black);
+}
+
+.top-banner-name-task {
+  color: var(--juice-blue);
+  text-shadow: 1px 1px 0 var(--juice-black);
+}
+
+.top-banner::before {
+  position: absolute;
+  inset: 0 0 0 0;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0 3px, transparent 3px 18px);
+  content: "";
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.top-banner::after {
+  position: absolute;
+  top: 6px;
+  right: 10%;
+  bottom: 6px;
+  left: 10%;
+  border-top: 3px solid var(--juice-cream);
+  border-bottom: 3px solid var(--juice-cream);
+  content: "";
+  opacity: 0.72;
+  pointer-events: none;
+  transform: skewX(-18deg);
+}
+
+.top-banner-block {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  width: 10px;
+  height: 100%;
+  margin-left: 10px;
+  background: var(--juice-cream);
+  box-shadow: 3px 0 0 var(--juice-black);
+  transform: skewX(-18deg);
+}
+
+.top-banner-block-blue {
+  margin-left: 26px;
+  background: var(--juice-yellow);
+}
+
+.top-banner-block-lime {
+  margin-left: 26px;
+  background: var(--juice-orange);
+}
+
+.undo-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 2px 10px;
+  padding: 8px 9px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-yellow);
+  box-shadow: 4px 4px 0 var(--juice-black);
+  color: var(--juice-black);
+}
+
+.undo-inline-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.undo-inline-copy strong,
+.undo-inline-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-inline-copy strong {
+  color: var(--juice-orange);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.undo-inline-copy span {
+  max-width: 260px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.undo-inline button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-orange);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  color: var(--juice-black);
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.undo-inline button:hover {
+  background: var(--juice-yellow);
+  transform: translate(-1px, -1px);
+}
+
+.undo-inline button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(2px, 2px);
+}
+
 .juice-workspace .tasks-card {
-  order: -1;
+  order: 0;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.juice-workspace .manual-task-card {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+  width: 100%;
+  margin-top: 0;
+  padding-block: 0;
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+}
+
+.juice-workspace .manual-task-card input {
+  color: var(--juice-black);
+}
+
+.juice-workspace .manual-task-card input::placeholder {
+  color: var(--juice-black);
+  opacity: 0.86;
+}
+
+.juice-workspace .spin-launch-card {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: start;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 4px solid var(--juice-black);
+  background: var(--juice-lime);
+  box-shadow: 8px 8px 0 var(--juice-black);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+  color: var(--juice-black);
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button:hover:not(:disabled) {
+  background: var(--juice-orange);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .juice-workspace .juice-panel {
@@ -1908,7 +2125,7 @@ body {
 }
 
 .juice-workspace .transcript-card {
-  padding: clamp(22px, 3vw, 39px);
+  padding: clamp(16px, 2vw, 24px);
   background: var(--juice-yellow);
   transform: rotate(-0.6deg);
 }
@@ -1997,14 +2214,14 @@ body {
 
 .juice-panel .recording-bar {
   align-items: stretch;
-  gap: 13px;
-  margin-top: 31px;
+  gap: 10px;
+  margin-top: 0;
 }
 
 .juice-panel .record-button {
   flex: 1 1 auto;
-  min-height: 76px;
-  padding: 11px 14px 11px 11px;
+  min-height: 68px;
+  padding: 9px 12px 9px 10px;
   border: 3px solid var(--juice-black);
   background: var(--juice-orange);
   box-shadow: 5px 5px 0 var(--juice-black);
@@ -2070,7 +2287,7 @@ body {
 }
 
 .juice-panel .recording-limit {
-  margin-top: 16px;
+  margin-top: 10px;
   color: var(--juice-black);
   font-family: var(--font-geist-mono), monospace;
   font-size: 9px;
@@ -2091,9 +2308,9 @@ body {
 }
 
 .juice-panel .transcript-input {
-  min-height: 220px;
-  margin-top: 16px;
-  padding: 18px;
+  min-height: 154px;
+  margin-top: 10px;
+  padding: 14px;
   border: 3px solid var(--juice-black);
   background: var(--juice-cream);
   box-shadow: inset 7px 7px 0 rgba(23, 21, 29, 0.08);
@@ -2110,7 +2327,7 @@ body {
 }
 
 .juice-panel .transcript-footer {
-  min-height: 47px;
+  min-height: 32px;
 }
 
 .transcript-action-row {
@@ -2277,13 +2494,37 @@ body {
 }
 
 .juice-panel .task-actions-footer {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
   justify-content: flex-start;
+  gap: 5px;
   margin-top: 18px;
 }
 
+.juice-panel .task-list-wheel-action {
+  align-items: stretch;
+  justify-content: flex-start;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
 .juice-panel .task-actions-footer .clear-button {
-  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 29px;
+  padding: 4px 5px;
+  justify-content: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 7px;
+  letter-spacing: 0.035em;
+  box-shadow: 2px 2px 0 var(--juice-black);
+}
+
+.juice-panel .task-actions-footer .clear-button svg {
+  width: 10px;
+  height: 10px;
 }
 
 .juice-panel .task-actions-footer .wheel-settings-button {
@@ -2437,6 +2678,13 @@ body {
   transform: translate(-3px, -3px) rotate(-0.6deg);
 }
 
+/* A task card may still feel tactile when tapped, but only its dedicated
+   checkbox performs a state-changing action. */
+.juice-panel .task-row:active {
+  box-shadow: 2px 2px 0 var(--juice-black);
+  transform: translate(4px, 4px);
+}
+
 .juice-panel .task-row.is-complete {
   filter: saturate(0.85);
 }
@@ -2493,10 +2741,40 @@ body {
 
 .juice-panel .task-title {
   color: var(--juice-black);
-  font-size: 16px;
+  font-size: clamp(18px, 1.7vw, 20px);
   font-weight: 950;
   letter-spacing: -0.045em;
   line-height: 1.04;
+}
+
+.task-focus-button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-yellow);
+  box-shadow: 2px 2px 0 var(--juice-black);
+  color: var(--juice-black);
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 4px 8px;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.task-focus-button:hover,
+.task-focus-button:focus-visible {
+  background: var(--juice-orange);
+  transform: translate(-1px, -1px);
+}
+
+.task-focus-button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(2px, 2px);
 }
 
 .juice-panel .is-complete .task-title {
@@ -2506,12 +2784,20 @@ body {
 
 .juice-panel .task-meta {
   max-width: 470px;
-  margin-top: 8px;
+  margin-top: 0;
   color: rgba(23, 21, 29, 0.67);
   font-family: var(--font-geist-mono), monospace;
   font-size: 8px;
   font-weight: 950;
   letter-spacing: 0.02em;
+}
+
+.juice-panel .task-detail-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .juice-panel .task-meta span {
@@ -2606,56 +2892,6 @@ body {
 .juice-panel .add-task-form button:active {
   box-shadow: 1px 1px 0 var(--juice-black);
   transform: translate(2px, 2px);
-}
-
-.juice-status-strip {
-  position: relative;
-  z-index: 1;
-  max-width: 1440px;
-  margin-top: 34px;
-  padding: 17px 15px 14px;
-  border: 4px solid var(--juice-black);
-  background: var(--juice-orange);
-  box-shadow: 7px 7px 0 var(--juice-black);
-}
-
-.juice-status-strip .status-message {
-  color: var(--juice-black);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.juice-status-strip .status-message-dot {
-  width: 12px;
-  height: 12px;
-  border: 3px solid var(--juice-black);
-  background: var(--juice-lime);
-  animation: live-blink 1.1s steps(2, end) infinite;
-}
-
-.juice-status-strip .stats-row {
-  color: var(--juice-black);
-  font-size: 9px;
-  font-weight: 950;
-}
-
-.juice-status-strip .stats-row b {
-  color: var(--juice-black);
-  font-size: 18px;
-}
-
-.juice-shell .footer {
-  position: relative;
-  z-index: 1;
-  max-width: 1440px;
-  margin-top: 24px;
-  color: rgba(241, 230, 209, 0.7);
-}
-
-.juice-shell .footer-mark {
-  color: var(--juice-cream);
-  font-size: 21px;
 }
 
 .celebration-burst {
@@ -2792,24 +3028,6 @@ body {
 .particle-11 { --tx: -292px; --ty: 72px; --rot: -10deg; animation-delay: 250ms; }
 .particle-12 { --tx: 20px; --ty: -176px; --rot: 56deg; animation-delay: 275ms; }
 
-.floating-reward {
-  position: fixed;
-  top: 22%;
-  right: clamp(18px, 5vw, 80px);
-  z-index: 28;
-  padding: 10px 13px;
-  border: 4px solid var(--juice-black);
-  background: var(--juice-yellow);
-  box-shadow: 6px 6px 0 var(--juice-black);
-  color: var(--juice-black);
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: clamp(16px, 2vw, 25px);
-  font-weight: 950;
-  letter-spacing: -0.07em;
-  transform: rotate(5deg);
-  animation: reward-float 1250ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
 .milestone-overlay {
   position: fixed;
   inset: 0;
@@ -2942,12 +3160,6 @@ body {
   100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--rot)) scale(1); }
 }
 
-@keyframes reward-float {
-  0% { opacity: 0; transform: translateY(24px) rotate(12deg) scale(0.6); }
-  22% { opacity: 1; transform: translateY(0) rotate(5deg) scale(1.1); }
-  100% { opacity: 0; transform: translateY(-95px) rotate(-4deg) scale(0.92); }
-}
-
 @keyframes milestone-screen {
   0% { opacity: 0; transform: scale(1.14); }
   14% { opacity: 1; transform: scale(1); }
@@ -2970,10 +3182,19 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .juice-workspace .juice-panel {
+  .juice-workspace .juice-panel,
+  .juice-workspace .manual-task-card {
     max-width: 760px;
     width: 100%;
     margin: 0 auto;
+  }
+
+  .juice-workspace .transcript-card,
+  .juice-workspace .manual-task-card,
+  .juice-workspace .tasks-card,
+  .juice-workspace .spin-launch-card {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .sticker-surface {
@@ -3052,7 +3273,7 @@ body {
   }
 
   .juice-workspace {
-    gap: 23px;
+    gap: 16px;
   }
 
   .juice-workspace .transcript-card,
@@ -3062,7 +3283,7 @@ body {
   }
 
   .juice-workspace .transcript-card {
-    padding: 27px 18px 21px;
+    padding: 16px 14px 14px;
   }
 
   .juice-workspace .tasks-card {
@@ -3097,7 +3318,7 @@ body {
   .juice-panel .recording-bar {
     align-items: flex-start;
     flex-direction: column;
-    gap: 9px;
+    gap: 6px;
   }
 
   .juice-panel .record-button {
@@ -3111,7 +3332,7 @@ body {
   }
 
   .juice-panel .transcript-input {
-    min-height: 190px;
+    min-height: 133px;
     font-size: 15px;
   }
 
@@ -3174,7 +3395,14 @@ body {
   }
 
   .juice-panel .task-title {
-    font-size: 14px;
+    font-size: 16px;
+  }
+
+  .juice-panel .task-focus-button {
+    min-height: 26px;
+    margin-top: 4px;
+    padding: 3px 6px;
+    font-size: 7px;
   }
 
   .juice-panel .task-meta {
@@ -3201,31 +3429,6 @@ body {
   .juice-panel .add-task-form button {
     padding: 6px 8px;
     font-size: 8px;
-  }
-
-  .juice-status-strip {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 26px;
-    padding: 14px 11px 12px;
-  }
-
-  .juice-status-strip .stats-row {
-    width: 100%;
-    justify-content: space-between;
-    gap: 7px;
-    font-size: 7px;
-  }
-
-  .juice-status-strip .stats-row b {
-    font-size: 14px;
-  }
-
-  .juice-shell .footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
   }
 
   .sticker-surface {
@@ -3259,10 +3462,6 @@ body {
   .particle-11 { --tx: -145px; --ty: 41px; }
   .particle-12 { --tx: 15px; --ty: -104px; }
 
-  .floating-reward {
-    top: 18%;
-    right: 17px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3277,7 +3476,6 @@ body {
 
   .juice-shell .task-row.is-celebrating,
   .juice-shell .celebration-burst,
-  .juice-shell .floating-reward,
   .juice-shell .milestone-overlay {
     opacity: 1;
     transform: none;
@@ -3297,7 +3495,8 @@ body {
   --task-card-shadow: var(--juice-cyan);
   --task-checkbox-bg: var(--juice-yellow);
   --task-checkbox-text: var(--juice-black);
-  border-color: var(--juice-cream);
+  border-color: #0b2846;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
   background: var(--task-card-bg) !important;
   box-shadow: 7px 7px 0 var(--task-card-shadow);
   color: var(--task-card-text);
@@ -3310,6 +3509,8 @@ body {
   --task-card-shadow: #2d86c7;
   --task-checkbox-bg: var(--juice-yellow);
   --task-checkbox-text: var(--juice-black);
+  border-color: #142c4a;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-orange {
@@ -3317,6 +3518,8 @@ body {
   --task-card-shadow: #ff7a18;
   --task-checkbox-bg: #ffd21f;
   --task-checkbox-text: var(--juice-black);
+  border-color: #5d2500;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-blue {
@@ -3324,6 +3527,8 @@ body {
   --task-card-shadow: #236cf3;
   --task-checkbox-bg: #236cf3;
   --task-checkbox-text: var(--juice-cream);
+  border-color: #0b2560;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-cyan {
@@ -3331,6 +3536,8 @@ body {
   --task-card-shadow: #25c7e9;
   --task-checkbox-bg: #25c7e9;
   --task-checkbox-text: var(--juice-black);
+  border-color: #00404f;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-lime {
@@ -3338,6 +3545,8 @@ body {
   --task-card-shadow: #49b878;
   --task-checkbox-bg: #49b878;
   --task-checkbox-text: var(--juice-black);
+  border-color: #15502f;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row.task-violet {
@@ -3345,6 +3554,8 @@ body {
   --task-card-shadow: #8060d5;
   --task-checkbox-bg: #8060d5;
   --task-checkbox-text: var(--juice-cream);
+  border-color: #2e1e52;
+  border-color: color-mix(in srgb, var(--task-card-bg) 60%, var(--juice-black));
 }
 
 .juice-panel .task-row:hover {
@@ -3365,6 +3576,12 @@ body {
   text-shadow: 1px 1px 0 rgba(23, 21, 29, 0.65);
 }
 
+/* Keep the active board loud and scannable without changing the task text
+   kept for export or its completed-history record. */
+.juice-panel .task-row:not(.is-complete) .task-title {
+  text-transform: uppercase;
+}
+
 .juice-panel .task-row .task-meta {
   color: rgba(241, 230, 209, 0.82);
 }
@@ -3376,6 +3593,8 @@ body {
 }
 
 .juice-panel .task-row .task-checkbox {
+  position: relative;
+  z-index: 2;
   border-color: var(--juice-cream);
   background: var(--task-checkbox-bg) !important;
   box-shadow: 3px 3px 0 var(--juice-black);
@@ -3631,6 +3850,10 @@ body {
   cursor: pointer;
 }
 
+.juice-panel .task-row.is-history {
+  cursor: pointer;
+}
+
 .juice-panel .task-row:focus-visible {
   outline: 4px solid var(--juice-yellow);
   outline-offset: 4px;
@@ -3642,7 +3865,9 @@ body {
 }
 
 .juice-panel .task-row .task-checkbox {
-  pointer-events: none;
+  /* The old row-wide checkbox made this decorative. It is now the only
+     state-changing target, so it must sit above and receive the tap. */
+  pointer-events: auto;
 }
 
 /* Persistent app-wide color themes. Each option keeps the same structural
@@ -3664,8 +3889,6 @@ body {
   --app-header-ink: #f7f0df;
   --theme-transcript-panel: #ffd21f;
   --theme-tasks-panel: #f7f0df;
-  --theme-footer-ink: rgba(241, 230, 209, 0.7);
-  --theme-footer-mark: #f7f0df;
   --theme-option-active-ink: #0d0d12;
   --task-tile-default-bg: #123d68;
   --task-tile-default-shadow: #20bfe5;
@@ -3698,8 +3921,6 @@ body {
   --app-header-ink: #fff0d9;
   --theme-transcript-panel: #e4a840;
   --theme-tasks-panel: #fff0d9;
-  --theme-footer-ink: rgba(255, 240, 217, 0.74);
-  --theme-footer-mark: #fff0d9;
   --theme-option-active-ink: #1b1020;
   --task-tile-default-bg: #314a7b;
   --task-tile-default-shadow: #3892a3;
@@ -3732,8 +3953,6 @@ body {
   --app-header-ink: #172640;
   --theme-transcript-panel: #f4ca63;
   --theme-tasks-panel: #fff8e7;
-  --theme-footer-ink: rgba(23, 38, 64, 0.76);
-  --theme-footer-mark: #172640;
   --theme-option-active-ink: #fff8e7;
   --task-tile-default-bg: #2b5e99;
   --task-tile-default-shadow: #237f91;
@@ -3785,14 +4004,6 @@ body {
 
 .juice-workspace .tasks-card {
   background: var(--theme-tasks-panel);
-}
-
-.juice-shell .footer {
-  color: var(--theme-footer-ink);
-}
-
-.juice-shell .footer-mark {
-  color: var(--theme-footer-mark);
 }
 
 .juice-panel .task-row {
@@ -3996,8 +4207,7 @@ textarea {
   letter-spacing: 0.08em;
 }
 
-.juice-topbar .status-dot,
-.juice-status-strip .status-message-dot {
+.juice-topbar .status-dot {
   animation: none;
 }
 
@@ -4074,70 +4284,6 @@ textarea {
   letter-spacing: 0.04em;
 }
 
-.focus-banner {
-  position: relative;
-  display: grid;
-  min-height: 88px;
-  max-width: 1440px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 24px;
-  margin: 14px auto 20px;
-  overflow: hidden;
-  border: 3px solid #f7f0df;
-  background-color: #111319;
-  background-image:
-    linear-gradient(90deg, rgba(17, 19, 25, 0.34) 0%, rgba(17, 19, 25, 0.08) 58%, rgba(17, 19, 25, 0.2) 100%),
-    url("/dictatask-print-field.webp");
-  background-position: center, center;
-  background-size: cover, cover;
-  box-shadow: 8px 8px 0 var(--juice-orange);
-  color: #f7f0df;
-  padding: clamp(12px, 1.5vw, 18px);
-}
-
-.focus-banner::after {
-  position: absolute;
-  top: -18px;
-  right: 21%;
-  width: 82px;
-  height: 24px;
-  border: 2px solid #111319;
-  background: var(--juice-lime);
-  content: "";
-  transform: rotate(-6deg);
-}
-
-.focus-banner-score {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  grid-column: 2;
-  min-width: 150px;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-self: end;
-  border-left: 2px solid rgba(247, 240, 223, 0.55);
-  padding-left: 22px;
-}
-
-.focus-banner-score span,
-.focus-banner-score small {
-  font-family: "Space Mono", monospace;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-}
-
-.focus-banner-score strong {
-  color: var(--juice-yellow);
-  font-size: clamp(32px, 4vw, 52px);
-  font-stretch: 78%;
-  font-weight: 900;
-  letter-spacing: -0.08em;
-  line-height: 0.9;
-}
-
 .juice-workspace {
   align-items: start;
 }
@@ -4202,10 +4348,6 @@ textarea {
   mix-blend-mode: normal;
 }
 
-.juice-status-strip {
-  box-shadow: 4px 4px 0 var(--juice-orange);
-}
-
 /* Spin the Wheel is a real task-selection mode: the live task cards collapse,
    the panel turns over, and the generated print wheel takes the stage. */
 .juice-panel.tasks-card {
@@ -4252,8 +4394,8 @@ textarea {
   pointer-events: auto;
 }
 
-.juice-panel .task-heading-copy .wheel-launch-button,
-.juice-panel .task-heading-copy .wheel-settings-button {
+.juice-panel .task-list-wheel-action .wheel-launch-button,
+.juice-panel .task-actions-footer .wheel-settings-button {
   min-width: 0;
   border-width: 3px;
   font-family: "Space Mono", monospace;
@@ -4261,33 +4403,35 @@ textarea {
   letter-spacing: 0.055em;
 }
 
-.juice-panel .task-heading-copy .wheel-launch-button {
-  flex: 1.3 1 170px;
+.juice-panel .task-list-wheel-action .wheel-launch-button {
+  width: 100%;
+  flex: 1 1 auto;
   justify-content: flex-start;
   gap: 8px;
   background: var(--juice-lime);
 }
 
-.juice-panel .task-heading-copy .wheel-launch-button:hover:not(:disabled) {
+.juice-panel .task-list-wheel-action .wheel-launch-button:hover:not(:disabled) {
   background: var(--juice-orange);
 }
 
-.juice-panel .task-heading-copy .wheel-settings-button {
-  flex: 0.82 1 138px;
+.juice-panel .task-actions-footer .wheel-settings-button {
+  flex: 0 1 auto;
   justify-content: space-between;
   background: var(--juice-cream);
+  font-size: 7px;
 }
 
-.juice-panel .task-heading-copy .wheel-settings-button.is-open,
-.juice-panel .task-heading-copy .wheel-settings-button:hover:not(:disabled) {
+.juice-panel .task-actions-footer .wheel-settings-button.is-open,
+.juice-panel .task-actions-footer .wheel-settings-button:hover:not(:disabled) {
   background: var(--juice-violet);
   color: var(--juice-cream);
 }
 
 .wheel-settings-button b {
   border-left: 2px solid currentColor;
-  padding-left: 6px;
-  font-size: 10px;
+  padding-left: 4px;
+  font-size: 7px;
 }
 
 .wheel-launch-art {
@@ -4402,15 +4546,80 @@ textarea {
 }
 
 .wheel-stage {
+  position: relative;
   display: grid;
   min-height: 620px;
   align-content: start;
   gap: 18px;
-  border: 3px solid var(--juice-black);
-  background: var(--theme-tasks-panel);
-  box-shadow: 7px 7px 0 var(--juice-black);
+  overflow: hidden;
+  border: 5px solid var(--juice-black);
+  background: var(--juice-cream);
+  box-shadow: 9px 9px 0 var(--juice-orange);
   color: var(--juice-black);
   padding: clamp(18px, 2.5vw, 28px);
+  isolation: isolate;
+}
+
+.wheel-stage::before {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 20px;
+  border-bottom: 4px solid var(--juice-black);
+  background: linear-gradient(90deg, var(--juice-orange) 0 25%, var(--juice-yellow) 25% 50%, var(--juice-blue) 50% 75%, var(--juice-lime) 75% 100%);
+  content: "";
+}
+
+.wheel-stage::after {
+  position: absolute;
+  z-index: 0;
+  inset: 24px;
+  border: 2px solid rgba(13, 13, 18, 0.15);
+  content: "";
+  pointer-events: none;
+}
+
+.wheel-stage > * {
+  position: relative;
+  z-index: 1;
+}
+
+.direct-focus-panel {
+  display: grid;
+  min-height: 168px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-lime);
+  box-shadow: 7px 7px 0 var(--juice-black);
+  color: var(--juice-black);
+  padding: 22px;
+  text-align: center;
+}
+
+.direct-focus-panel.task-orange { background: var(--task-tile-orange-shadow); }
+.direct-focus-panel.task-blue { background: var(--task-tile-blue-shadow); color: var(--juice-cream); }
+.direct-focus-panel.task-cyan { background: var(--task-tile-cyan-shadow); }
+.direct-focus-panel.task-lime { background: var(--task-tile-lime-shadow); }
+.direct-focus-panel.task-violet { background: var(--task-tile-violet-shadow); color: var(--juice-cream); }
+
+.direct-focus-panel span,
+.direct-focus-panel small {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.35;
+}
+
+.direct-focus-panel strong {
+  font-size: clamp(29px, 4vw, 52px);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
 }
 
 .wheel-stage-kicker {
@@ -4418,21 +4627,33 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-bottom: 3px solid var(--juice-black);
+  border-bottom: 4px solid var(--juice-black);
   color: var(--juice-black);
   font-family: "Space Mono", monospace;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
   line-height: 1.25;
-  padding-bottom: 11px;
+  padding: 11px 0 12px;
 }
 
 .wheel-stage-kicker span:last-child {
-  border: 2px solid var(--juice-black);
+  border: 3px solid var(--juice-black);
   background: var(--juice-yellow);
-  box-shadow: 3px 3px 0 var(--juice-black);
+  box-shadow: 4px 4px 0 var(--juice-blue);
   padding: 5px 6px;
+}
+
+.wheel-stage-kicker span:first-child {
+  border: 3px solid var(--juice-black);
+  background: var(--juice-black);
+  box-shadow: 4px 4px 0 var(--juice-orange);
+  color: var(--juice-cream);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 5px 8px;
+  text-shadow: 1px 1px 0 var(--juice-black);
+  transform: rotate(-2deg);
 }
 
 .wheel-cancel-button {
@@ -4474,44 +4695,114 @@ textarea {
   display: grid;
   width: min(100%, 430px);
   aspect-ratio: 1;
+  isolation: isolate;
   place-items: center;
   justify-self: center;
-  margin-top: 10px;
-  padding: 9px;
+  margin: 12px auto 4px;
+  padding: 20px;
+  border: 5px solid var(--juice-black);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(247, 240, 223, 0.22), transparent 52%),
+    var(--juice-blue);
+  box-shadow:
+    0 0 0 4px var(--juice-cream),
+    0 0 0 9px var(--juice-black),
+    0 0 0 14px var(--juice-orange);
+}
+
+.wheel-machine::before,
+.wheel-machine::after {
+  position: absolute;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.wheel-machine::before {
+  z-index: 0;
+  inset: 4%;
+  border: 4px solid var(--juice-black);
+  background:
+    repeating-conic-gradient(from -90deg, var(--juice-orange) 0 3deg, transparent 3deg 18deg),
+    var(--juice-yellow);
+  box-shadow:
+    0 0 0 4px var(--juice-cream),
+    0 0 0 7px var(--juice-black);
+  transform-origin: center;
+  transform: rotate(0deg);
+}
+
+.wheel-machine::after {
+  z-index: 0;
+  inset: 10%;
+  border: 2px solid rgba(247, 240, 223, 0.68);
+  box-shadow:
+    inset 0 0 0 3px rgba(13, 13, 18, 0.22),
+    0 0 0 2px rgba(13, 13, 18, 0.72);
+  opacity: 0.78;
+  transform-origin: center;
+  transform: scale(1);
+}
+
+.wheel-machine.is-spinning::before {
+  animation: wheel-orbit 720ms linear infinite;
+}
+
+.wheel-machine.is-spinning::after {
+  animation: wheel-halo 900ms ease-in-out infinite;
 }
 
 .wheel-landing-marker {
   position: absolute;
   z-index: 4;
-  top: -2px;
+  top: -18px;
   left: 50%;
   border: 3px solid var(--juice-black);
-  background: var(--juice-orange);
+  background: var(--juice-yellow);
   box-shadow: 4px 4px 0 var(--juice-black);
   color: var(--juice-black);
   font-family: "Space Mono", monospace;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
-  padding: 5px 7px;
+  padding: 5px 8px;
   transform: translateX(-50%);
 }
 
+.wheel-landing-marker::after {
+  position: absolute;
+  bottom: -13px;
+  left: 50%;
+  width: 17px;
+  height: 14px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-yellow);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  content: "";
+  transform: translateX(-50%);
+}
+
+.wheel-machine.is-spinning .wheel-landing-marker {
+  animation: wheel-marker-pulse 420ms steps(2, end) infinite;
+}
+
 .wheel-rotor {
+  /* Rotation is driven frame-by-frame in page.tsx for Android WebView parity. */
   position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 4px solid var(--juice-black);
+  border: 6px solid var(--juice-black);
   border-radius: 50%;
   background: var(--juice-cream);
-  box-shadow: 9px 9px 0 var(--juice-orange);
+  box-shadow:
+    0 0 0 6px var(--juice-cream),
+    0 0 0 10px var(--juice-black),
+    0 0 0 14px var(--juice-orange);
   transform-origin: center;
   will-change: transform;
-}
-
-.wheel-rotor.is-spinning {
-  transition: transform 3000ms cubic-bezier(0.13, 0.84, 0.18, 1);
 }
 
 .wheel-color-field,
@@ -4527,25 +4818,61 @@ textarea {
 
 .wheel-color-field {
   z-index: 0;
-  background: var(--wheel-color-gradient, conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg));
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.34), transparent 26%),
+    radial-gradient(circle at 72% 82%, rgba(13, 13, 18, 0.26), transparent 48%),
+    var(--wheel-color-gradient, conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg));
 }
 
 .wheel-ink-overlay {
   z-index: 1;
   object-fit: cover;
-  filter: grayscale(1) contrast(1.35) brightness(0.7);
+  filter: grayscale(1) contrast(1.35) brightness(0.92);
   mix-blend-mode: multiply;
-  opacity: 0.42;
+  opacity: 0.32;
+}
+
+.wheel-light-sweep {
+  position: absolute;
+  z-index: 2;
+  inset: -18%;
+  border-radius: 50%;
+  background: conic-gradient(from -28deg, transparent 0 42deg, rgba(247, 240, 223, 0.56) 46deg 58deg, transparent 62deg 360deg);
+  mix-blend-mode: screen;
+  opacity: 0.14;
+  pointer-events: none;
+  transform: rotate(-20deg);
+}
+
+.wheel-machine.is-spinning .wheel-rotor {
+  filter: saturate(1.16) contrast(1.08);
+}
+
+.wheel-machine.is-spinning .wheel-light-sweep {
+  animation: wheel-light-sweep 520ms linear infinite;
+  opacity: 0.72;
+}
+
+.wheel-machine.is-spinning .wheel-rotor::before {
+  animation: wheel-ring-spin 640ms linear infinite;
 }
 
 .wheel-rotor::before {
   content: "";
   position: absolute;
   z-index: 2;
-  inset: 7%;
-  border: 3px solid rgba(23, 21, 29, 0.72);
+  inset: 5%;
+  border: 3px solid var(--juice-black);
   border-radius: 50%;
-  box-shadow: inset 0 0 0 3px rgba(255, 248, 231, 0.26);
+  box-shadow:
+    inset 0 0 0 3px rgba(247, 240, 223, 0.78),
+    inset 0 0 0 7px rgba(13, 13, 18, 0.2),
+    0 0 0 2px var(--juice-cream);
+  border-top-color: var(--juice-orange);
+  border-right-color: var(--juice-blue);
+  border-bottom-color: var(--juice-lime);
+  border-left-color: var(--juice-violet);
+  transform-origin: center;
   pointer-events: none;
 }
 
@@ -4555,14 +4882,40 @@ textarea {
   z-index: 3;
   top: 50%;
   left: 50%;
-  width: 17%;
+  width: 19%;
   aspect-ratio: 1;
   border: 4px solid var(--juice-black);
   border-radius: 50%;
-  background: var(--juice-yellow);
-  box-shadow: 4px 4px 0 var(--juice-black);
+  background: radial-gradient(circle at 35% 28%, var(--juice-cream) 0 10%, var(--juice-yellow) 11% 45%, var(--juice-orange) 46% 68%, var(--juice-blue) 69% 83%, var(--juice-black) 84% 100%);
+  box-shadow:
+    0 0 0 3px var(--juice-cream),
+    0 0 0 6px var(--juice-black);
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+.wheel-hub-mark {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 19%;
+  aspect-ratio: 1;
+  place-items: center;
+  color: var(--juice-black);
+  font-family: "Space Mono", monospace;
+  font-size: clamp(7px, 1.4vw, 11px);
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 1px 1px 0 var(--juice-cream);
+  transform: translate(-50%, -50%);
+}
+
+.wheel-machine.is-spinning .wheel-hub-mark {
+  animation: wheel-hub-pulse 520ms steps(2, end) infinite;
 }
 
 .wheel-result-card {
@@ -4707,6 +5060,65 @@ textarea {
   }
 }
 
+@keyframes wheel-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wheel-halo {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.035);
+  }
+}
+
+@keyframes wheel-light-sweep {
+  from {
+    transform: rotate(-20deg) scale(1);
+  }
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes wheel-ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wheel-marker-pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.08);
+  }
+}
+
+@keyframes wheel-hub-pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.16);
+  }
+}
+
 @media (max-width: 720px) {
   .app-shell.juice-shell {
     padding-inline: 12px;
@@ -4737,37 +5149,6 @@ textarea {
     padding-inline: 8px;
   }
 
-  .focus-banner {
-    min-height: 74px;
-    display: block;
-    margin-top: 11px;
-    margin-bottom: 16px;
-    background-position: center, 58% center;
-    box-shadow: 6px 6px 0 var(--juice-orange);
-    padding: 10px 14px;
-  }
-
-  .focus-banner::after {
-    right: 11%;
-  }
-
-  .focus-banner-score {
-    position: absolute;
-    right: 16px;
-    bottom: 10px;
-    min-width: 72px;
-    border-left: 0;
-    padding-left: 0;
-  }
-
-  .focus-banner-score span {
-    display: none;
-  }
-
-  .focus-banner-score strong {
-    font-size: 38px;
-  }
-
   .juice-workspace .transcript-card,
   .juice-workspace .tasks-card {
     box-shadow: 5px 5px 0 var(--juice-black);
@@ -4793,6 +5174,37 @@ textarea {
     min-height: 48px;
     padding: 8px 10px;
     font-size: 11px;
+  }
+
+  .juice-panel .task-actions-footer {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .juice-panel .task-actions-footer button,
+  .juice-panel .task-actions-footer .wheel-settings-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 29px;
+    padding: 4px 3px;
+    font-size: clamp(5px, 1.55vw, 6px);
+    letter-spacing: 0.015em;
+    grid-column: auto;
+  }
+
+  .juice-panel .task-actions-footer .export-history-button {
+    grid-column: auto;
+  }
+
+  .juice-panel .task-actions-footer .wheel-settings-button {
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .juice-panel .task-actions-footer .wheel-settings-button b {
+    padding-left: 2px;
+    font-size: clamp(5px, 1.55vw, 6px);
   }
 
   .wheel-settings-inline {
@@ -4856,7 +5268,7 @@ textarea {
   }
 
   .juice-panel .transcript-input {
-    min-height: clamp(170px, 30dvh, 230px);
+    min-height: 133px;
     resize: none;
   }
 
@@ -4880,10 +5292,22 @@ textarea {
     font-size: 12px;
   }
 
-  .juice-status-strip .status-message {
-    font-size: 11px;
-    line-height: 1.45;
+  .undo-inline {
+    gap: 8px;
+    padding: 8px 9px;
   }
+
+  .undo-inline-copy span {
+    max-width: 180px;
+    font-size: 10px;
+  }
+
+  .undo-inline button {
+    min-height: 30px;
+    padding: 5px 8px;
+    font-size: 8px;
+  }
+
 }
 
 @media (max-width: 360px) {
@@ -4894,10 +5318,6 @@ textarea {
 
   .mode-toggle-glyph i {
     width: 4px;
-  }
-
-  .focus-banner-score {
-    display: none;
   }
 
   .wheel-duration-options button {
@@ -4914,11 +5334,580 @@ textarea {
   .juice-panel .record-button.is-listening .record-button-wave i,
   .task-board-flip,
   .wheel-rotor,
+  .wheel-machine.is-spinning::before,
+  .wheel-machine.is-spinning::after,
+  .wheel-machine.is-spinning .wheel-landing-marker,
+  .wheel-machine.is-spinning .wheel-light-sweep,
+  .wheel-machine.is-spinning .wheel-rotor::before,
+  .wheel-machine.is-spinning .wheel-hub-mark,
   .tasks-card.is-wheel-converging .task-row,
   .tasks-card.is-wheel-converging .card-heading,
   .tasks-card.is-wheel-converging .task-toolbar,
   .tasks-card.is-wheel-converging .add-task-form {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@media (max-width: 720px) {
+  body {
+    background: var(--juice-cream);
+  }
+
+  .app-shell.juice-shell {
+    padding-right: 0;
+    /* Keep the flush side-to-side stack, but reserve a touch-safe lane above
+       Android's gesture/navigation bar for the final Spin the Wheel card. */
+    padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
+    padding-left: 0;
+    background-color: var(--juice-cream);
+  }
+
+  .juice-shell::before {
+    display: none;
+  }
+
+  .juice-workspace {
+    gap: 0;
+    max-width: none;
+  }
+
+  .top-banner {
+    margin-bottom: 0;
+  }
+
+  .juice-workspace .transcript-card,
+  .juice-workspace .manual-task-card,
+  .juice-workspace .tasks-card,
+  .juice-workspace .spin-launch-card {
+    width: 100%;
+    max-width: none;
+    margin-right: 0;
+    margin-left: 0;
+    box-shadow: none;
+  }
+
+  .top-banner {
+    box-shadow: none;
+  }
+}
+
+/* The mobile-first canvas is intentionally panel-led, not a dark frame around
+   the panels. Keep that true at every WebView viewport width. */
+body,
+.app-shell.juice-shell {
+  background: var(--juice-cream);
+}
+
+.juice-shell::before {
+  display: none;
+}
+
+/* These are color bands in the screen sequence, not framed cards. */
+.juice-workspace .manual-task-card,
+.juice-workspace .spin-launch-card,
+.juice-workspace .transcript-card,
+.juice-workspace .tasks-card {
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.juice-workspace .manual-task-card,
+.juice-workspace .spin-launch-card {
+  background: var(--juice-lime);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  border: 0;
+  box-shadow: none;
+}
+
+/* Keep the manual entry surface a continuous green band, including its action.
+   The small plus tile is retained as the control's visual affordance. */
+.juice-workspace .manual-task-card button {
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+  color: var(--juice-black);
+}
+
+/* The manual-entry band is 50% taller than the 48px compact predecessor,
+   while staying a single uninterrupted green surface. */
+.juice-workspace .manual-task-card {
+  min-height: 72px;
+}
+
+.juice-workspace .manual-task-card input,
+.juice-workspace .manual-task-card > button:last-child {
+  min-height: 72px;
+}
+
+.juice-workspace .manual-task-card > button:last-child {
+  padding-inline: 10px;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button {
+  display: grid;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  place-items: center;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-yellow);
+  box-shadow: 2px 2px 0 var(--juice-black);
+  color: var(--juice-black);
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.8;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button.is-dictating {
+  background: var(--juice-orange);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  transform: translate(-1px, -1px);
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button:active {
+  box-shadow: 1px 1px 0 var(--juice-black);
+  transform: translate(1px, 1px);
+}
+
+/* Task tiles retain the tactile treatment, but their edge is a darkened tone
+   of the tile color rather than a shared black outline. */
+.juice-panel .task-row {
+  border-width: 4px;
+  border-style: solid;
+}
+
+.juice-panel .task-row::before {
+  display: none;
+}
+
+/* The bottom launch band is 30% taller than its former 58px control, while
+   remaining a single flush green surface above Android's safe-area lane. */
+.juice-workspace .spin-launch-card,
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  min-height: 76px;
+}
+
+/* Center the launch label while keeping the wheel mark anchored as a visual
+   cue on the left side of the green launch band. */
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  position: relative;
+  justify-content: center;
+  gap: 0;
+  padding-right: 56px;
+  padding-left: 56px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-art {
+  position: absolute;
+  left: 14px;
+  width: 32px;
+  height: 32px;
+}
+
+/* The wheel launcher is a tactile green card in its own right, matching the
+   framed visual weight of the other primary controls while keeping the green
+   panel color requested for this action. */
+.juice-workspace .spin-launch-card {
+  width: calc(100% - 28px);
+  min-height: 76px;
+  margin: 12px 14px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-lime);
+  box-shadow: 5px 5px 0 var(--juice-black);
+}
+
+.juice-workspace .spin-launch-card .wheel-launch-button {
+  min-height: 76px;
+  border: 0;
+  background: var(--juice-lime);
+  box-shadow: none;
+}
+
+/* Give TO DO and DONE equal visual weight: the pair is centered and fills the
+   toolbar, with controls about 20% taller than the compact mobile baseline. */
+.juice-panel .filter-tabs {
+  width: 100%;
+  max-width: 560px;
+  justify-content: center;
+  gap: 8px;
+  margin-inline: auto;
+}
+
+.juice-panel .filter-tabs button {
+  min-width: 0;
+  min-height: 35px;
+  flex: 1 1 0;
+  border: 2px solid var(--juice-black);
+  background: rgba(247, 240, 223, 0.72);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  padding: 6px 10px;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.juice-panel .filter-tabs button:hover {
+  background: var(--juice-yellow);
+}
+
+.juice-panel .filter-tabs button.active {
+  padding: 5px 10px;
+}
+
+.juice-panel .filter-tabs button span {
+  min-width: 15px;
+  height: 15px;
+  margin-left: 4px;
+  border-width: 2px;
+  font-size: 8px;
+}
+
+/* Keep the transcription actions compact: 40px is 20% below the current
+   50px mobile controls, with proportional type, icons, and breathing room. */
+.juice-panel .compact-scan-button,
+.juice-panel .transcript-clear-action {
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: 9px;
+}
+
+.juice-panel .compact-scan-button > span:first-child {
+  gap: 7px;
+}
+
+.juice-panel .compact-scan-button svg {
+  width: 19px;
+  height: 19px;
+}
+
+.juice-panel .transcript-clear-action {
+  min-width: 90px;
+}
+
+.juice-panel .transcript-clear-action svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Buttons should press straight into their shadows. Keep the tactile lift and
+   press feedback, but never rotate or skew a control while it is touched. */
+button:hover:not(:disabled),
+button:focus-visible:not(:disabled) {
+  transform: translate(-1px, -1px) !important;
+}
+
+button:active:not(:disabled) {
+  transform: translate(2px, 2px) !important;
+}
+
+/* Manual entry is again a true card: the black frame is part of the green
+   surface itself, not a separate spacer band above or below it. */
+.juice-workspace .manual-task-card {
+  border: 5px solid var(--juice-black);
+  box-shadow: none;
+}
+
+/* The manual composer keeps its green identity while borrowing TAP TO RECORD's
+   card language: framed yellow glyphs, bold title hierarchy, and a hard ink
+   shadow. It remains a real form, so typing, dictation, and submit stay
+   immediately available rather than turning the card into decoration. */
+.juice-workspace .manual-task-card {
+  display: flex;
+  min-height: 94px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-lime);
+  box-shadow: 5px 5px 0 var(--juice-black);
+  color: var(--juice-black);
+}
+
+/* The yellow recording panel intentionally continues below its transcript
+   actions. This gives the green composer the same inset-card presentation as
+   TAP TO RECORD, with yellow visible above, beside, and below the card. */
+.juice-workspace .transcript-card .manual-task-card {
+  margin: 14px 0 0;
+}
+
+/* End the extended yellow surface with a true edge-to-edge divider. A small
+   yellow clearance lets the green card's hard shadow land cleanly; there is
+   still no padding below the divider at the panel edge. */
+.juice-workspace .transcript-card .transcript-end-divider {
+  display: block;
+  height: 4px;
+  margin: 12px -14px -14px;
+  background: var(--juice-black);
+}
+
+@media (min-width: 641px) {
+  .juice-workspace .transcript-card .transcript-end-divider {
+    margin-right: calc(-1 * clamp(16px, 2vw, 24px));
+    margin-bottom: calc(-1 * clamp(16px, 2vw, 24px));
+    margin-left: calc(-1 * clamp(16px, 2vw, 24px));
+  }
+}
+
+.juice-workspace .manual-task-card .manual-task-icon,
+.juice-workspace .manual-task-card .manual-dictate-button,
+.juice-workspace .manual-task-card .manual-submit-button {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-yellow);
+  box-shadow: none;
+  color: var(--juice-black);
+}
+
+/* Override the old full-height submit rule: this framed control is a 94px
+   composer, matching the recording control rather than stretching a final
+   button through the entire band. */
+.juice-workspace .manual-task-card > button.manual-submit-button:last-child {
+  min-height: 42px;
+  padding: 0;
+}
+
+.juice-workspace .manual-task-card .manual-task-icon {
+  display: grid;
+  place-items: center;
+}
+
+.juice-workspace .manual-task-card .manual-task-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2.7;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 42px;
+  align-items: center;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy strong {
+  grid-area: 1 / 1;
+  color: var(--juice-black);
+  font-size: 12.5px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: opacity 120ms ease;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy input {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-height: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--juice-black);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  line-height: 42px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy:focus-within strong,
+.juice-workspace .manual-task-card .manual-task-copy.has-value strong {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy:focus-within input,
+.juice-workspace .manual-task-card .manual-task-copy.has-value input {
+  opacity: 1;
+}
+
+/* Dictation focuses the invisible field so live words can arrive immediately.
+   Until the first word does, keep the manual title visible beside its inverted mic tile. */
+.juice-workspace .manual-task-card .manual-task-copy.is-dictating:not(.has-value) strong {
+  opacity: 1;
+}
+
+.juice-workspace .manual-task-card .manual-task-copy.is-dictating:not(.has-value) input {
+  opacity: 0;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button,
+.juice-workspace .manual-task-card .manual-submit-button {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button:hover:not(:disabled),
+.juice-workspace .manual-task-card .manual-submit-button:hover:not(:disabled) {
+  background: var(--juice-cream);
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button.is-dictating {
+  background: var(--juice-black);
+  color: var(--juice-yellow);
+  box-shadow: 3px 3px 0 var(--juice-black);
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button.is-dictating svg {
+  stroke: currentColor;
+}
+
+.juice-workspace .manual-task-card .manual-dictate-button svg,
+.juice-workspace .manual-task-card .manual-submit-button svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.7;
+}
+
+.juice-workspace .manual-task-card .manual-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.juice-workspace .manual-task-card:focus-within {
+  box-shadow: 7px 7px 0 var(--juice-black);
+}
+
+@media (max-width: 360px) {
+  .juice-workspace .manual-task-card {
+    gap: 6px;
+    padding-inline: 7px;
+  }
+
+  .juice-workspace .manual-task-card .manual-task-icon,
+  .juice-workspace .manual-task-card .manual-dictate-button,
+  .juice-workspace .manual-task-card .manual-submit-button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .juice-workspace .manual-task-card > button.manual-submit-button:last-child {
+    min-height: 38px;
+  }
+
+  .juice-workspace .manual-task-card .manual-task-copy input {
+    font-size: 11px;
+  }
+}
+
+/* A real illustrated task champion makes every completed task feel like an
+   event. The art is preloaded after first paint, then exists for this brief
+   completion-only layer rather than adding any idle rendering cost. */
+.screen-celebration .completion-mascot {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: min(78vw, 356px);
+  height: auto;
+  max-height: 58vh;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(6px 8px 0 rgba(13, 13, 18, 0.86));
+  transform: translate(-50%, -50%) scale(0.16) rotate(-12deg);
+  transform-origin: 50% 62%;
+  user-select: none;
+  animation: completion-mascot-celebrate 1050ms cubic-bezier(0.18, 0.92, 0.26, 1) both;
+}
+
+.screen-celebration .burst-word,
+.screen-celebration .burst-reward {
+  z-index: 4;
+}
+
+.screen-celebration .burst-word {
+  top: 16%;
+  max-width: 84vw;
+  font-size: clamp(30px, 9vw, 70px);
+}
+
+.screen-celebration .burst-reward {
+  top: 83%;
+  background: var(--juice-yellow);
+}
+
+.screen-celebration .burst-ring,
+.screen-celebration .burst-particle {
+  z-index: 2;
+}
+
+@keyframes completion-mascot-celebrate {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -34%) scale(0.16) rotate(-12deg);
+  }
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -54%) scale(1.13) rotate(4deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -48%) scale(0.96) rotate(-2deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -53%) scale(1.03) rotate(1deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -78%) scale(0.91) rotate(-3deg);
+  }
+}
+
+@media (max-width: 420px) {
+  .screen-celebration .completion-mascot {
+    width: min(84vw, 330px);
+    max-height: 54vh;
+  }
+
+  .screen-celebration .burst-word {
+    top: 14%;
+    font-size: clamp(27px, 9vw, 42px);
+  }
+
+  .screen-celebration .burst-reward {
+    top: 82%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-celebration .completion-mascot {
+    animation: none !important;
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 }
