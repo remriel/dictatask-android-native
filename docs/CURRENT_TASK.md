@@ -71,6 +71,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed. Unit tests remain `NO-SOURCE` because the project has no test files.
 - APK v1.5.16 SHA-256: `376EBAEFA3B01996639084B467F3CAE3274DC507B5FC0DF0D2E625695E77C171` (1,480,078 bytes); rebuilt from pushed commit `6a8e603d86abd7f9aa0f8f3487be142bc09ab66d` and verified with Android APK Signature Scheme v2.
 - Google Drive APK (new named file; prior versions preserved): https://drive.google.com/file/d/1dbLlnSkFwFAw6hCqdyfh6jNVibOMWHL4/view?usp=drivesdk
+- Public GitHub Release with the same APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.16
 
 ## Constraints
 
