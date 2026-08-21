@@ -5507,6 +5507,135 @@ body,
   transform: translate(1px, 1px);
 }
 
+/* Open task rows can be dismissed with a deliberate left swipe. The delete
+   action stays behind the card until the gesture crosses the reveal threshold,
+   so a casual horizontal scroll never removes work by accident. */
+.task-swipe-shell {
+  position: relative;
+  min-width: 0;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.task-swipe-shell .task-row {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+}
+
+.task-delete-reveal {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 4px solid var(--juice-black, var(--ink));
+  background: var(--juice-orange, var(--orange));
+  color: var(--juice-black, var(--ink));
+  pointer-events: none;
+}
+
+.task-swipe-shell.is-swipe-open .task-delete-reveal {
+  pointer-events: auto;
+}
+
+.task-delete-action {
+  display: grid;
+  width: 116px;
+  min-width: 116px;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 0;
+  border-left: 3px solid var(--juice-black, var(--ink));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.task-delete-action:disabled {
+  visibility: hidden;
+}
+
+.task-delete-action svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.juice-panel .task-swipe-shell {
+  --task-swipe-shadow: var(--task-tile-default-shadow);
+  box-shadow: 7px 7px 0 var(--task-swipe-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-orange {
+  --task-swipe-shadow: var(--task-tile-orange-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-blue {
+  --task-swipe-shadow: var(--task-tile-blue-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-cyan {
+  --task-swipe-shadow: var(--task-tile-cyan-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-lime {
+  --task-swipe-shadow: var(--task-tile-lime-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-violet {
+  --task-swipe-shadow: var(--task-tile-violet-shadow);
+}
+
+.juice-panel .task-swipe-shell .task-row {
+  box-shadow: none;
+  transform: translate3d(var(--task-swipe-offset, 0px), 0, 0);
+  touch-action: pan-y;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease, filter 160ms ease;
+  will-change: transform;
+}
+
+.juice-panel .task-swipe-shell .task-row:hover {
+  box-shadow: none;
+  transform: translate3d(calc(var(--task-swipe-offset, 0px) - 3px), -3px, 0);
+}
+
+.juice-panel .task-swipe-shell .task-row:active:not(.is-swiping) {
+  box-shadow: none;
+  transform: translate3d(calc(var(--task-swipe-offset, 0px) + 4px), 4px, 0);
+}
+
+.juice-panel .task-swipe-shell .task-row.is-swiping,
+.juice-panel .task-swipe-shell .task-row.is-swiping:hover,
+.juice-panel .task-swipe-shell .task-row.is-swiping:active {
+  box-shadow: none;
+  transform: translate3d(var(--task-swipe-offset, 0px), 0, 0);
+  transition: none;
+}
+
+.juice-panel .task-swipe-shell .task-row.is-swipe-open .task-swipe {
+  opacity: 0;
+}
+
+@media (max-width: 420px) {
+  .task-delete-action {
+    width: 104px;
+    min-width: 104px;
+  }
+}
+
 /* Task tiles retain the tactile treatment, but their edge is a darkened tone
    of the tile color rather than a shared black outline. */
 .juice-panel .task-row {

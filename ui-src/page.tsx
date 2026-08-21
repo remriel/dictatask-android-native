@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
@@ -535,6 +535,16 @@ function getTaskOpenDays(createdAt: number | null | undefined, now: number) {
   return Math.max(0, getLocalDayNumber(now) - getLocalDayNumber(createdAt));
 }
 
+function sortTasksNewestFirst<T extends { createdAt?: number | null }>(items: T[]) {
+  return items
+    .map((task, index) => ({ task, index }))
+    .sort((left, right) => (
+      (right.task.createdAt ?? 0) - (left.task.createdAt ?? 0)
+      || right.index - left.index
+    ))
+    .map(({ task }) => task);
+}
+
 function formatTaskOpenAge(daysOpen: number, completed: boolean) {
   if (completed) {
     return `DONE ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"} AGO`;
@@ -688,6 +698,7 @@ const TaskRow = memo(function TaskRow({
   celebrating,
   onToggle,
   onFocus,
+  onDelete,
 }: {
   task: Task;
   index: number;
@@ -695,58 +706,195 @@ const TaskRow = memo(function TaskRow({
   celebrating: boolean;
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const historyOnly = task.historyOnly === true;
+  const canDelete = !task.completed && !historyOnly;
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwipeOpen, setIsSwipeOpen] = useState(false);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const swipeStartRef = useRef<{
+    x: number;
+    y: number;
+    offset: number;
+    axis: "horizontal" | "vertical" | null;
+    active: boolean;
+  }>({ x: 0, y: 0, offset: 0, axis: null, active: false });
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (suppressClickTimerRef.current !== null) {
+      window.clearTimeout(suppressClickTimerRef.current);
+    }
+  }, []);
+
+  const closeSwipe = useCallback(() => {
+    setSwipeOffset(0);
+    setIsSwipeOpen(false);
+  }, []);
+
+  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canDelete || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (event.target instanceof Element && event.target.closest("button")) return;
+
+    swipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      offset: swipeOffset,
+      axis: null,
+      active: true,
+    };
+    setIsSwiping(true);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Some older WebViews do not support pointer capture for every input type.
+    }
+  }, [canDelete, swipeOffset]);
+
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start.active) return;
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (!start.axis) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) + 8) {
+        start.active = false;
+        setIsSwiping(false);
+        closeSwipe();
+        return;
+      }
+      if (Math.abs(deltaX) > 8) start.axis = "horizontal";
+    }
+    if (start.axis !== "horizontal") return;
+
+    const nextOffset = Math.max(-116, Math.min(0, start.offset + deltaX));
+    setSwipeOffset(nextOffset);
+  }, [closeSwipe]);
+
+  const handlePointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start.active) return;
+    start.active = false;
+    setIsSwiping(false);
+
+    if (start.axis !== "horizontal") {
+      closeSwipe();
+      return;
+    }
+
+    suppressClickRef.current = true;
+    if (suppressClickTimerRef.current !== null) {
+      window.clearTimeout(suppressClickTimerRef.current);
+    }
+    suppressClickTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressClickTimerRef.current = null;
+    }, 450);
+
+    const deltaX = event.clientX - start.x;
+    if (start.offset + deltaX <= -84) {
+      setSwipeOffset(-116);
+      setIsSwipeOpen(true);
+    } else {
+      closeSwipe();
+    }
+  }, [closeSwipe]);
+
+  const handleRowClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.closest("button")) return;
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      if (suppressClickTimerRef.current !== null) {
+        window.clearTimeout(suppressClickTimerRef.current);
+        suppressClickTimerRef.current = null;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (isSwipeOpen) {
+      event.stopPropagation();
+      closeSwipe();
+    }
+  }, [closeSwipe, isSwipeOpen]);
 
   return (
-    <div
-      className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${historyOnly ? "is-history" : ""} ${celebrating ? "is-celebrating" : ""}`}
-      id={`task-${task.id}`}
-      style={{
-        "--task-stack-index": index,
-        "--task-stack-offset": `${(2 - index) * 94}px`,
-      } as CSSProperties}
-    >
-      <button
-        className={`task-checkbox ${task.completed ? "checked" : ""} ${celebrating ? "is-celebrating" : ""}`}
-        type="button"
-        role="checkbox"
-        aria-checked={task.completed}
-        aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggle(task.id);
-        }}
+    <div className={`task-swipe-shell task-${task.color} ${isSwipeOpen ? "is-swipe-open" : ""}`}>
+      {canDelete && (
+        <div className="task-delete-reveal" aria-hidden={!isSwipeOpen}>
+          <button
+            className="task-delete-action"
+            type="button"
+            disabled={!isSwipeOpen}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(task.id);
+            }}
+            aria-label={`Delete ${task.title} without completing it`}
+          >
+            <Icon name="trash" />
+            <span>DELETE</span>
+          </button>
+        </div>
+      )}
+      <div
+        className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${historyOnly ? "is-history" : ""} ${celebrating ? "is-celebrating" : ""} ${isSwiping ? "is-swiping" : ""} ${isSwipeOpen ? "is-swipe-open" : ""}`}
+        id={`task-${task.id}`}
+        style={{
+          "--task-stack-index": index,
+          "--task-stack-offset": `${(2 - index) * 94}px`,
+          "--task-swipe-offset": `${swipeOffset}px`,
+        } as CSSProperties}
+        onPointerDown={canDelete ? handlePointerDown : undefined}
+        onPointerMove={canDelete ? handlePointerMove : undefined}
+        onPointerUp={canDelete ? handlePointerEnd : undefined}
+        onPointerCancel={canDelete ? handlePointerEnd : undefined}
+        onClick={handleRowClick}
       >
-        {task.completed && <Icon name="check" />}
-      </button>
-      <div className="task-content">
-        <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
-        <div>
-          <p className="task-title" data-title={task.title}>{task.title}</p>
-          <div className="task-detail-row">
-            <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}>
-              <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+        <button
+          className={`task-checkbox ${task.completed ? "checked" : ""} ${celebrating ? "is-celebrating" : ""}`}
+          type="button"
+          role="checkbox"
+          aria-checked={task.completed}
+          aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(task.id);
+          }}
+        >
+          {task.completed && <Icon name="check" />}
+        </button>
+        <div className="task-content">
+          <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
+          <div>
+            <p className="task-title" data-title={task.title}>{task.title}</p>
+            <div className="task-detail-row">
+              <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}>
+                <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+              </div>
+              {!task.completed && (
+                <button
+                  className="task-focus-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onFocus(task.id);
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  aria-label={`Focus ${task.title} without spinning the wheel`}
+                >
+                  FOCUS
+                </button>
+              )}
             </div>
-            {!task.completed && (
-              <button
-                className="task-focus-button"
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onFocus(task.id);
-                }}
-                onKeyDown={(event) => event.stopPropagation()}
-                aria-label={`Focus ${task.title} without spinning the wheel`}
-              >
-                FOCUS
-              </button>
-            )}
           </div>
         </div>
+        <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
+        {canDelete && <span className="task-swipe" aria-hidden="true">←</span>}
       </div>
-      <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
-      <span className="task-swipe" aria-hidden="true">→</span>
     </div>
   );
 });
@@ -900,8 +1048,10 @@ export default function Home() {
   const milestonesSeenRef = useRef(new Set<number>());
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
   const focusTaskRef = useRef<(id: string) => void>(() => undefined);
+  const deleteTaskRef = useRef<(id: string) => void>(() => undefined);
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
+  const handleTaskDelete = useCallback((id: string) => deleteTaskRef.current(id), []);
   const colorScheme = theme === "paper" ? "light" : "dark";
   const recordingProgress = isListening
     ? Math.min(100, (recordingSeconds / RECORDING_LIMIT_SECONDS) * 100)
@@ -981,7 +1131,7 @@ export default function Home() {
     });
   }, [setDismissedTaskIds, tasks]);
 
-  const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks]);
+  const openTasks = useMemo(() => sortTasksNewestFirst(tasks.filter((task) => !task.completed)), [tasks]);
   const openCount = openTasks.length;
   const completedCount = tasks.filter((task) => task.completed).length;
   const doneHistoryTasks = useMemo(() => {
@@ -1044,9 +1194,9 @@ export default function Home() {
   }, [taskHistory, tasks]);
   const filteredTasks = useMemo(() => {
     if (filter === "done") return doneHistoryTasks;
-    return tasks
+    return sortTasksNewestFirst(tasks
       .filter((task) => !task.completed || task.id === celebratingTaskId)
-      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id));
+      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id)));
   }, [celebratingTaskId, dismissedTaskIdSet, doneHistoryTasks, filter, tasks]);
 
   const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
@@ -1736,6 +1886,34 @@ export default function Home() {
     }
   }
 
+  function deleteTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task || task.completed) return;
+
+    if (undoCompletion?.id === id) clearUndoCompletion();
+    if (celebrationTimerRef.current !== null) {
+      window.clearTimeout(celebrationTimerRef.current);
+      celebrationTimerRef.current = null;
+    }
+    if (celebratingTaskId === id) setCelebratingTaskId(null);
+
+    if (wheelFocusTaskId === id) {
+      wheelRunIdRef.current += 1;
+      clearWheelTimers();
+      setWheelChallenge(null);
+      setWheelPhase("list");
+      setFocusEntryMode("wheel");
+      setWheelCandidates([]);
+      setPendingWheelTaskId(null);
+      setWheelSettingsOpen(false);
+    }
+
+    setTasks((current) => current.filter((item) => item.id !== id));
+    setTaskHistory((current) => current.filter((entry) => entry.id !== id));
+    setDismissedTaskIds((current) => current.filter((taskId) => taskId !== id));
+    setNotice(`Deleted "${task.title}" without completing it.`);
+  }
+
   function addTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = tidyTask(newTask);
@@ -1815,6 +1993,7 @@ export default function Home() {
 
   toggleTaskRef.current = toggleTask;
   focusTaskRef.current = focusTaskDirectly;
+  deleteTaskRef.current = deleteTask;
 
   return (
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
@@ -1968,6 +2147,7 @@ export default function Home() {
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}
+                      onDelete={handleTaskDelete}
                     />
                   ))
                 ) : (
