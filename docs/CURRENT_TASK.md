@@ -95,7 +95,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `a71120e` (`Remove hidden black swipe frame`).
+- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `db6d335` (`Match task card press behavior`).
+- Public v1.5.28 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.28
+- Direct v1.5.28 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.28/DictaTask-v1.5.28-matched-task-press.apk
 - Google Drive v1.5.28 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1wlQBMra8SM_717IdNqT5EJzdSKgYkwqF/view?usp=drivesdk
 - Public v1.5.27 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.27
 - Direct v1.5.27 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.27/DictaTask-v1.5.27-no-black-card-layer.apk
