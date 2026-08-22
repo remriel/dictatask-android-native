@@ -5611,7 +5611,14 @@ body,
   border: 4px solid var(--juice-black, var(--ink));
   background: var(--juice-orange, var(--orange));
   color: var(--juice-black, var(--ink));
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 70ms linear;
+}
+
+.task-swipe-shell.is-swiping .task-delete-reveal,
+.task-swipe-shell.is-swipe-open .task-delete-reveal {
+  opacity: 1;
 }
 
 .task-swipe-shell.is-swipe-open .task-delete-reveal {

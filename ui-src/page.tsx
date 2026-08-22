@@ -752,11 +752,6 @@ const TaskRow = memo(function TaskRow({
       axis: null,
       active: true,
     };
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // Some older WebViews do not support pointer capture for every input type.
-    }
   }, [canDelete, swipeOffset]);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -775,6 +770,11 @@ const TaskRow = memo(function TaskRow({
       if (Math.abs(deltaX) > 8) {
         start.axis = "horizontal";
         setIsSwiping(true);
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Some older WebViews do not support pointer capture for every input type.
+        }
       }
     }
     if (start.axis !== "horizontal") return;
@@ -831,7 +831,7 @@ const TaskRow = memo(function TaskRow({
   }, [closeSwipe, isSwipeOpen]);
 
   return (
-    <div className={`task-swipe-shell task-${task.color} ${isSwipeOpen ? "is-swipe-open" : ""}`}>
+    <div className={`task-swipe-shell task-${task.color} ${isSwiping ? "is-swiping" : ""} ${isSwipeOpen ? "is-swipe-open" : ""}`}>
       {canDelete && (
         <div className="task-delete-reveal" aria-hidden={!isSwipeOpen}>
           <button
