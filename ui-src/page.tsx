@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
@@ -45,6 +45,13 @@ type UndoCompletion = {
   title: string;
   previousHistory: TaskHistoryEntry | null;
   wasDismissed: boolean;
+};
+
+type UndoRemoveAll = {
+  tasks: Task[];
+  taskHistory: TaskHistoryEntry[];
+  dismissedTaskIds: string[];
+  filter: Filter;
 };
 
 type SpeechRecognitionLike = {
@@ -502,23 +509,18 @@ function formatFocusCountdown(totalSeconds: number) {
 
 function buildWheelGradient(tasks: Task[]) {
   if (!tasks.length) {
-    return "conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg)";
+    return "conic-gradient(from 0deg, var(--task-tile-default-shadow) 0deg 360deg)";
   }
 
   const segmentAngle = 360 / tasks.length;
-  const separator = Math.min(1.5, segmentAngle * 0.08);
-  const stops = tasks.flatMap((task, index) => {
+  const stops = tasks.map((task, index) => {
     const start = index * segmentAngle;
     const end = (index + 1) * segmentAngle;
     const color = WHEEL_TASK_COLOR_VARIABLES[task.color];
-    const wedgeEnd = Math.max(start, end - separator);
-    return [
-      `${color} ${start.toFixed(2)}deg ${wedgeEnd.toFixed(2)}deg`,
-      `var(--juice-black) ${wedgeEnd.toFixed(2)}deg ${end.toFixed(2)}deg`,
-    ];
+    return `${color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
   });
 
-  return `conic-gradient(from -90deg, ${stops.join(", ")})`;
+  return `conic-gradient(from 0deg, ${stops.join(", ")})`;
 }
 
 function formatHistoryDate(timestamp: number | null) {
@@ -535,8 +537,21 @@ function getTaskOpenDays(createdAt: number | null | undefined, now: number) {
   return Math.max(0, getLocalDayNumber(now) - getLocalDayNumber(createdAt));
 }
 
+function sortTasksNewestFirst<T extends { createdAt?: number | null }>(items: T[]) {
+  return items
+    .map((task, index) => ({ task, index }))
+    .sort((left, right) => (
+      (right.task.createdAt ?? 0) - (left.task.createdAt ?? 0)
+      || right.index - left.index
+    ))
+    .map(({ task }) => task);
+}
+
 function formatTaskOpenAge(daysOpen: number, completed: boolean) {
-  return `${completed ? "OPEN FOR" : "OPEN"} ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"}`;
+  if (completed) {
+    return `DONE ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"} AGO`;
+  }
+  return `OPEN ${daysOpen} ${daysOpen === 1 ? "DAY" : "DAYS"}`;
 }
 
 function getNextLocalMidnightDelay(timestamp: number) {
@@ -685,6 +700,7 @@ const TaskRow = memo(function TaskRow({
   celebrating,
   onToggle,
   onFocus,
+  onDelete,
 }: {
   task: Task;
   index: number;
@@ -692,58 +708,197 @@ const TaskRow = memo(function TaskRow({
   celebrating: boolean;
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const historyOnly = task.historyOnly === true;
+  const canDelete = !task.completed && !historyOnly;
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isSwipeOpen, setIsSwipeOpen] = useState(false);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const swipeStartRef = useRef<{
+    x: number;
+    y: number;
+    offset: number;
+    axis: "horizontal" | "vertical" | null;
+    active: boolean;
+  }>({ x: 0, y: 0, offset: 0, axis: null, active: false });
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (suppressClickTimerRef.current !== null) {
+      window.clearTimeout(suppressClickTimerRef.current);
+    }
+  }, []);
+
+  const closeSwipe = useCallback(() => {
+    setSwipeOffset(0);
+    setIsSwipeOpen(false);
+  }, []);
+
+  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canDelete || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (event.target instanceof Element && event.target.closest("button")) return;
+
+    swipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      offset: swipeOffset,
+      axis: null,
+      active: true,
+    };
+  }, [canDelete, swipeOffset]);
+
+  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start.active) return;
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (!start.axis) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) + 8) {
+        start.active = false;
+        setIsSwiping(false);
+        closeSwipe();
+        return;
+      }
+      if (Math.abs(deltaX) > 8) {
+        start.axis = "horizontal";
+        setIsSwiping(true);
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Some older WebViews do not support pointer capture for every input type.
+        }
+      }
+    }
+    if (start.axis !== "horizontal") return;
+
+    const nextOffset = Math.max(-116, Math.min(0, start.offset + deltaX));
+    setSwipeOffset(nextOffset);
+  }, [closeSwipe]);
+
+  const handlePointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current;
+    if (!start.active) return;
+    start.active = false;
+    setIsSwiping(false);
+
+    if (start.axis !== "horizontal") {
+      closeSwipe();
+      return;
+    }
+
+    suppressClickRef.current = true;
+    if (suppressClickTimerRef.current !== null) {
+      window.clearTimeout(suppressClickTimerRef.current);
+    }
+    suppressClickTimerRef.current = window.setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressClickTimerRef.current = null;
+    }, 450);
+
+    const deltaX = event.clientX - start.x;
+    if (start.offset + deltaX <= -84) {
+      setSwipeOffset(-116);
+      setIsSwipeOpen(true);
+    } else {
+      closeSwipe();
+    }
+  }, [closeSwipe]);
+
+  const handleRowClick = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.closest("button")) return;
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      if (suppressClickTimerRef.current !== null) {
+        window.clearTimeout(suppressClickTimerRef.current);
+        suppressClickTimerRef.current = null;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (isSwipeOpen) {
+      event.stopPropagation();
+      closeSwipe();
+    }
+  }, [closeSwipe, isSwipeOpen]);
 
   return (
-    <div
-      className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${historyOnly ? "is-history" : ""} ${celebrating ? "is-celebrating" : ""}`}
-      id={`task-${task.id}`}
-      style={{
-        "--task-stack-index": index,
-        "--task-stack-offset": `${(2 - index) * 94}px`,
-      } as CSSProperties}
-    >
-      <button
-        className={`task-checkbox ${task.completed ? "checked" : ""} ${celebrating ? "is-celebrating" : ""}`}
-        type="button"
-        role="checkbox"
-        aria-checked={task.completed}
-        aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggle(task.id);
-        }}
+    <div className={`task-swipe-shell task-${task.color} ${isSwiping ? "is-swiping" : ""} ${isSwipeOpen ? "is-swipe-open" : ""}`}>
+      {canDelete && (
+        <div className="task-delete-reveal" aria-hidden={!isSwipeOpen}>
+          <button
+            className="task-delete-action"
+            type="button"
+            disabled={!isSwipeOpen}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(task.id);
+            }}
+            aria-label={`Delete ${task.title} without completing it`}
+          >
+            <Icon name="trash" />
+            <span>DELETE</span>
+          </button>
+        </div>
+      )}
+      <div
+        className={`task-row task-${task.color} ${task.completed ? "is-complete" : ""} ${historyOnly ? "is-history" : ""} ${celebrating ? "is-celebrating" : ""} ${isSwiping ? "is-swiping" : ""} ${isSwipeOpen ? "is-swipe-open" : ""}`}
+        id={`task-${task.id}`}
+        style={{
+          "--task-stack-index": index,
+          "--task-stack-offset": `${(2 - index) * 94}px`,
+          "--task-swipe-offset": `${swipeOffset}px`,
+        } as CSSProperties}
+        onPointerDown={canDelete ? handlePointerDown : undefined}
+        onPointerMove={canDelete ? handlePointerMove : undefined}
+        onPointerUp={canDelete ? handlePointerEnd : undefined}
+        onPointerCancel={canDelete ? handlePointerEnd : undefined}
+        onClick={handleRowClick}
       >
-        {task.completed && <Icon name="check" />}
-      </button>
-      <div className="task-content">
-        <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
-        <div>
-          <p className="task-title">{task.title}</p>
-          <div className="task-detail-row">
-            <div className="task-meta" aria-label={`${formatTaskOpenAge(daysOpen, task.completed)} since this task was created`}>
-              <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+        <button
+          className={`task-checkbox ${task.completed ? "checked" : ""} ${celebrating ? "is-celebrating" : ""}`}
+          type="button"
+          role="checkbox"
+          aria-checked={task.completed}
+          aria-label={`${task.completed ? "Reopen" : "Complete"} ${task.title}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(task.id);
+          }}
+        >
+          {task.completed && <Icon name="check" />}
+        </button>
+        <div className="task-content">
+          <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
+          <div>
+            <p className="task-title" data-title={task.title}>{task.title}</p>
+            <div className="task-detail-row">
+              <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}>
+                <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
+              </div>
+              {!task.completed && (
+                <button
+                  className="task-focus-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onFocus(task.id);
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  aria-label={`Focus ${task.title} without spinning the wheel`}
+                >
+                  FOCUS
+                </button>
+              )}
             </div>
-            {!task.completed && (
-              <button
-                className="task-focus-button"
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onFocus(task.id);
-                }}
-                onKeyDown={(event) => event.stopPropagation()}
-                aria-label={`Focus ${task.title} without spinning the wheel`}
-              >
-                FOCUS
-              </button>
-            )}
           </div>
         </div>
+        <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
+        {canDelete && <span className="task-swipe" aria-hidden="true">←</span>}
       </div>
-      <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
-      <span className="task-swipe" aria-hidden="true">→</span>
     </div>
   );
 });
@@ -819,12 +974,6 @@ function CelebrationBurst({ variant, nonce }: { variant: CelebrationVariant; non
         ))}
       </div>
       <div className={`celebration-burst burst-${variant}`}>
-        <img
-          className="completion-mascot"
-          src="./dictatask-task-champion-512.png"
-          alt=""
-          draggable={false}
-        />
         <span className="burst-word">{word}</span>
         <span className="burst-reward">+1 DONE</span>
         <span className="burst-ring ring-one" />
@@ -867,6 +1016,8 @@ export default function Home() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const setNotice = useCallback((_message: string) => undefined, []);
   const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
+  const [removeAllConfirmOpen, setRemoveAllConfirmOpen] = useState(false);
+  const [undoRemoveAll, setUndoRemoveAll] = useState<UndoRemoveAll | null>(null);
   const [celebratingTaskId, setCelebratingTaskId] = useState<string | null>(null);
   const [dismissedTaskIds, setDismissedTaskIds] = useStoredState<string[]>("dictatask-dismissed-task-ids", EMPTY_STRING_ARRAY);
   const [celebrationVariant, setCelebrationVariant] = useState<CelebrationVariant>("burst");
@@ -903,9 +1054,14 @@ export default function Home() {
   const milestonesSeenRef = useRef(new Set<number>());
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
   const focusTaskRef = useRef<(id: string) => void>(() => undefined);
+  const deleteTaskRef = useRef<(id: string) => void>(() => undefined);
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
+  const handleTaskDelete = useCallback((id: string) => deleteTaskRef.current(id), []);
   const colorScheme = theme === "paper" ? "light" : "dark";
+  const recordingProgress = isListening
+    ? Math.min(100, (recordingSeconds / RECORDING_LIMIT_SECONDS) * 100)
+    : 0;
 
   useEffect(() => {
     document.documentElement.dataset.dictataskTheme = theme;
@@ -920,16 +1076,6 @@ export default function Home() {
       document.documentElement.style.removeProperty("color-scheme");
     };
   }, [colorScheme, theme]);
-
-  useEffect(() => {
-    // Warm the small raster once after the first paint so checking a task feels
-    // instantaneous even on a cold Android WebView cache.
-    const preloadTimer = window.setTimeout(() => {
-      const mascot = new Image();
-      mascot.src = "./dictatask-task-champion-512.png";
-    }, 350);
-    return () => window.clearTimeout(preloadTimer);
-  }, []);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -991,7 +1137,7 @@ export default function Home() {
     });
   }, [setDismissedTaskIds, tasks]);
 
-  const openTasks = useMemo(() => tasks.filter((task) => !task.completed), [tasks]);
+  const openTasks = useMemo(() => sortTasksNewestFirst(tasks.filter((task) => !task.completed)), [tasks]);
   const openCount = openTasks.length;
   const completedCount = tasks.filter((task) => task.completed).length;
   const doneHistoryTasks = useMemo(() => {
@@ -1036,6 +1182,7 @@ export default function Home() {
       }));
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
+
   const totalCount = tasks.length;
   const createdAtByTaskId = useMemo(() => {
     const timestamps = new Map<string, number>();
@@ -1053,9 +1200,9 @@ export default function Home() {
   }, [taskHistory, tasks]);
   const filteredTasks = useMemo(() => {
     if (filter === "done") return doneHistoryTasks;
-    return tasks
+    return sortTasksNewestFirst(tasks
       .filter((task) => !task.completed || task.id === celebratingTaskId)
-      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id));
+      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id)));
   }, [celebratingTaskId, dismissedTaskIdSet, doneHistoryTasks, filter, tasks]);
 
   const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
@@ -1637,6 +1784,8 @@ export default function Home() {
   }
 
   function toggleTask(id: string) {
+    if (undoRemoveAll) setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
     const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
     const willComplete = Boolean(task && !task.completed);
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
@@ -1646,7 +1795,6 @@ export default function Home() {
       window.clearTimeout(celebrationTimerRef.current);
       celebrationTimerRef.current = null;
     }
-
     setTasks((current) => {
       if (current.some((item) => item.id === id)) {
         return current.map((item) => (item.id === id
@@ -1746,10 +1894,43 @@ export default function Home() {
     }
   }
 
+  function deleteTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task || task.completed) return;
+
+    if (undoRemoveAll) setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
+
+    if (undoCompletion?.id === id) clearUndoCompletion();
+    if (celebrationTimerRef.current !== null) {
+      window.clearTimeout(celebrationTimerRef.current);
+      celebrationTimerRef.current = null;
+    }
+    if (celebratingTaskId === id) setCelebratingTaskId(null);
+
+    if (wheelFocusTaskId === id) {
+      wheelRunIdRef.current += 1;
+      clearWheelTimers();
+      setWheelChallenge(null);
+      setWheelPhase("list");
+      setFocusEntryMode("wheel");
+      setWheelCandidates([]);
+      setPendingWheelTaskId(null);
+      setWheelSettingsOpen(false);
+    }
+
+    setTasks((current) => current.filter((item) => item.id !== id));
+    setTaskHistory((current) => current.filter((entry) => entry.id !== id));
+    setDismissedTaskIds((current) => current.filter((taskId) => taskId !== id));
+    setNotice(`Deleted "${task.title}" without completing it.`);
+  }
+
   function addTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const title = tidyTask(newTask);
     if (!title) return;
+    if (undoRemoveAll) setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
     setTasks((current) => [
       ...current,
       {
@@ -1765,19 +1946,19 @@ export default function Home() {
     setNotice("Added to the list.");
   }
 
-  function clearCompleted() {
-    const completedTasks = tasks.filter((task) => task.completed);
-    if (undoCompletion && completedTasks.some((task) => task.id === undoCompletion.id)) {
-      clearUndoCompletion();
-    }
-    if (completedTasks.length) {
-      setTaskHistory((current) => mergeTaskHistory(current, completedTasks));
-    }
-    setTasks((current) => current.filter((task) => !task.completed));
-    setNotice("Finished items cleared.");
+  function requestClearAllTasks() {
+    if (!tasks.length) return;
+    setRemoveAllConfirmOpen(true);
   }
 
   function clearAllTasks() {
+    if (!tasks.length) return;
+    setUndoRemoveAll({
+      tasks: tasks.map((task) => ({ ...task })),
+      taskHistory: taskHistory.map((entry) => ({ ...entry })),
+      dismissedTaskIds: [...dismissedTaskIds],
+      filter,
+    });
     clearUndoCompletion();
     setTaskHistory((current) => mergeTaskHistory(current, tasks));
     wheelRunIdRef.current += 1;
@@ -1792,7 +1973,21 @@ export default function Home() {
     setWheelCandidates([]);
     setPendingWheelTaskId(null);
     setWheelSettingsOpen(false);
+    setRemoveAllConfirmOpen(false);
     setNotice("All tasks removed.");
+  }
+
+  function undoClearAllTasks() {
+    const action = undoRemoveAll;
+    if (!action) return;
+
+    setTasks(action.tasks.map((task) => ({ ...task })));
+    setTaskHistory(action.taskHistory.map((entry) => ({ ...entry })));
+    setDismissedTaskIds([...action.dismissedTaskIds]);
+    setFilter(action.filter);
+    setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
+    setNotice(`Restored ${action.tasks.length} ${action.tasks.length === 1 ? "task" : "tasks"}.`);
   }
 
   function clearTranscript() {
@@ -1825,6 +2020,7 @@ export default function Home() {
 
   toggleTaskRef.current = toggleTask;
   focusTaskRef.current = focusTaskDirectly;
+  deleteTaskRef.current = deleteTask;
 
   return (
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
@@ -1837,7 +2033,7 @@ export default function Home() {
           <span className="milestone-sub">{milestone === "LEVEL COMPLETE" ? "YOU CLEARED THE WHOLE BOARD" : "KEEP THE MOMENTUM"}</span>
         </div>
       )}
-      <div className="top-banner" role="img" aria-label="DictaTask">
+      <header className="top-banner" aria-label="DictaTask navigation">
         <span className="top-banner-name" aria-hidden="true">
           <span className="top-banner-name-dicta">DICTA</span>
           <span className="top-banner-name-task">TASK</span>
@@ -1845,16 +2041,20 @@ export default function Home() {
         <span className="top-banner-block top-banner-block-orange" />
         <span className="top-banner-block top-banner-block-blue" />
         <span className="top-banner-block top-banner-block-lime" />
-      </div>
+      </header>
       <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">
             <button
               className={`record-button ${isListening ? "is-listening" : ""}`}
               type="button"
-              aria-label={isListening ? "Stop voice recording" : "Start a 30-second voice recording"}
+              aria-label={isListening
+                ? `Stop voice recording. ${RECORDING_LIMIT_SECONDS - recordingSeconds} seconds remaining`
+                : "Start a 30-second voice recording"}
+              style={{ "--recording-progress": `${recordingProgress}%` } as CSSProperties}
               onClick={toggleListening}
             >
+              <span className="record-button-progress" aria-hidden="true" />
               <span className="record-button-icon"><Icon name="mic" /></span>
               <span className="record-button-copy">
                 <strong>{isListening ? "LISTENING NOW" : "TAP TO RECORD"}</strong>
@@ -1863,18 +2063,6 @@ export default function Home() {
               <span className="shortcut">{isListening ? `${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")}s LEFT` : "30s MAX"}</span>
             </button>
             <span className="recording-hint">{isListening ? "Live transcript appears as you speak" : "or paste a transcription"}</span>
-          </div>
-
-          <div
-            className={`recording-limit ${isListening ? "is-active" : ""}`}
-            role="progressbar"
-            aria-label="Voice recording time"
-            aria-valuemin={0}
-            aria-valuemax={RECORDING_LIMIT_SECONDS}
-            aria-valuenow={isListening ? recordingSeconds : 0}
-          >
-            <span>{isListening ? `AUTO-STOPS IN ${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")} SEC` : "VOICE SESSION: 30 SEC MAX"}</span>
-            <span className="recording-progress"><i style={{ width: isListening ? `${(recordingSeconds / RECORDING_LIMIT_SECONDS) * 100}%` : "0%" }} /></span>
           </div>
 
           <textarea
@@ -1973,6 +2161,18 @@ export default function Home() {
                 </div>
               )}
 
+              {undoRemoveAll && (
+                <div className="undo-inline undo-remove-all-inline" role="status" aria-live="polite">
+                  <div className="undo-inline-copy">
+                    <strong>BOARD CLEARED</strong>
+                    <span>{undoRemoveAll.tasks.length} {undoRemoveAll.tasks.length === 1 ? "task" : "tasks"} removed</span>
+                  </div>
+                  <button type="button" onClick={undoClearAllTasks} aria-label="Undo removing all tasks">
+                    UNDO
+                  </button>
+                </div>
+              )}
+
               <div className="task-list">
                 {filteredTasks.length ? (
                   filteredTasks.map((task, index) => (
@@ -1980,13 +2180,13 @@ export default function Home() {
                       key={task.id}
                       task={task}
                       index={index}
-                      daysOpen={getTaskOpenDays(
-                        task.createdAt ?? createdAtByTaskId.get(task.id),
-                        task.completed ? task.completedAt ?? taskAgeNow : taskAgeNow,
-                      )}
+                      daysOpen={task.completed
+                        ? getTaskOpenDays(task.completedAt, taskAgeNow)
+                        : getTaskOpenDays(task.createdAt ?? createdAtByTaskId.get(task.id), taskAgeNow)}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}
+                      onDelete={handleTaskDelete}
                     />
                   ))
                 ) : (
@@ -2011,13 +2211,27 @@ export default function Home() {
                 <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
                   <Icon name="download" /> Export .txt
                 </button>
-                <button className="clear-button" type="button" onClick={clearCompleted} disabled={!completedCount}>
-                  <Icon name="trash" /> Clear done
-                </button>
-                <button className="clear-button remove-all-button" type="button" onClick={clearAllTasks} disabled={!tasks.length}>
+                <button className="clear-button remove-all-button" type="button" onClick={requestClearAllTasks} disabled={!tasks.length}>
                   <Icon name="trash" /> Remove all
                 </button>
               </div>
+
+              {removeAllConfirmOpen && (
+                <div className="remove-all-confirm" role="alertdialog" aria-labelledby="remove-all-confirm-title" aria-describedby="remove-all-confirm-copy">
+                  <div className="remove-all-confirm-copy">
+                    <strong id="remove-all-confirm-title">REMOVE ALL TASKS?</strong>
+                    <span id="remove-all-confirm-copy">This clears the current board. You can undo it right after.</span>
+                  </div>
+                  <div className="remove-all-confirm-actions">
+                    <button type="button" className="remove-all-confirm-cancel" onClick={() => setRemoveAllConfirmOpen(false)}>
+                      CANCEL
+                    </button>
+                    <button type="button" className="remove-all-confirm-delete" onClick={clearAllTasks}>
+                      REMOVE ALL
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {wheelSettingsOpen && (
                   <section className="wheel-settings-inline" id="wheel-settings" aria-label="Focus countdown settings">
@@ -2087,8 +2301,6 @@ export default function Home() {
                       aria-label="A colorful task-selection wheel"
                     >
                       <span className="wheel-color-field" aria-hidden="true" />
-                      <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
-                      <span className="wheel-light-sweep" aria-hidden="true" />
                       <span className="wheel-hub-mark" aria-hidden="true">SPIN</span>
                     </div>
                   </div>

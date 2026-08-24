@@ -396,8 +396,11 @@ a:focus-visible {
 
 .record-button {
   display: inline-flex;
+  position: relative;
   align-items: center;
   gap: 8px;
+  overflow: hidden;
+  isolation: isolate;
   padding: 9px 11px 9px 9px;
   border: 2px solid var(--ink);
   background: var(--orange);
@@ -407,6 +410,40 @@ a:focus-visible {
   font-weight: 950;
   letter-spacing: -0.02em;
   transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.record-button-progress {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--recording-progress, 0%);
+  overflow: visible;
+  background: var(--orange);
+  opacity: 0;
+  pointer-events: none;
+  transition: width 220ms linear, opacity 120ms ease;
+}
+
+.record-button-progress::after {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 5px;
+  background: var(--yellow);
+  content: "";
+}
+
+.record-button.is-listening .record-button-progress {
+  opacity: 1;
+  transition: width 1000ms linear, opacity 120ms ease;
+}
+
+.record-button > :not(.record-button-progress) {
+  position: relative;
+  z-index: 1;
 }
 
 .record-button:hover {
@@ -572,38 +609,6 @@ a:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
-}
-
-.recording-limit {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 11px;
-  color: #8c857d;
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.recording-limit.is-active {
-  color: var(--ink);
-}
-
-.recording-progress {
-  display: block;
-  width: 74px;
-  height: 7px;
-  overflow: hidden;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-}
-
-.recording-progress i {
-  display: block;
-  height: 100%;
-  background: var(--orange);
-  transition: width 220ms linear;
 }
 
 .voice-wave {
@@ -944,12 +949,36 @@ a:focus-visible {
   font-weight: 900;
   letter-spacing: -0.035em;
   line-height: 1.15;
+  position: relative;
+  text-decoration: none;
 }
 
 .is-complete .task-title {
   color: #8c857d;
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
+}
+
+.task-row:not(.is-complete) .task-title::after {
+  content: none;
+}
+
+.task-row.is-complete .task-title::after {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: transparent;
+  content: attr(data-title);
+  pointer-events: none;
+  text-decoration-color: var(--task-strike-color, currentColor);
+  text-decoration-line: line-through;
+  text-decoration-thickness: 3px;
+  text-transform: inherit;
+  white-space: inherit;
+  clip-path: inset(0);
+}
+
+.task-row.is-complete.is-celebrating .task-title::after {
+  animation: task-title-strike 560ms 190ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  clip-path: inset(0 100% 0 0);
 }
 
 .task-meta {
@@ -1127,6 +1156,15 @@ a:focus-visible {
   100% {
     opacity: 1;
     transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes task-title-strike {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0);
   }
 }
 
@@ -2230,12 +2268,12 @@ body {
 
 .juice-panel .record-button:hover {
   box-shadow: 7px 7px 0 var(--juice-black);
-  transform: translate(-2px, -2px) rotate(-1deg);
+  transform: translate(-2px, -2px);
 }
 
 .juice-panel .record-button:active {
   box-shadow: 2px 2px 0 var(--juice-black);
-  transform: translate(3px, 3px) rotate(1deg) scale(0.98);
+  transform: translate(3px, 3px);
 }
 
 .juice-panel .record-button.is-listening {
@@ -2286,29 +2324,16 @@ body {
   text-transform: uppercase;
 }
 
-.juice-panel .recording-limit {
-  margin-top: 10px;
-  color: var(--juice-black);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 9px;
-  font-weight: 950;
-  letter-spacing: 0.08em;
+.juice-panel .record-button-progress {
+  background: var(--juice-orange);
 }
 
-.juice-panel .recording-progress {
-  height: 9px;
-  margin-top: 7px;
-  border: 2px solid var(--juice-black);
-  background: rgba(23, 21, 29, 0.14);
-}
-
-.juice-panel .recording-progress i {
-  background: var(--juice-blue);
-  box-shadow: 5px 0 0 var(--juice-orange);
+.juice-panel .record-button-progress::after {
+  background: var(--juice-yellow);
 }
 
 .juice-panel .transcript-input {
-  min-height: 154px;
+  min-height: 184px;
   margin-top: 10px;
   padding: 14px;
   border: 3px solid var(--juice-black);
@@ -2372,12 +2397,12 @@ body {
 .juice-panel .scan-button:hover {
   background: var(--juice-blue);
   box-shadow: 9px 9px 0 var(--juice-yellow);
-  transform: translate(-2px, -2px) rotate(-1deg);
+  transform: translate(-2px, -2px);
 }
 
 .juice-panel .scan-button:active {
   box-shadow: 2px 2px 0 var(--juice-yellow);
-  transform: translate(4px, 4px) scale(0.98);
+  transform: translate(4px, 4px);
 }
 
 .juice-panel .scan-button > span:first-child {
@@ -2410,7 +2435,7 @@ body {
   background: var(--juice-lime);
   box-shadow: 7px 7px 0 var(--juice-black);
   color: var(--juice-black);
-  transform: translate(-2px, -2px) rotate(1deg);
+  transform: translate(-2px, -2px);
 }
 
 .juice-panel .transcript-clear-action:active:not(:disabled) {
@@ -2495,7 +2520,7 @@ body {
 
 .juice-panel .task-actions-footer {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   justify-content: flex-start;
   gap: 5px;
@@ -2552,7 +2577,7 @@ body {
   color: var(--juice-black);
   background: var(--juice-orange);
   box-shadow: 5px 5px 0 var(--juice-black);
-  transform: translate(-1px, -1px) rotate(-2deg);
+  transform: translate(-1px, -1px);
 }
 
 .juice-panel .export-history-button {
@@ -2572,6 +2597,83 @@ body {
 
 .juice-panel .remove-all-button {
   background: var(--juice-orange);
+}
+
+.juice-panel .remove-all-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 2px 0;
+  padding: 9px 10px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-cream);
+  box-shadow: 4px 4px 0 var(--juice-black);
+  color: var(--juice-black);
+}
+
+.juice-panel .remove-all-confirm-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.juice-panel .remove-all-confirm-copy strong {
+  color: var(--juice-orange);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.juice-panel .remove-all-confirm-copy span {
+  max-width: 300px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.juice-panel .remove-all-confirm-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.juice-panel .remove-all-confirm-actions button {
+  min-height: 28px;
+  padding: 4px 7px;
+  border: 2px solid var(--juice-black);
+  box-shadow: 3px 3px 0 var(--juice-black);
+  color: var(--juice-black);
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.045em;
+  white-space: nowrap;
+}
+
+.juice-panel .remove-all-confirm-cancel {
+  background: var(--juice-yellow);
+}
+
+.juice-panel .remove-all-confirm-delete {
+  background: var(--juice-orange);
+}
+
+.juice-panel .remove-all-confirm-actions button:hover:not(:disabled) {
+  background: var(--juice-blue);
+  color: var(--juice-cream);
+}
+
+.juice-panel .undo-remove-all-inline {
+  background: var(--juice-blue);
+  color: var(--juice-cream);
+}
+
+.juice-panel .undo-remove-all-inline .undo-inline-copy strong {
+  color: var(--juice-yellow);
 }
 
 .task-stats-ribbon {
@@ -2618,7 +2720,7 @@ body {
 
 .juice-panel .filter-tabs button:hover {
   background: var(--juice-yellow);
-  transform: translateY(-2px) rotate(-2deg);
+  transform: translateY(-2px);
 }
 
 .juice-panel .filter-tabs button.active {
@@ -2675,7 +2777,7 @@ body {
 .juice-panel .task-row:hover {
   box-shadow: 10px 10px 0 var(--juice-black);
   filter: saturate(1.16);
-  transform: translate(-3px, -3px) rotate(-0.6deg);
+  transform: translate(-3px, -3px);
 }
 
 /* A task card may still feel tactile when tapped, but only its dedicated
@@ -2703,7 +2805,7 @@ body {
 
 .juice-panel .task-checkbox:hover {
   box-shadow: 5px 5px 0 var(--juice-black);
-  transform: rotate(-8deg) scale(1.1);
+  transform: scale(1.1);
 }
 
 .juice-panel .task-checkbox:active {
@@ -2741,10 +2843,11 @@ body {
 
 .juice-panel .task-title {
   color: var(--juice-black);
+  font-family: "Archivo", Arial, Helvetica, sans-serif;
   font-size: clamp(18px, 1.7vw, 20px);
-  font-weight: 950;
-  letter-spacing: -0.045em;
-  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
 }
 
 .task-focus-button {
@@ -2779,7 +2882,7 @@ body {
 
 .juice-panel .is-complete .task-title {
   color: rgba(17, 16, 24, 0.62);
-  text-decoration-thickness: 3px;
+  text-decoration: none;
 }
 
 .juice-panel .task-meta {
@@ -2886,7 +2989,7 @@ body {
 .juice-panel .add-task-form button:hover {
   background: var(--juice-blue);
   box-shadow: 5px 5px 0 var(--juice-black);
-  transform: translate(-1px, -1px) rotate(2deg);
+  transform: translate(-1px, -1px);
 }
 
 .juice-panel .add-task-form button:active {
@@ -3332,7 +3435,7 @@ body {
   }
 
   .juice-panel .transcript-input {
-    min-height: 133px;
+    min-height: 160px;
     font-size: 15px;
   }
 
@@ -3480,6 +3583,11 @@ body {
     opacity: 1;
     transform: none;
   }
+
+  .juice-shell .task-row.is-complete .task-title::after {
+    animation: none !important;
+    clip-path: inset(0);
+  }
 }
 
 /* The removed mission deck should not leave decorative ghosts behind. */
@@ -3573,7 +3681,11 @@ body {
 }
 
 .juice-panel .task-row .task-title {
-  text-shadow: 1px 1px 0 rgba(23, 21, 29, 0.65);
+  --task-strike-color: var(--task-card-text);
+}
+
+.juice-panel .task-row .task-title {
+  text-shadow: 1px 1px 0 rgba(23, 21, 29, 0.28);
 }
 
 /* Keep the active board loud and scannable without changing the task text
@@ -4094,7 +4206,7 @@ body {
 
 .theme-option:hover,
 .theme-option:focus-visible {
-  transform: translate(-1px, -1px) rotate(-1deg);
+  transform: translate(-1px, -1px);
 }
 
 .theme-option.is-active {
@@ -4699,58 +4811,18 @@ textarea {
   place-items: center;
   justify-self: center;
   margin: 12px auto 4px;
-  padding: 20px;
-  border: 5px solid var(--juice-black);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 38%, rgba(247, 240, 223, 0.22), transparent 52%),
-    var(--juice-blue);
-  box-shadow:
-    0 0 0 4px var(--juice-cream),
-    0 0 0 9px var(--juice-black),
-    0 0 0 14px var(--juice-orange);
+  padding: 6px;
 }
 
-.wheel-machine::before,
 .wheel-machine::after {
   position: absolute;
+  z-index: 0;
+  inset: 6px;
   border-radius: 50%;
+  background: var(--juice-black);
   content: "";
   pointer-events: none;
-}
-
-.wheel-machine::before {
-  z-index: 0;
-  inset: 4%;
-  border: 4px solid var(--juice-black);
-  background:
-    repeating-conic-gradient(from -90deg, var(--juice-orange) 0 3deg, transparent 3deg 18deg),
-    var(--juice-yellow);
-  box-shadow:
-    0 0 0 4px var(--juice-cream),
-    0 0 0 7px var(--juice-black);
-  transform-origin: center;
-  transform: rotate(0deg);
-}
-
-.wheel-machine::after {
-  z-index: 0;
-  inset: 10%;
-  border: 2px solid rgba(247, 240, 223, 0.68);
-  box-shadow:
-    inset 0 0 0 3px rgba(13, 13, 18, 0.22),
-    0 0 0 2px rgba(13, 13, 18, 0.72);
-  opacity: 0.78;
-  transform-origin: center;
-  transform: scale(1);
-}
-
-.wheel-machine.is-spinning::before {
-  animation: wheel-orbit 720ms linear infinite;
-}
-
-.wheel-machine.is-spinning::after {
-  animation: wheel-halo 900ms ease-in-out infinite;
+  transform: translate(7px, 7px);
 }
 
 .wheel-landing-marker {
@@ -4783,10 +4855,6 @@ textarea {
   transform: translateX(-50%);
 }
 
-.wheel-machine.is-spinning .wheel-landing-marker {
-  animation: wheel-marker-pulse 420ms steps(2, end) infinite;
-}
-
 .wheel-rotor {
   /* Rotation is driven frame-by-frame in page.tsx for Android WebView parity. */
   position: relative;
@@ -4794,19 +4862,15 @@ textarea {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 6px solid var(--juice-black);
+  border: 5px solid var(--juice-black);
   border-radius: 50%;
   background: var(--juice-cream);
-  box-shadow:
-    0 0 0 6px var(--juice-cream),
-    0 0 0 10px var(--juice-black),
-    0 0 0 14px var(--juice-orange);
+  box-shadow: none;
   transform-origin: center;
   will-change: transform;
 }
 
-.wheel-color-field,
-.wheel-ink-overlay {
+.wheel-color-field {
   position: absolute;
   inset: 0;
   display: block;
@@ -4818,62 +4882,7 @@ textarea {
 
 .wheel-color-field {
   z-index: 0;
-  background:
-    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.34), transparent 26%),
-    radial-gradient(circle at 72% 82%, rgba(13, 13, 18, 0.26), transparent 48%),
-    var(--wheel-color-gradient, conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg));
-}
-
-.wheel-ink-overlay {
-  z-index: 1;
-  object-fit: cover;
-  filter: grayscale(1) contrast(1.35) brightness(0.92);
-  mix-blend-mode: multiply;
-  opacity: 0.32;
-}
-
-.wheel-light-sweep {
-  position: absolute;
-  z-index: 2;
-  inset: -18%;
-  border-radius: 50%;
-  background: conic-gradient(from -28deg, transparent 0 42deg, rgba(247, 240, 223, 0.56) 46deg 58deg, transparent 62deg 360deg);
-  mix-blend-mode: screen;
-  opacity: 0.14;
-  pointer-events: none;
-  transform: rotate(-20deg);
-}
-
-.wheel-machine.is-spinning .wheel-rotor {
-  filter: saturate(1.16) contrast(1.08);
-}
-
-.wheel-machine.is-spinning .wheel-light-sweep {
-  animation: wheel-light-sweep 520ms linear infinite;
-  opacity: 0.72;
-}
-
-.wheel-machine.is-spinning .wheel-rotor::before {
-  animation: wheel-ring-spin 640ms linear infinite;
-}
-
-.wheel-rotor::before {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  inset: 5%;
-  border: 3px solid var(--juice-black);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 0 0 3px rgba(247, 240, 223, 0.78),
-    inset 0 0 0 7px rgba(13, 13, 18, 0.2),
-    0 0 0 2px var(--juice-cream);
-  border-top-color: var(--juice-orange);
-  border-right-color: var(--juice-blue);
-  border-bottom-color: var(--juice-lime);
-  border-left-color: var(--juice-violet);
-  transform-origin: center;
-  pointer-events: none;
+  background: var(--wheel-color-gradient, conic-gradient(from 0deg, var(--task-tile-default-shadow) 0deg 360deg));
 }
 
 .wheel-rotor::after {
@@ -4886,10 +4895,7 @@ textarea {
   aspect-ratio: 1;
   border: 4px solid var(--juice-black);
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 28%, var(--juice-cream) 0 10%, var(--juice-yellow) 11% 45%, var(--juice-orange) 46% 68%, var(--juice-blue) 69% 83%, var(--juice-black) 84% 100%);
-  box-shadow:
-    0 0 0 3px var(--juice-cream),
-    0 0 0 6px var(--juice-black);
+  background: var(--juice-yellow);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -4912,10 +4918,6 @@ textarea {
   pointer-events: none;
   text-shadow: 1px 1px 0 var(--juice-cream);
   transform: translate(-50%, -50%);
-}
-
-.wheel-machine.is-spinning .wheel-hub-mark {
-  animation: wheel-hub-pulse 520ms steps(2, end) infinite;
 }
 
 .wheel-result-card {
@@ -5060,65 +5062,6 @@ textarea {
   }
 }
 
-@keyframes wheel-orbit {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes wheel-halo {
-  0%,
-  100% {
-    opacity: 0.58;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.035);
-  }
-}
-
-@keyframes wheel-light-sweep {
-  from {
-    transform: rotate(-20deg) scale(1);
-  }
-  to {
-    transform: rotate(360deg) scale(1);
-  }
-}
-
-@keyframes wheel-ring-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes wheel-marker-pulse {
-  0%,
-  100% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.08);
-  }
-}
-
-@keyframes wheel-hub-pulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.16);
-  }
-}
-
 @media (max-width: 720px) {
   .app-shell.juice-shell {
     padding-inline: 12px;
@@ -5178,7 +5121,7 @@ textarea {
 
   .juice-panel .task-actions-footer {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
   }
 
@@ -5268,7 +5211,7 @@ textarea {
   }
 
   .juice-panel .transcript-input {
-    min-height: 133px;
+    min-height: 160px;
     resize: none;
   }
 
@@ -5334,12 +5277,6 @@ textarea {
   .juice-panel .record-button.is-listening .record-button-wave i,
   .task-board-flip,
   .wheel-rotor,
-  .wheel-machine.is-spinning::before,
-  .wheel-machine.is-spinning::after,
-  .wheel-machine.is-spinning .wheel-landing-marker,
-  .wheel-machine.is-spinning .wheel-light-sweep,
-  .wheel-machine.is-spinning .wheel-rotor::before,
-  .wheel-machine.is-spinning .wheel-hub-mark,
   .tasks-card.is-wheel-converging .task-row,
   .tasks-card.is-wheel-converging .card-heading,
   .tasks-card.is-wheel-converging .task-toolbar,
@@ -5432,17 +5369,7 @@ body,
   color: var(--juice-black);
 }
 
-/* The manual-entry band is 50% taller than the 48px compact predecessor,
-   while staying a single uninterrupted green surface. */
-.juice-workspace .manual-task-card {
-  min-height: 72px;
-}
-
-.juice-workspace .manual-task-card input,
-.juice-workspace .manual-task-card > button:last-child {
-  min-height: 72px;
-}
-
+/* The manual card uses the same 68px outer height as TAP TO RECORD. */
 .juice-workspace .manual-task-card > button:last-child {
   padding-inline: 10px;
 }
@@ -5480,6 +5407,142 @@ body,
 .juice-workspace .manual-task-card .manual-dictate-button:active {
   box-shadow: 1px 1px 0 var(--juice-black);
   transform: translate(1px, 1px);
+}
+
+/* Open task rows can be dismissed with a deliberate left swipe. The delete
+   action stays behind the card until the gesture crosses the reveal threshold,
+   so a casual horizontal scroll never removes work by accident. */
+.task-swipe-shell {
+  position: relative;
+  min-width: 0;
+  margin-bottom: 12px;
+  overflow: visible;
+}
+
+.task-swipe-shell .task-row {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+}
+
+.task-delete-reveal {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  overflow: hidden;
+  border: 4px solid var(--juice-black, var(--ink));
+  background: var(--juice-orange, var(--orange));
+  color: var(--juice-black, var(--ink));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 70ms linear;
+}
+
+.task-swipe-shell.is-swiping .task-delete-reveal,
+.task-swipe-shell.is-swipe-open .task-delete-reveal {
+  opacity: 1;
+}
+
+.task-swipe-shell.is-swipe-open .task-delete-reveal {
+  pointer-events: auto;
+}
+
+.task-delete-action {
+  display: grid;
+  width: 116px;
+  min-width: 116px;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 0;
+  border-left: 3px solid var(--juice-black, var(--ink));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.task-delete-action:disabled {
+  visibility: hidden;
+}
+
+.task-delete-action svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.juice-panel .task-swipe-shell {
+  --task-swipe-shadow: var(--task-tile-default-shadow);
+  box-shadow: none;
+}
+
+.juice-panel .task-swipe-shell.task-orange {
+  --task-swipe-shadow: var(--task-tile-orange-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-blue {
+  --task-swipe-shadow: var(--task-tile-blue-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-cyan {
+  --task-swipe-shadow: var(--task-tile-cyan-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-lime {
+  --task-swipe-shadow: var(--task-tile-lime-shadow);
+}
+
+.juice-panel .task-swipe-shell.task-violet {
+  --task-swipe-shadow: var(--task-tile-violet-shadow);
+}
+
+.juice-panel .task-swipe-shell .task-row {
+  box-shadow: 7px 7px 0 var(--task-card-shadow);
+  transform: translate3d(var(--task-swipe-offset, 0px), 0, 0);
+  touch-action: pan-y;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease, filter 160ms ease;
+  will-change: transform;
+}
+
+.juice-panel .task-swipe-shell .task-row:hover {
+  box-shadow: 11px 11px 0 var(--task-card-shadow);
+  transform: translate3d(calc(var(--task-swipe-offset, 0px) - 3px), -3px, 0);
+}
+
+.juice-panel .task-swipe-shell .task-row:active:not(.is-swiping) {
+  box-shadow: 2px 2px 0 var(--task-card-shadow);
+  transform: translate3d(calc(var(--task-swipe-offset, 0px) + 4px), 4px, 0);
+}
+
+.juice-panel .task-swipe-shell .task-row.is-swiping,
+.juice-panel .task-swipe-shell .task-row.is-swiping:hover,
+.juice-panel .task-swipe-shell .task-row.is-swiping:active {
+  box-shadow: 7px 7px 0 var(--task-card-shadow);
+  transform: translate3d(var(--task-swipe-offset, 0px), 0, 0);
+  transition: none;
+}
+
+.juice-panel .task-swipe-shell .task-row.is-swipe-open .task-swipe {
+  opacity: 0;
+}
+
+@media (max-width: 420px) {
+  .task-delete-action {
+    width: 104px;
+    min-width: 104px;
+  }
 }
 
 /* Task tiles retain the tactile treatment, but their edge is a darkened tone
@@ -5576,46 +5639,83 @@ body,
   font-size: 8px;
 }
 
-/* Keep the transcription actions compact: 40px is 20% below the current
-   50px mobile controls, with proportional type, icons, and breathing room. */
+/* Keep the transcription actions compact: 28px is 30% below the current
+   40px controls, with proportional type, icons, and breathing room. */
+.juice-panel .transcript-action-row {
+  align-items: center;
+  gap: 6px;
+}
+
 .juice-panel .compact-scan-button,
 .juice-panel .transcript-clear-action {
-  min-height: 40px;
-  padding: 6px 8px;
-  font-size: 9px;
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 6px;
+  font-size: 7px;
+  line-height: 1;
 }
 
 .juice-panel .compact-scan-button > span:first-child {
-  gap: 7px;
+  gap: 5px;
+  line-height: 1;
 }
 
-.juice-panel .compact-scan-button svg {
-  width: 19px;
-  height: 19px;
+.juice-panel .compact-scan-button > span:first-child svg {
+  width: 14px;
+  height: 14px;
+}
+
+.juice-panel .compact-scan-button .button-arrow {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.juice-panel .compact-scan-button .button-arrow svg {
+  width: 12px;
+  height: 12px;
 }
 
 .juice-panel .transcript-clear-action {
-  min-width: 90px;
+  min-width: 63px;
+  gap: 3px;
+  padding-right: 3px;
+  padding-left: 3px;
 }
 
 .juice-panel .transcript-clear-action svg {
-  width: 17px;
-  height: 17px;
+  width: 10px;
+  height: 10px;
+}
+
+.juice-panel .compact-scan-button {
+  --button-press-shadow: var(--juice-orange);
+}
+
+.juice-panel .record-button,
+.juice-panel .compact-scan-button,
+.juice-panel .transcript-clear-action,
+.juice-panel .clear-button {
+  --button-press-offset: 2px;
 }
 
 /* Buttons should press straight into their shadows. Keep the tactile lift and
-   press feedback, but never rotate or skew a control while it is touched. */
+   press feedback, but never rotate or skew a control while it is touched. The
+   compressed shadow makes the control itself and its drop shadow move together. */
 button:hover:not(:disabled),
 button:focus-visible:not(:disabled) {
+  rotate: none !important;
   transform: translate(-1px, -1px) !important;
 }
 
 button:active:not(:disabled) {
+  rotate: none !important;
   transform: translate(2px, 2px) !important;
+  box-shadow: var(--button-press-offset, 1px) var(--button-press-offset, 1px) 0 var(--button-press-shadow, var(--juice-black)) !important;
 }
 
-/* Manual entry is again a true card: the black frame is part of the green
-   surface itself, not a separate spacer band above or below it. */
+/* Manual entry is a true card: the black frame is part of the green surface
+   itself, not a separate spacer band above or below it. */
 .juice-workspace .manual-task-card {
   border: 5px solid var(--juice-black);
   box-shadow: none;
@@ -5623,14 +5723,15 @@ button:active:not(:disabled) {
 
 /* The manual composer keeps its green identity while borrowing TAP TO RECORD's
    card language: framed yellow glyphs, bold title hierarchy, and a hard ink
-   shadow. It remains a real form, so typing, dictation, and submit stay
-   immediately available rather than turning the card into decoration. */
+   shadow. Its outer height is deliberately locked to the recording card so the
+   two entry actions have the same visual weight at every mobile width. */
 .juice-workspace .manual-task-card {
   display: flex;
-  min-height: 94px;
+  height: 68px;
+  min-height: 68px;
   align-items: center;
   gap: 8px;
-  padding: 9px 10px;
+  padding: 7px 10px;
   border: 3px solid var(--juice-black);
   background: var(--juice-lime);
   box-shadow: 5px 5px 0 var(--juice-black);
@@ -5675,9 +5776,8 @@ button:active:not(:disabled) {
   color: var(--juice-black);
 }
 
-/* Override the old full-height submit rule: this framed control is a 94px
-   composer, matching the recording control rather than stretching a final
-   button through the entire band. */
+/* Override the old full-height submit rule: the framed controls stay compact
+   inside the shared 68px card height rather than stretching through the band. */
 .juice-workspace .manual-task-card > button.manual-submit-button:last-child {
   min-height: 42px;
   padding: 0;
@@ -5795,7 +5895,18 @@ button:active:not(:disabled) {
 }
 
 .juice-workspace .manual-task-card:focus-within {
-  box-shadow: 7px 7px 0 var(--juice-black);
+  box-shadow: 5px 5px 0 var(--juice-black);
+}
+
+/* The manual-entry surface is a static card, not a giant button. Its mic and
+   submit controls remain independently interactive, but focusing or tapping
+   the card itself never changes its frame or drop shadow. */
+.juice-workspace .manual-task-card,
+.juice-workspace .manual-task-card:hover,
+.juice-workspace .manual-task-card:active,
+.juice-workspace .manual-task-card:focus-within {
+  transform: none;
+  box-shadow: 5px 5px 0 var(--juice-black);
 }
 
 @media (max-width: 360px) {
@@ -5822,28 +5933,8 @@ button:active:not(:disabled) {
   }
 }
 
-/* A real illustrated task champion makes every completed task feel like an
-   event. The art is preloaded after first paint, then exists for this brief
-   completion-only layer rather than adding any idle rendering cost. */
-.screen-celebration .completion-mascot {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: 50%;
-  display: block;
-  width: min(78vw, 356px);
-  height: auto;
-  max-height: 58vh;
-  object-fit: contain;
-  opacity: 0;
-  pointer-events: none;
-  filter: drop-shadow(6px 8px 0 rgba(13, 13, 18, 0.86));
-  transform: translate(-50%, -50%) scale(0.16) rotate(-12deg);
-  transform-origin: 50% 62%;
-  user-select: none;
-  animation: completion-mascot-celebrate 1050ms cubic-bezier(0.18, 0.92, 0.26, 1) both;
-}
-
+/* Keep the completion word and reward as the focal point after removing the
+   character art; confetti and rings still provide the celebratory motion. */
 .screen-celebration .burst-word,
 .screen-celebration .burst-reward {
   z-index: 4;
@@ -5865,35 +5956,7 @@ button:active:not(:disabled) {
   z-index: 2;
 }
 
-@keyframes completion-mascot-celebrate {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -34%) scale(0.16) rotate(-12deg);
-  }
-  14% {
-    opacity: 1;
-    transform: translate(-50%, -54%) scale(1.13) rotate(4deg);
-  }
-  30% {
-    opacity: 1;
-    transform: translate(-50%, -48%) scale(0.96) rotate(-2deg);
-  }
-  60% {
-    opacity: 1;
-    transform: translate(-50%, -53%) scale(1.03) rotate(1deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -78%) scale(0.91) rotate(-3deg);
-  }
-}
-
 @media (max-width: 420px) {
-  .screen-celebration .completion-mascot {
-    width: min(84vw, 330px);
-    max-height: 54vh;
-  }
-
   .screen-celebration .burst-word {
     top: 14%;
     font-size: clamp(27px, 9vw, 42px);
@@ -5904,10 +5967,62 @@ button:active:not(:disabled) {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .screen-celebration .completion-mascot {
-    animation: none !important;
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
+/* Task tiles use one color system only: a saturated tile, a darkened edge in
+   that same hue, and the brighter color as its moving drop shadow. Remove the
+   old ink-colored card frame/shadow so a press never reveals a second black
+   layer behind the tile. */
+.juice-panel .task-row {
+  --task-card-border: #6d2d00;
+  border-color: var(--task-card-border);
+  outline: none;
+  background: var(--task-card-bg) !important;
+  box-shadow: 7px 7px 0 var(--task-card-shadow);
+}
+
+.juice-panel .task-row.task-orange {
+  --task-card-border: #6d2d00;
+}
+
+.juice-panel .task-row.task-blue {
+  --task-card-border: #0d2d79;
+}
+
+.juice-panel .task-row.task-cyan {
+  --task-card-border: #004b5c;
+}
+
+.juice-panel .task-row.task-lime {
+  --task-card-border: #15502f;
+}
+
+.juice-panel .task-row.task-violet {
+  --task-card-border: #2e1e52;
+}
+
+.juice-panel .task-row:hover {
+  border-color: var(--task-card-border);
+  box-shadow: 11px 11px 0 var(--task-card-shadow);
+}
+
+.juice-panel .task-row:active:not(.is-celebrating),
+.juice-panel .task-swipe-shell .task-row:active:not(.is-swiping):not(.is-celebrating) {
+  border-color: var(--task-card-border);
+  box-shadow: 2px 2px 0 var(--task-card-shadow);
+}
+
+.juice-panel .task-row:focus,
+.juice-panel .task-row:focus-visible {
+  outline: none;
+}
+
+.juice-panel .task-row .task-checkbox {
+  border-color: var(--task-card-border);
+  box-shadow: 3px 3px 0 var(--task-card-shadow);
+}
+
+/* Keep the hidden swipe-to-delete layer from peeking out as a black frame when
+   a task tile presses down. The delete action itself still gets its own
+   intentional divider once the row is swiped open. */
+.juice-panel .task-delete-reveal {
+  border: 0;
 }
