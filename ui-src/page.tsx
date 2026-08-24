@@ -509,7 +509,7 @@ function formatFocusCountdown(totalSeconds: number) {
 
 function buildWheelGradient(tasks: Task[]) {
   if (!tasks.length) {
-    return "conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg)";
+    return "conic-gradient(from 0deg, var(--task-tile-default-shadow) 0deg 360deg)";
   }
 
   const segmentAngle = 360 / tasks.length;
@@ -520,7 +520,7 @@ function buildWheelGradient(tasks: Task[]) {
     return `${color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
   });
 
-  return `conic-gradient(from -90deg, ${stops.join(", ")})`;
+  return `conic-gradient(from 0deg, ${stops.join(", ")})`;
 }
 
 function formatHistoryDate(timestamp: number | null) {
@@ -2301,7 +2301,6 @@ export default function Home() {
                       aria-label="A colorful task-selection wheel"
                     >
                       <span className="wheel-color-field" aria-hidden="true" />
-                      <span className="wheel-light-sweep" aria-hidden="true" />
                       <span className="wheel-hub-mark" aria-hidden="true">SPIN</span>
                     </div>
                   </div>

@@ -2268,12 +2268,12 @@ body {
 
 .juice-panel .record-button:hover {
   box-shadow: 7px 7px 0 var(--juice-black);
-  transform: translate(-2px, -2px) rotate(-1deg);
+  transform: translate(-2px, -2px);
 }
 
 .juice-panel .record-button:active {
   box-shadow: 2px 2px 0 var(--juice-black);
-  transform: translate(3px, 3px) rotate(1deg) scale(0.98);
+  transform: translate(3px, 3px);
 }
 
 .juice-panel .record-button.is-listening {
@@ -2397,12 +2397,12 @@ body {
 .juice-panel .scan-button:hover {
   background: var(--juice-blue);
   box-shadow: 9px 9px 0 var(--juice-yellow);
-  transform: translate(-2px, -2px) rotate(-1deg);
+  transform: translate(-2px, -2px);
 }
 
 .juice-panel .scan-button:active {
   box-shadow: 2px 2px 0 var(--juice-yellow);
-  transform: translate(4px, 4px) scale(0.98);
+  transform: translate(4px, 4px);
 }
 
 .juice-panel .scan-button > span:first-child {
@@ -2435,7 +2435,7 @@ body {
   background: var(--juice-lime);
   box-shadow: 7px 7px 0 var(--juice-black);
   color: var(--juice-black);
-  transform: translate(-2px, -2px) rotate(1deg);
+  transform: translate(-2px, -2px);
 }
 
 .juice-panel .transcript-clear-action:active:not(:disabled) {
@@ -2577,7 +2577,7 @@ body {
   color: var(--juice-black);
   background: var(--juice-orange);
   box-shadow: 5px 5px 0 var(--juice-black);
-  transform: translate(-1px, -1px) rotate(-2deg);
+  transform: translate(-1px, -1px);
 }
 
 .juice-panel .export-history-button {
@@ -2720,7 +2720,7 @@ body {
 
 .juice-panel .filter-tabs button:hover {
   background: var(--juice-yellow);
-  transform: translateY(-2px) rotate(-2deg);
+  transform: translateY(-2px);
 }
 
 .juice-panel .filter-tabs button.active {
@@ -2777,7 +2777,7 @@ body {
 .juice-panel .task-row:hover {
   box-shadow: 10px 10px 0 var(--juice-black);
   filter: saturate(1.16);
-  transform: translate(-3px, -3px) rotate(-0.6deg);
+  transform: translate(-3px, -3px);
 }
 
 /* A task card may still feel tactile when tapped, but only its dedicated
@@ -2805,7 +2805,7 @@ body {
 
 .juice-panel .task-checkbox:hover {
   box-shadow: 5px 5px 0 var(--juice-black);
-  transform: rotate(-8deg) scale(1.1);
+  transform: scale(1.1);
 }
 
 .juice-panel .task-checkbox:active {
@@ -2989,7 +2989,7 @@ body {
 .juice-panel .add-task-form button:hover {
   background: var(--juice-blue);
   box-shadow: 5px 5px 0 var(--juice-black);
-  transform: translate(-1px, -1px) rotate(2deg);
+  transform: translate(-1px, -1px);
 }
 
 .juice-panel .add-task-form button:active {
@@ -4206,7 +4206,7 @@ body {
 
 .theme-option:hover,
 .theme-option:focus-visible {
-  transform: translate(-1px, -1px) rotate(-1deg);
+  transform: translate(-1px, -1px);
 }
 
 .theme-option.is-active {
@@ -4855,10 +4855,6 @@ textarea {
   transform: translateX(-50%);
 }
 
-.wheel-machine.is-spinning .wheel-landing-marker {
-  animation: wheel-marker-pulse 420ms steps(2, end) infinite;
-}
-
 .wheel-rotor {
   /* Rotation is driven frame-by-frame in page.tsx for Android WebView parity. */
   position: relative;
@@ -4886,31 +4882,7 @@ textarea {
 
 .wheel-color-field {
   z-index: 0;
-  background:
-    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.34), transparent 26%),
-    radial-gradient(circle at 72% 82%, rgba(13, 13, 18, 0.26), transparent 48%),
-    var(--wheel-color-gradient, conic-gradient(from -90deg, var(--task-tile-default-shadow) 0deg 360deg));
-}
-
-.wheel-light-sweep {
-  position: absolute;
-  z-index: 2;
-  inset: -18%;
-  border-radius: 50%;
-  background: conic-gradient(from -28deg, transparent 0 42deg, rgba(247, 240, 223, 0.56) 46deg 58deg, transparent 62deg 360deg);
-  mix-blend-mode: screen;
-  opacity: 0.14;
-  pointer-events: none;
-  transform: rotate(-20deg);
-}
-
-.wheel-machine.is-spinning .wheel-rotor {
-  filter: saturate(1.16) contrast(1.08);
-}
-
-.wheel-machine.is-spinning .wheel-light-sweep {
-  animation: wheel-light-sweep 520ms linear infinite;
-  opacity: 0.72;
+  background: var(--wheel-color-gradient, conic-gradient(from 0deg, var(--task-tile-default-shadow) 0deg 360deg));
 }
 
 .wheel-rotor::after {
@@ -4946,10 +4918,6 @@ textarea {
   pointer-events: none;
   text-shadow: 1px 1px 0 var(--juice-cream);
   transform: translate(-50%, -50%);
-}
-
-.wheel-machine.is-spinning .wheel-hub-mark {
-  animation: wheel-hub-pulse 520ms steps(2, end) infinite;
 }
 
 .wheel-result-card {
@@ -5091,35 +5059,6 @@ textarea {
   100% {
     opacity: 0;
     transform: scale(0.94);
-  }
-}
-
-@keyframes wheel-light-sweep {
-  from {
-    transform: rotate(-20deg) scale(1);
-  }
-  to {
-    transform: rotate(360deg) scale(1);
-  }
-}
-
-@keyframes wheel-marker-pulse {
-  0%,
-  100% {
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    transform: translateX(-50%) scale(1.08);
-  }
-}
-
-@keyframes wheel-hub-pulse {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.16);
   }
 }
 
@@ -5338,9 +5277,6 @@ textarea {
   .juice-panel .record-button.is-listening .record-button-wave i,
   .task-board-flip,
   .wheel-rotor,
-  .wheel-machine.is-spinning .wheel-landing-marker,
-  .wheel-machine.is-spinning .wheel-light-sweep,
-  .wheel-machine.is-spinning .wheel-hub-mark,
   .tasks-card.is-wheel-converging .task-row,
   .tasks-card.is-wheel-converging .card-heading,
   .tasks-card.is-wheel-converging .task-toolbar,
@@ -5768,10 +5704,12 @@ body,
    compressed shadow makes the control itself and its drop shadow move together. */
 button:hover:not(:disabled),
 button:focus-visible:not(:disabled) {
+  rotate: none !important;
   transform: translate(-1px, -1px) !important;
 }
 
 button:active:not(:disabled) {
+  rotate: none !important;
   transform: translate(2px, 2px) !important;
   box-shadow: var(--button-press-offset, 1px) var(--button-press-offset, 1px) 0 var(--button-press-shadow, var(--juice-black)) !important;
 }
