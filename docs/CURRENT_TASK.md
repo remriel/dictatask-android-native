@@ -44,7 +44,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The standalone bottom Spin the Wheel launch panel remains a 76px green launcher, approximately 30% taller than its former 58px control, and now uses a 3px ink frame with a 5px hard ink shadow so it reads as a proper card without changing its green color or the safe-area lane below it.
 - Every enabled button now has straight tactile motion only: hover/focus lifts it by 1px and a press moves it straight down by 2px with no rotation, skew, or scale tilt. Legacy rotate transforms were also removed from the recording, Convert, Clear, task-filter, task-card, checkbox, task-action, manual-add, and theme-option hover/press rules, while the final global interaction rule explicitly enforces `rotate: none`.
 - Every task completion still opens a brief, completion-only full-screen celebration with the existing colorful confetti cannon, rings, and success copy, but the mascot/character art has been removed completely. Reduced-motion mode suppresses the decorative movement while keeping the completion state and strike-through readable.
-- The current branch is `agent/spin-wheel-focus-cleanup`; each release APK is uploaded to Google Drive as a new uniquely named file so prior versions remain available.
+- The prior cleanup release branch is `agent/spin-wheel-focus-cleanup`; this wheel overflow fix is on `agent/fix-wheel-panel-overflow`. Each release APK is uploaded to Google Drive as a new uniquely named file so prior versions remain available.
 
 ## Verification completed
 
@@ -103,7 +103,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
-- Changes are pushed to `agent/spin-wheel-focus-cleanup` at `db6d335` (`Match task card press behavior`).
+- Prior cleanup changes are pushed to `agent/spin-wheel-focus-cleanup` at `db6d335` (`Match task card press behavior`).
+- The wheel panel overflow fix is pushed to `agent/fix-wheel-panel-overflow` at `ab29103` (`Keep focus wheel inside panel guide`).
 - Google Drive v1.5.30 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/19uoV_zk_BjobI_6qPhZWSYX8bk5BdFrX/view?usp=drivesdk
 - Public v1.5.29 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.29
 - Direct v1.5.29 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.29/DictaTask-v1.5.29-clean-symmetric-wheel.apk
