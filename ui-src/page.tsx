@@ -513,16 +513,11 @@ function buildWheelGradient(tasks: Task[]) {
   }
 
   const segmentAngle = 360 / tasks.length;
-  const separator = Math.min(1.5, segmentAngle * 0.08);
-  const stops = tasks.flatMap((task, index) => {
+  const stops = tasks.map((task, index) => {
     const start = index * segmentAngle;
     const end = (index + 1) * segmentAngle;
     const color = WHEEL_TASK_COLOR_VARIABLES[task.color];
-    const wedgeEnd = Math.max(start, end - separator);
-    return [
-      `${color} ${start.toFixed(2)}deg ${wedgeEnd.toFixed(2)}deg`,
-      `var(--juice-black) ${wedgeEnd.toFixed(2)}deg ${end.toFixed(2)}deg`,
-    ];
+    return `${color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
   });
 
   return `conic-gradient(from -90deg, ${stops.join(", ")})`;
@@ -2306,7 +2301,6 @@ export default function Home() {
                       aria-label="A colorful task-selection wheel"
                     >
                       <span className="wheel-color-field" aria-hidden="true" />
-                      <img className="wheel-ink-overlay" src="./dictatask-wheel-face.jpg" alt="" />
                       <span className="wheel-light-sweep" aria-hidden="true" />
                       <span className="wheel-hub-mark" aria-hidden="true">SPIN</span>
                     </div>
