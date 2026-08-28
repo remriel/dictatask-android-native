@@ -103,6 +103,9 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
+- Changes for the stats release are pushed to `agent/spin-wheel-focus-cleanup` at `d48a02c` (`Add seven-day task stats chart`).
+- Public v1.5.31 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.31
+- Direct v1.5.31 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.31/DictaTask-v1.5.31-seven-day-task-stats.apk
 - Google Drive v1.5.31 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1_2Nk75M_GuA6_sY1fYFNmtOf5uWJaZyG/view?usp=drivesdk
 - Changes are pushed to `agent/spin-wheel-focus-cleanup` at `2be9b5d` (`Flatten wheel and align task colors`).
 - Public v1.5.30 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.30
