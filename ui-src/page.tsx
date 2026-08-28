@@ -40,6 +40,14 @@ type TaskHistoryEntry = Task & {
   completedAt: number | null;
 };
 
+type DailyTaskStat = {
+  dayNumber: number;
+  dayLabel: string;
+  dateLabel: string;
+  added: number;
+  completed: number;
+};
+
 type UndoCompletion = {
   id: string;
   title: string;
@@ -562,6 +570,35 @@ function getNextLocalMidnightDelay(timestamp: number) {
     date.getDate() + 1,
   ).getTime();
   return Math.max(1000, nextMidnight - timestamp + TASK_AGE_REFRESH_PADDING_MS);
+}
+
+function buildSevenDayTaskStats(entries: TaskHistoryEntry[], now: number): DailyTaskStat[] {
+  const today = new Date(now);
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const stats = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate() - (6 - index));
+    return {
+      dayNumber: getLocalDayNumber(date.getTime()),
+      dayLabel: date.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase(),
+      dateLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      added: 0,
+      completed: 0,
+    };
+  });
+  const byDayNumber = new Map(stats.map((stat) => [stat.dayNumber, stat]));
+
+  entries.forEach((entry) => {
+    if (typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)) {
+      const stat = byDayNumber.get(getLocalDayNumber(entry.createdAt));
+      if (stat) stat.added += 1;
+    }
+    if (typeof entry.completedAt === "number" && Number.isFinite(entry.completedAt)) {
+      const stat = byDayNumber.get(getLocalDayNumber(entry.completedAt));
+      if (stat) stat.completed += 1;
+    }
+  });
+
+  return stats;
 }
 
 function formatTaskHistory(entries: TaskHistoryEntry[]) {
@@ -1182,6 +1219,17 @@ export default function Home() {
       }));
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
+
+  const sevenDayTaskStats = useMemo(
+    () => buildSevenDayTaskStats(taskHistory, taskAgeNow),
+    [taskAgeNow, taskHistory],
+  );
+  const sevenDayMax = Math.max(
+    1,
+    ...sevenDayTaskStats.flatMap((stat) => [stat.added, stat.completed]),
+  );
+  const sevenDayAddedTotal = sevenDayTaskStats.reduce((total, stat) => total + stat.added, 0);
+  const sevenDayCompletedTotal = sevenDayTaskStats.reduce((total, stat) => total + stat.completed, 0);
 
   const totalCount = tasks.length;
   const createdAtByTaskId = useMemo(() => {
@@ -2361,6 +2409,47 @@ export default function Home() {
               <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
               <span>Spin the wheel</span>
             </button>
+          </section>
+        )}
+
+        {wheelPhase === "list" && (
+          <section className="stats-card juice-panel" aria-labelledby="weekly-stats-title">
+            <div className="stats-card-heading">
+              <div>
+                <span>LAST 7 DAYS</span>
+                <h2 id="weekly-stats-title">TASK STATS</h2>
+              </div>
+              <strong aria-label={`${sevenDayCompletedTotal} tasks completed in the last 7 days`}>
+                {sevenDayCompletedTotal}<small> DONE</small>
+              </strong>
+            </div>
+
+            <div className="stats-legend" aria-label={`Legend. ${sevenDayCompletedTotal} completed and ${sevenDayAddedTotal} added in the last 7 days`}>
+              <span className="stats-legend-completed"><i aria-hidden="true" /> COMPLETED</span>
+              <span className="stats-legend-added"><i aria-hidden="true" /> ADDED</span>
+            </div>
+
+            <div className="weekly-chart" role="img" aria-label={`Tasks per day for the last 7 days. ${sevenDayTaskStats.map((stat) => `${stat.dateLabel}: ${stat.completed} completed, ${stat.added} added`).join("; ")}.`}>
+              {sevenDayTaskStats.map((stat) => (
+                <div className="weekly-chart-day" key={stat.dayNumber}>
+                  <div className="weekly-chart-bars" aria-hidden="true">
+                    <span
+                      className={`weekly-chart-bar is-completed ${stat.completed ? "" : "is-zero"}`}
+                      style={{ "--bar-height": `${(stat.completed / sevenDayMax) * 100}%` } as CSSProperties}
+                    >
+                      <b>{stat.completed}</b>
+                    </span>
+                    <span
+                      className={`weekly-chart-bar is-added ${stat.added ? "" : "is-zero"}`}
+                      style={{ "--bar-height": `${(stat.added / sevenDayMax) * 100}%` } as CSSProperties}
+                    >
+                      <b>{stat.added}</b>
+                    </span>
+                  </div>
+                  <span className="weekly-chart-day-label">{stat.dayLabel}</span>
+                </div>
+              ))}
+            </div>
           </section>
         )}
       </section>
