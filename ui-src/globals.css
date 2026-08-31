@@ -4805,7 +4805,8 @@ textarea {
 .wheel-machine {
   position: relative;
   display: grid;
-  width: min(100%, 430px);
+  /* Leave room for the stage's inset guide and the fixed down-right shadow. */
+  width: min(430px, calc(100% - 18px));
   aspect-ratio: 1;
   isolation: isolate;
   place-items: center;
@@ -5177,7 +5178,7 @@ textarea {
   }
 
   .wheel-machine {
-    width: min(100%, 335px);
+    width: min(335px, calc(100% - 18px));
     margin-top: 5px;
   }
 
@@ -5268,7 +5269,7 @@ textarea {
   }
 
   .wheel-machine {
-    width: min(100%, 290px);
+    width: min(290px, calc(100% - 18px));
   }
 
 }

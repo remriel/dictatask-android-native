@@ -16,6 +16,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - On mobile the workspace is a flush full-width stack: one extended yellow recording panel (including the inset green manual composer), cream task board, then a separate green Spin the Wheel card. At every WebView width, the old black canvas/grid and former outer panel-border bands are removed; the deliberately framed green Spin card is the sole final card treatment, and a safe-area-aware bottom lane keeps it clear of Android navigation controls.
 - Task tiles now use a 4px darkened version of their own fill color for the border (dark green around green, dark blue around blue, and so on), while retaining their bright shadow color.
 - The Spin the Wheel launch label is centered and larger, with the wheel icon anchored to the left edge of its green launch band.
+- The wheel machine now reserves 18px of responsive width for the stage's inset guide and fixed down-right shadow, so the rotor stays inside the panel lines at narrow Android WebView widths without changing its desktop maximum size.
 - TO DO and DONE filters are now an equal-width, centered pair that fills the task toolbar. They use visible cream/orange cards with black borders, 35px mobile controls (about 20% above the former compact 29px height), and enlarged count badges while remaining keyboard and touch accessible.
 - The former percentage/clear board panel and its daily progress indicator are removed. The top of the mobile workspace now uses a static 42px geometric color banner with a larger rustic `DICTA`/`TASK` sticker: its skewed cream plate and offset black border intentionally break across the banner's lower line and render above the yellow recording surface, with no progress semantics, fill state, timer, or completion-dependent behavior.
 - Recording-panel spacing is reduced, the separate `VOICE SESSION: 30 SEC MAX` label/progress row is removed, and the TAP TO RECORD card itself fills left-to-right while recording. The transcription field is 184px on larger layouts / 160px on mobile so it uses more of its vertical space.
@@ -46,6 +47,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The current branch is `agent/spin-wheel-focus-cleanup`; each release APK is uploaded to Google Drive as a new uniquely named file so prior versions remain available.
 - A compact `TASK STATS` card now closes the normal task-list screen beneath Spin the Wheel. It renders seven local calendar days from oldest to newest, with blue completed and orange added bars side by side for each day, exact values above every bar, a seven-day completion total, and a full accessible text summary. Counts come from the existing persistent task history and refresh at local midnight; no second analytics store or background work was added.
 - The public README now includes a four-image mobile screenshot gallery in `docs/screenshots/` covering recording/manual entry, the task board, Spin the Wheel, and seven-day stats. The v1.5.32 package increments to `versionCode=18` and keeps the APK name unique for Drive/GitHub history.
+- The prior wheel overflow fix was published from `agent/fix-wheel-panel-overflow` at `ab29103`; its responsive panel-guide changes are included in the current branch.
 
 ## Verification completed
 
@@ -69,6 +71,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Browser QA confirmed the larger sticker measures about 180px wide and 39px tall at 360px, visibly extends past the banner's lower edge, and still preserves zero horizontal overflow.
 - Browser QA confirmed the sticker's lower edge remains the topmost element over the yellow surface at the overlap points after the banner stacking layer was raised.
 - Browser QA confirmed the Android-style wheel screen renders the redesigned console face without horizontal overflow, the active state exposes `wheel-orbit`, `wheel-halo`, `wheel-ring-spin`, and `wheel-light-sweep`, and the measured machine/rotor/hub centers all align at the same viewport coordinates during the spin.
+- Browser geometry QA confirmed the wheel body and fixed shadow fit inside the inset panel guide at 320px, 360px, and 390px widths (and remain bounded at 640px, 720px, and 768px), with no horizontal overflow.
+- After the responsive wheel fix, `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` all passed. No Android device is attached.
 - Browser QA confirmed TO DO and DONE each render as a centered, equal-width 35px card spanning the task toolbar, with the inactive DONE card visibly outlined instead of collapsing to text-only styling.
 - Browser QA confirmed checkbox state changes first, the task title's `task-title-strike` pseudo-element is mid-draw during the completion transition, the final `DONE` row retains a full strike-through across wrapped lines, the celebration still renders all 20 existing confetti pieces, and no mascot DOM node or mascot asset remains. The completion still exposes UNDO and restoring the task returns it to TO DO.
 - Browser QA confirmed task-card presses are consequence-free: a row tap left TO DO/DONE counts unchanged, while the visible checkbox alone completed the task, updated the counts, and exposed UNDO; undo restored the original counts and row.
@@ -113,6 +117,8 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Changes are pushed to `agent/spin-wheel-focus-cleanup` at `2be9b5d` (`Flatten wheel and align task colors`).
 - Public v1.5.30 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.30
 - Direct v1.5.30 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.30/DictaTask-v1.5.30-flat-wheel-color-match.apk
+- Prior cleanup changes are pushed to `agent/spin-wheel-focus-cleanup` at `db6d335` (`Match task card press behavior`).
+- The wheel panel overflow fix is pushed to `agent/fix-wheel-panel-overflow` at `ab29103` (`Keep focus wheel inside panel guide`).
 - Google Drive v1.5.30 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/19uoV_zk_BjobI_6qPhZWSYX8bk5BdFrX/view?usp=drivesdk
 - Public v1.5.29 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.29
 - Direct v1.5.29 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.29/DictaTask-v1.5.29-clean-symmetric-wheel.apk
