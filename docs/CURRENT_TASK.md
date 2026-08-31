@@ -48,6 +48,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - A compact `TASK STATS` card now closes the normal task-list screen beneath Spin the Wheel. It renders seven local calendar days from oldest to newest, with blue completed and orange added bars side by side for each day, exact values above every bar, a seven-day completion total, and a full accessible text summary. Counts come from the existing persistent task history and refresh at local midnight; no second analytics store or background work was added.
 - The public README now includes a four-image mobile screenshot gallery in `docs/screenshots/` covering recording/manual entry, the task board, Spin the Wheel, and seven-day stats. The v1.5.32 package increments to `versionCode=18` and keeps the APK name unique for Drive/GitHub history.
 - The prior wheel overflow fix was published from `agent/fix-wheel-panel-overflow` at `ab29103`; its responsive panel-guide changes are included in the current branch.
+- The repository is public with the About description `Local-first Android task board that turns voice notes into focused action, with a tactile 90s interface, Spin the Wheel, and seven-day task stats.` The default branch is `main`, and the README gallery is visible from the public project page.
 
 ## Verification completed
 
@@ -88,7 +89,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - A live pressed-state check on `CONVERT TO TASKS` computed a translation-only matrix (`matrix(1, 0, 0, 1, 1.89338, 1.89338)` mid-transition), `rotate: none`, `scale: none`, and a compressed 2px orange shadow. Release returned to the straight `-1px, -1px` hover lift with `rotate: none`.
 - Android-sized Playwright QA at 390px confirmed the bottom stats card follows the Spin the Wheel card, renders seven day columns and fourteen bars, exposes added/completed legend and exact daily counts, and causes no horizontal overflow. A synthetic seven-day history produced multiple distinct bar heights and the expected `12 DONE` total, confirming local-day bucketing and independent series scaling rather than a static mock chart.
 - Android-sized Playwright screenshot QA captured four public README views at 390px with the recording panel, task board, wheel challenge, and chart clearly visible. The screenshot assets are checked into `docs/screenshots/` and use only rendered app UI; no mock or placeholder graphics were introduced.
-- `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.31. The APK reports `versionCode=17` / `versionName=1.5.31`, is v2-signed, and has SHA-256 `23A837352BA0D31F1AEEEAF6EF10B37426F846BCBBD9E754CC6A49098D338116` (1,211,518 bytes). No Android device is attached.
+- `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.32. The APK reports `versionCode=18` / `versionName=1.5.32`, is v2-signed, and has SHA-256 `73C08D5E5BA14D3937E86B6B031624F3CD7FCA64D074C3F904E006A4BCC6950D` (1,211,518 bytes). No Android device is attached.
 - `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.30. The APK reports `versionCode=16` / `versionName=1.5.30`, is v2-signed, and has SHA-256 `4225D86380BCEFA5513E8C168D231505B42CC7655C2D7E9DBFD8835A793AE3F1` (1,210,358 bytes). No Android device is attached.
 - `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.29. The APK reports `versionCode=15` / `versionName=1.5.29`, is v2-signed, and has SHA-256 `4AEB2E4F9640541B0E0B24CAC9C6E3EF486E2A5F9A63A587786BCA37B725AB15` (1,210,702 bytes). No Android device is attached.
 - `npx tsc --noEmit`, `npm run build`, and `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease` passed for v1.5.28. The APK reports `versionCode=14` / `versionName=1.5.28`, is v2-signed, and has SHA-256 `05C2D68E5A8ED1F5916580EC6A16E4F770B84F04B722E23B521C5438ACDAC406` (1,211,162 bytes). No Android device is attached.
@@ -109,6 +110,11 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 
 ## GitHub handoff
 
+- Repository is public: https://github.com/remriel/dictatask-android-native
+- Changes for the public README/release are on `main` at `97e7fd6` (`Merge remote-tracking branch 'origin/main' into agent/spin-wheel-focus-cleanup`), with the release-branch publication commit `f94bd62` (`Publish public README screenshot gallery`).
+- Public v1.5.32 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.32
+- Direct v1.5.32 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.32/DictaTask-v1.5.32-public-readme-screenshots.apk
+- Google Drive v1.5.32 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/15CCxVezmh7oPqqF-5Ku37rtE1Bt3-0zj/view?usp=drivesdk
 - Changes for the stats release are pushed to `agent/spin-wheel-focus-cleanup` at `d48a02c` (`Add seven-day task stats chart`).
 - Public v1.5.31 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.31
 - Direct v1.5.31 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.31/DictaTask-v1.5.31-seven-day-task-stats.apk
