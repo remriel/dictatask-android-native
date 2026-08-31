@@ -111,7 +111,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 ## GitHub handoff
 
 - Repository is public: https://github.com/remriel/dictatask-android-native
-- Changes for the public README/release are on `main` at `97e7fd6` (`Merge remote-tracking branch 'origin/main' into agent/spin-wheel-focus-cleanup`), with the release-branch publication commit `f94bd62` (`Publish public README screenshot gallery`).
+- The public release source is tagged at `97e7fd6` (`Merge remote-tracking branch 'origin/main' into agent/spin-wheel-focus-cleanup`); the latest `main` handoff docs are at `49495cc` (`Record public v1.5.32 publication`). The screenshot gallery itself was added in `f94bd62` (`Publish public README screenshot gallery`).
 - Public v1.5.32 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.32
 - Direct v1.5.32 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.32/DictaTask-v1.5.32-public-readme-screenshots.apk
 - Google Drive v1.5.32 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/15CCxVezmh7oPqqF-5Ku37rtE1Bt3-0zj/view?usp=drivesdk
@@ -119,7 +119,7 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - Public v1.5.31 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.31
 - Direct v1.5.31 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.31/DictaTask-v1.5.31-seven-day-task-stats.apk
 - Google Drive v1.5.31 APK (new uniquely named file; prior versions preserved): https://drive.google.com/file/d/1_2Nk75M_GuA6_sY1fYFNmtOf5uWJaZyG/view?usp=drivesdk
-- v1.5.32 README/screenshot release is prepared for public repository publication; its APK is `DictaTask-v1.5.32-public-readme-screenshots.apk`.
+- v1.5.32 README/screenshot release is published on the public repository; its APK is `DictaTask-v1.5.32-public-readme-screenshots.apk`.
 - Changes are pushed to `agent/spin-wheel-focus-cleanup` at `2be9b5d` (`Flatten wheel and align task colors`).
 - Public v1.5.30 release and uniquely named APK asset: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.30
 - Direct v1.5.30 APK download: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.30/DictaTask-v1.5.30-flat-wheel-color-match.apk
