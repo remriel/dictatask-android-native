@@ -2,7 +2,7 @@
 
 ## Objective
 
-Keep direct focus optional, place Spin the Wheel below the task list, keep only TO DO/DONE tabs, preserve completed history in completion order, add a safe undo for accidental completions, guard Remove all with confirmation plus undo, remove the redundant Clear done control, allow DONE rows to be reopened into TO DO, remove the percentage/status panel, XP, and bottom footer/logo, put recording first, compact the recording form, keep task actions in one row, make pressed controls move their shadows with the surface, keep the manual-entry card static, replace the former daily progress flare with a static theme banner, compact the task filters, keep all button press feedback straight rather than tilted, show how many calendar days each task has been open, sort new tasks first, allow open tasks to be safely deleted with a left swipe, make normal TO DO card presses look exactly like DONE card presses without exposing the delete layer, keep the focus wheel centered and free of decorative concentric rings or jagged slice seams, show a simple seven-day added-versus-completed bar chart at the bottom, add a public README screenshot gallery, publish a uniquely named v1.5.32 APK, and remove the experimental egg/Vault feature completely while keeping the manual-entry card the same height as TAP TO RECORD.
+Keep the existing Android-first task board polished and local-first, then add a dedicated Settings screen for configurable app behavior and an opt-in Groq Whisper transcription route using a securely stored user API key.
 
 ## Current implementation
 
@@ -49,9 +49,14 @@ Keep direct focus optional, place Spin the Wheel below the task list, keep only 
 - The public README now includes a four-image mobile screenshot gallery in `docs/screenshots/` covering recording/manual entry, the task board, Spin the Wheel, and seven-day stats. The v1.5.32 package increments to `versionCode=18` and keeps the APK name unique for Drive/GitHub history.
 - The prior wheel overflow fix was published from `agent/fix-wheel-panel-overflow` at `ab29103`; its responsive panel-guide changes are included in the current branch.
 - The repository is public with the About description `Local-first Android task board that turns voice notes into focused action, with a tactile 90s interface, Spin the Wheel, and seven-day task stats.` The default branch is `main`, and the README gallery is visible from the public project page.
+- A dedicated Settings page now owns five persistent visual themes (Midnight, Paper, Sunset, Ocean, Grape), configurable main-capture length (15/30/60 seconds), default focus clock, task-age visibility, completion celebration, and a reduced-motion override. It replaces the former inline focus-clock picker as the configuration home.
+- Settings optionally enables Groq Whisper transcription. The app accepts `whisper-large-v3-turbo` or `whisper-large-v3`, optional language selection, and records a short AAC/M4A capture. The audio is uploaded only to `https://api.groq.com/openai/v1/audio/transcriptions` when the user has chosen Groq and saved a key, then deleted in every completion/error path. The key is AES-GCM encrypted with a per-app Android Keystore key before private-preference storage, never returned to JavaScript, never written into task/export state, and can be removed from Settings.
+- The Android bridge now also feeds native device-speech results back into React through its explicit callback contract; device speech remains the default and Groq is an opt-in alternative. The manifest adds `INTERNET` solely for the explicit Groq request path.
+- v1.5.33 package: `DictaTask-v1.5.33-groq-settings-themes.apk`, `versionCode=19`, SHA-256 `B89092DCC3D617A29FBC5B2B100BD7FBCD7CA5A7B5026A05B94BC7ADBEB17BD3`, 1,219,102 bytes. Google Drive copy (new file, earlier versions retained): https://drive.google.com/file/d/1Sc4iOOEuCxA-b8z3P5Chm6sLCw1cXRsQ/view?usp=drivesdk
 
 ## Verification completed
 
+- v1.5.33: `npx tsc --noEmit`, `npm run build`, `:app:testReleaseUnitTest :app:lintRelease :app:assembleRelease`, APK signature verification, and APK metadata verification passed. The release has no unit-test source files (`testReleaseUnitTest NO-SOURCE`) and release lint completed without findings. No Android device is attached, so the Groq network request itself needs a real device with a user-provided key for end-to-end validation.
 - `npx tsc --noEmit` passed.
 - `npm run build` passed and refreshed the packaged WebView assets.
 - Browser QA passed for the new below-list placement, two-tab flow, completion-to-DONE history, permanent DONE history retention, compact action sizing, direct focus, direct cancellation, wheel selection, and the 3-second wheel spin path.

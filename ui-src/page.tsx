@@ -6,11 +6,23 @@ import { createPortal } from "react-dom";
 
 type TaskColor = "orange" | "blue" | "cyan" | "lime" | "violet";
 type Filter = "open" | "done";
-type Theme = "midnight" | "paper";
+type Theme = "midnight" | "paper" | "sunset" | "ocean" | "grape";
+type AppView = "board" | "settings";
+type TranscriptionProvider = "device" | "groq";
 type CelebrationVariant = "burst" | "stamp" | "jackpot" | "massacre";
 
 type WheelSettings = {
   durationMinutes: number;
+};
+
+type AppSettings = {
+  transcriptionProvider: TranscriptionProvider;
+  groqModel: "whisper-large-v3-turbo" | "whisper-large-v3";
+  groqLanguage: "auto" | "en" | "es" | "fr" | "de";
+  recordingDurationSeconds: 15 | 30 | 60;
+  showTaskAge: boolean;
+  celebrationsEnabled: boolean;
+  reducedMotion: boolean;
 };
 
 type FocusEntry = "wheel" | "direct";
@@ -96,7 +108,18 @@ declare global {
       setStoredState?: (key: string, raw: string) => void;
       exportTaskHistory?: (contents: string) => void;
       setColorScheme?: (scheme: "dark" | "light") => void;
+      startGroqRecording?: (model: string, language: string, durationSeconds: number) => void;
+      stopGroqRecording?: () => void;
+      setGroqApiKey?: (key: string) => void;
+      clearGroqApiKey?: () => void;
+      hasGroqApiKey?: () => boolean;
     };
+    __dictaSpeechResult?: (transcript: string, isFinal: boolean) => void;
+    __dictaSpeechError?: (code: string) => void;
+    __dictaSpeechEnd?: () => void;
+    __dictaGroqResult?: (transcript: string) => void;
+    __dictaGroqError?: (code: string) => void;
+    __dictaGroqEnd?: () => void;
   }
 }
 
@@ -189,6 +212,15 @@ const WHEEL_TASK_COLOR_VARIABLES: Record<TaskColor, string> = {
 };
 const defaultWheelSettings: WheelSettings = {
   durationMinutes: 10,
+};
+const defaultAppSettings: AppSettings = {
+  transcriptionProvider: "device",
+  groqModel: "whisper-large-v3-turbo",
+  groqLanguage: "auto",
+  recordingDurationSeconds: 30,
+  showTaskAge: true,
+  celebrationsEnabled: true,
+  reducedMotion: false,
 };
 const confettiPieces = Array.from({ length: 20 }, (_, index) => ({
   left: `${-8 + ((index * 29) % 116)}vw`,
@@ -435,7 +467,29 @@ function normalizeTaskHistory(value: unknown): TaskHistoryEntry[] {
 
 function normalizeTheme(value: unknown): Theme {
   if (value === "paper" || value === "light") return "paper";
+  if (value === "sunset" || value === "ocean" || value === "grape") return value;
   return "midnight";
+}
+
+function normalizeAppSettings(value: unknown): AppSettings {
+  if (!value || typeof value !== "object") return defaultAppSettings;
+  const record = value as Record<string, unknown>;
+  const provider: TranscriptionProvider = record.transcriptionProvider === "groq" ? "groq" : "device";
+  const model = record.groqModel === "whisper-large-v3" ? "whisper-large-v3" : "whisper-large-v3-turbo";
+  const language = ["auto", "en", "es", "fr", "de"].includes(String(record.groqLanguage))
+    ? String(record.groqLanguage) as AppSettings["groqLanguage"]
+    : "auto";
+  const duration = Number(record.recordingDurationSeconds);
+  const recordingDurationSeconds: AppSettings["recordingDurationSeconds"] = duration === 15 || duration === 60 ? duration : 30;
+  return {
+    transcriptionProvider: provider,
+    groqModel: model,
+    groqLanguage: language,
+    recordingDurationSeconds,
+    showTaskAge: record.showTaskAge !== false,
+    celebrationsEnabled: record.celebrationsEnabled !== false,
+    reducedMotion: record.reducedMotion === true,
+  };
 }
 
 function normalizeWheelSettings(value: unknown): WheelSettings {
@@ -672,7 +726,7 @@ function extractTasks(transcript: string): Task[] {
   }));
 }
 
-function Icon({ name }: { name: "mic" | "spark" | "arrow" | "plus" | "trash" | "check" | "wave" | "download" }) {
+function Icon({ name }: { name: "mic" | "spark" | "arrow" | "plus" | "trash" | "check" | "wave" | "download" | "settings" | "back" }) {
   if (name === "mic") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -723,6 +777,12 @@ function Icon({ name }: { name: "mic" | "spark" | "arrow" | "plus" | "trash" | "
       </svg>
     );
   }
+  if (name === "settings") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" /><circle cx="12" cy="12" r="4" /></svg>;
+  }
+  if (name === "back") {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H5M11 6l-6 6 6 6" /></svg>;
+  }
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="m5 12 4 4L19 6" />
@@ -734,6 +794,7 @@ const TaskRow = memo(function TaskRow({
   task,
   index,
   daysOpen,
+  showTaskAge,
   celebrating,
   onToggle,
   onFocus,
@@ -742,6 +803,7 @@ const TaskRow = memo(function TaskRow({
   task: Task;
   index: number;
   daysOpen: number;
+  showTaskAge: boolean;
   celebrating: boolean;
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
@@ -913,9 +975,7 @@ const TaskRow = memo(function TaskRow({
           <div>
             <p className="task-title" data-title={task.title}>{task.title}</p>
             <div className="task-detail-row">
-              <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}>
-                <span>{formatTaskOpenAge(daysOpen, task.completed)}</span>
-              </div>
+              {showTaskAge && <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}><span>{formatTaskOpenAge(daysOpen, task.completed)}</span></div>}
               {!task.completed && (
                 <button
                   className="task-focus-button"
@@ -1031,11 +1091,41 @@ function CelebrationBurst({ variant, nonce }: { variant: CelebrationVariant; non
   return createPortal(celebration, document.body);
 }
 
+function SettingsToggle({ label, copy, checked, onChange }: { label: string; copy: string; checked: boolean; onChange: (next: boolean) => void }) {
+  return <label className="settings-toggle"><span><strong>{label}</strong><small>{copy}</small></span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /><i aria-hidden="true" /></label>;
+}
+
+function SettingsPage({ theme, setTheme, settings, setSettings, wheelSettings, setWheelSettings, groqKeySaved, onSaveGroqKey, onClearGroqKey, onBack }: {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  settings: AppSettings;
+  setSettings: (next: AppSettings) => void;
+  wheelSettings: WheelSettings;
+  setWheelSettings: (next: WheelSettings) => void;
+  groqKeySaved: boolean;
+  onSaveGroqKey: (key: string) => void;
+  onClearGroqKey: () => void;
+  onBack: () => void;
+}) {
+  const [keyDraft, setKeyDraft] = useState("");
+  const nativeGroqAvailable = typeof window.DictaTaskAndroid?.setGroqApiKey === "function";
+  const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setSettings({ ...settings, [key]: value });
+  const themes: Array<[Theme, string, string]> = [["midnight", "MIDNIGHT", "Ink + neon"], ["paper", "PAPER", "Warm studio"], ["sunset", "SUNSET", "Coral + gold"], ["ocean", "OCEAN", "Blue + mint"], ["grape", "GRAPE", "Purple + citrus"]];
+  return <section className="settings-page" aria-labelledby="settings-title">
+    <div className="settings-page-topline"><button className="settings-back-button" type="button" onClick={onBack}><Icon name="back" /> BOARD</button><span>LOCAL CONTROL PANEL</span></div>
+    <div className="settings-title-card"><span>DICTATASK / SETTINGS</span><h1 id="settings-title">MAKE IT YOURS.</h1><p>Preferences save on this device. Your Groq key stays in Android’s encrypted storage and is never copied into task data or exports.</p></div>
+    <section className="settings-section" aria-labelledby="theme-settings-title"><div className="settings-section-heading"><span>01 / VISUAL SYSTEM</span><h2 id="theme-settings-title">THEME</h2></div><div className="theme-choice-grid" role="group" aria-label="App theme">{themes.map(([value, label, copy]) => <button className={`theme-choice theme-choice-${value} ${theme === value ? "is-selected" : ""}`} type="button" key={value} aria-pressed={theme === value} onClick={() => setTheme(value)}><strong>{label}</strong><small>{copy}</small></button>)}</div></section>
+    <section className="settings-section" aria-labelledby="transcription-settings-title"><div className="settings-section-heading"><span>02 / VOICE CAPTURE</span><h2 id="transcription-settings-title">TRANSCRIPTION</h2></div><div className="settings-option-grid"><label className="settings-field"><span>TRANSCRIPTION ENGINE</span><select value={settings.transcriptionProvider} onChange={(event) => update("transcriptionProvider", event.target.value === "groq" ? "groq" : "device")}><option value="device">DEVICE SPEECH</option><option value="groq">GROQ WHISPER</option></select><small>{settings.transcriptionProvider === "groq" ? "Records a short .m4a then sends it directly to Groq for transcription." : "Uses the device or browser speech service. No API key needed."}</small></label><label className="settings-field"><span>RECORDING LENGTH</span><select value={settings.recordingDurationSeconds} onChange={(event) => update("recordingDurationSeconds", Number(event.target.value) as AppSettings["recordingDurationSeconds"])}><option value="15">15 SECONDS</option><option value="30">30 SECONDS</option><option value="60">60 SECONDS</option></select><small>Applies to the main Tap to Record capture. Groq audio is deleted after each request.</small></label></div>{settings.transcriptionProvider === "groq" && <div className="groq-settings-card"><div className="groq-settings-heading"><div><span>GROQ CLOUD TRANSCRIPTION</span><strong>{groqKeySaved ? "KEY CONNECTED" : "KEY REQUIRED"}</strong></div><i className={groqKeySaved ? "is-connected" : ""} aria-label={groqKeySaved ? "Groq API key saved" : "Groq API key not saved"} /></div>{!nativeGroqAvailable && <p className="settings-warning">Groq capture is available in the Android app. The browser preview uses device speech instead.</p>}<div className="settings-option-grid"><label className="settings-field"><span>WHISPER MODEL</span><select value={settings.groqModel} onChange={(event) => update("groqModel", event.target.value === "whisper-large-v3" ? "whisper-large-v3" : "whisper-large-v3-turbo")}><option value="whisper-large-v3-turbo">WHISPER LARGE V3 TURBO</option><option value="whisper-large-v3">WHISPER LARGE V3</option></select><small>Turbo is the fast default. Large V3 prioritizes accuracy.</small></label><label className="settings-field"><span>SPOKEN LANGUAGE</span><select value={settings.groqLanguage} onChange={(event) => update("groqLanguage", event.target.value as AppSettings["groqLanguage"])}><option value="auto">AUTO DETECT</option><option value="en">ENGLISH</option><option value="es">SPANISH</option><option value="fr">FRENCH</option><option value="de">GERMAN</option></select><small>Specifying a language can reduce latency and improve recognition.</small></label></div><label className="settings-field groq-key-field"><span>GROQ API KEY</span><div className="key-input-row"><input value={keyDraft} onChange={(event) => setKeyDraft(event.target.value)} type="password" autoComplete="off" spellCheck={false} placeholder={groqKeySaved ? "Saved securely — enter a replacement" : "gsk_…"} aria-label="Groq API key" /><button type="button" onClick={() => { onSaveGroqKey(keyDraft); setKeyDraft(""); }} disabled={!keyDraft.trim()}>SAVE KEY</button>{groqKeySaved && <button className="danger" type="button" onClick={onClearGroqKey}>REMOVE</button>}</div><small>The key is encrypted by Android Keystore before it is written to private app storage. It is used only for the Groq transcription request.</small></label></div>}</section>
+    <section className="settings-section" aria-labelledby="workflow-settings-title"><div className="settings-section-heading"><span>03 / WORKFLOW</span><h2 id="workflow-settings-title">TASK FLOW</h2></div><div className="settings-option-grid"><label className="settings-field"><span>DEFAULT FOCUS CLOCK</span><select value={wheelSettings.durationMinutes} onChange={(event) => setWheelSettings({ durationMinutes: Number(event.target.value) })}>{WHEEL_DURATION_OPTIONS.map((minutes) => <option value={minutes} key={minutes}>{minutes} MINUTES</option>)}</select><small>Used by direct focus and Spin the Wheel.</small></label><SettingsToggle label="SHOW TASK AGE" copy="Displays OPEN X DAYS and DONE X DAYS AGO on cards." checked={settings.showTaskAge} onChange={(value) => update("showTaskAge", value)} /><SettingsToggle label="COMPLETION CELEBRATION" copy="Plays the short confetti finish after a task is checked off." checked={settings.celebrationsEnabled} onChange={(value) => update("celebrationsEnabled", value)} /><SettingsToggle label="REDUCE MOTION" copy="Turns off decorative movement while preserving state changes." checked={settings.reducedMotion} onChange={(value) => update("reducedMotion", value)} /></div></section>
+  </section>;
+}
+
 export default function Home() {
   const [transcript, setTranscript, flushTranscript] = useDebouncedStoredString("dictatask-transcript", starterTranscript);
   const [tasks, setTasks] = useNormalizedStoredState("dictatask-tasks", starterTasks, normalizeTasks);
   const [taskHistory, setTaskHistory] = useNormalizedStoredState("dictatask-task-history", starterTaskHistory, normalizeTaskHistory);
   const [theme, setTheme] = useNormalizedStoredState("dictatask-theme", "midnight" as Theme, normalizeTheme);
+  const [appSettings, setAppSettings] = useNormalizedStoredState("dictatask-app-settings", defaultAppSettings, normalizeAppSettings);
   const [wheelSettings, setWheelSettings] = useNormalizedStoredState(
     "dictatask-wheel-settings",
     defaultWheelSettings,
@@ -1047,8 +1137,11 @@ export default function Home() {
     normalizeWheelChallenge,
   );
   const [filter, setFilter] = useState<Filter>("open");
+  const [view, setView] = useState<AppView>("board");
   const [newTask, setNewTask] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isGroqTranscribing, setIsGroqTranscribing] = useState(false);
+  const [groqKeySaved, setGroqKeySaved] = useState(false);
   const [isManualDictating, setIsManualDictating] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const setNotice = useCallback((_message: string) => undefined, []);
@@ -1095,9 +1188,10 @@ export default function Home() {
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
   const handleTaskDelete = useCallback((id: string) => deleteTaskRef.current(id), []);
-  const colorScheme = theme === "paper" ? "light" : "dark";
+  const colorScheme = theme === "paper" || theme === "sunset" ? "light" : "dark";
+  const recordingLimitSeconds = appSettings.recordingDurationSeconds;
   const recordingProgress = isListening
-    ? Math.min(100, (recordingSeconds / RECORDING_LIMIT_SECONDS) * 100)
+    ? Math.min(100, (recordingSeconds / recordingLimitSeconds) * 100)
     : 0;
 
   useEffect(() => {
@@ -1105,7 +1199,7 @@ export default function Home() {
     document.documentElement.style.colorScheme = colorScheme;
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       "content",
-      theme === "paper" ? "#f0e2c2" : "#0d0d12",
+      theme === "paper" ? "#f0e2c2" : theme === "sunset" ? "#ffd21f" : theme === "ocean" ? "#083a66" : theme === "grape" ? "#3c245c" : "#0d0d12",
     );
     window.DictaTaskAndroid?.setColorScheme?.(colorScheme);
     return () => {
@@ -1113,6 +1207,19 @@ export default function Home() {
       document.documentElement.style.removeProperty("color-scheme");
     };
   }, [colorScheme, theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.reduceMotion = appSettings.reducedMotion ? "true" : "false";
+    return () => { delete document.documentElement.dataset.reduceMotion; };
+  }, [appSettings.reducedMotion]);
+
+  useEffect(() => {
+    try {
+      setGroqKeySaved(Boolean(window.DictaTaskAndroid?.hasGroqApiKey?.()));
+    } catch {
+      setGroqKeySaved(false);
+    }
+  }, [view]);
 
   useEffect(() => {
     let timer: number | null = null;
@@ -1331,6 +1438,7 @@ export default function Home() {
     } catch {
       recognitionRef.current?.abort?.();
     }
+    window.DictaTaskAndroid?.stopRecognition?.();
     commitPendingSpeech(true);
     setTranscript(voiceBufferRef.current.trim());
     setIsListening(false);
@@ -1338,20 +1446,51 @@ export default function Home() {
     setNotice(message);
   }
 
+  function finishGroqCapture(message: string) {
+    setIsListening(false);
+    setRecordingSeconds(0);
+    setIsGroqTranscribing(true);
+    window.DictaTaskAndroid?.stopGroqRecording?.();
+    setNotice(message);
+  }
+
+  useEffect(() => {
+    const previousResult = window.__dictaSpeechResult;
+    const previousError = window.__dictaSpeechError;
+    const previousEnd = window.__dictaSpeechEnd;
+    const previousGroqResult = window.__dictaGroqResult;
+    const previousGroqError = window.__dictaGroqError;
+    const previousGroqEnd = window.__dictaGroqEnd;
+    window.__dictaSpeechResult = (spoken, isFinal) => {
+      if (isFinal) appendFinalSpeech(spoken);
+      else { voiceInterimRef.current = spoken.trim(); publishTranscriptPreview(); }
+    };
+    window.__dictaSpeechError = (code) => setNotice(code === "not-allowed" ? "Microphone permission is blocked. You can still paste a transcript here." : "Device speech stopped. You can try again or use Groq in Settings.");
+    window.__dictaSpeechEnd = () => { if (keepListeningRef.current) finishListening("Voice note captured. Scan it whenever you are ready."); };
+    window.__dictaGroqResult = (spoken) => { if (spoken.trim()) setTranscript(spoken.trim()); };
+    window.__dictaGroqError = (code) => setNotice(code === "api-key" ? "Groq rejected the saved key. Update it in Settings." : code === "network" ? "Groq could not be reached. Check your connection and try again." : code === "no-speech" ? "No speech was captured. Try again closer to the mic." : "Groq could not transcribe that recording. Try again.");
+    window.__dictaGroqEnd = () => { setIsListening(false); setIsGroqTranscribing(false); setRecordingSeconds(0); };
+    return () => { window.__dictaSpeechResult = previousResult; window.__dictaSpeechError = previousError; window.__dictaSpeechEnd = previousEnd; window.__dictaGroqResult = previousGroqResult; window.__dictaGroqError = previousGroqError; window.__dictaGroqEnd = previousGroqEnd; };
+  }, [isListening, isGroqTranscribing]);
+
   useEffect(() => {
     if (!isListening) return;
 
     const timer = window.setInterval(() => {
       const elapsed = Math.floor((Date.now() - recordingStartedAtRef.current) / 1000);
-      if (elapsed >= RECORDING_LIMIT_SECONDS) {
-        finishListening("30-second voice note complete. Scan it whenever you are ready.");
+      if (elapsed >= recordingLimitSeconds) {
+        if (appSettings.transcriptionProvider === "groq" && groqKeySaved && window.DictaTaskAndroid?.stopGroqRecording) {
+          finishGroqCapture("Recording complete. Groq is transcribing it now.");
+        } else {
+          finishListening(`${recordingLimitSeconds}-second voice note complete. Scan it whenever you are ready.`);
+        }
         return;
       }
       setRecordingSeconds(elapsed);
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [isListening]);
+  }, [appSettings.transcriptionProvider, groqKeySaved, isListening, recordingLimitSeconds]);
 
   useEffect(() => () => {
     keepListeningRef.current = false;
@@ -1388,7 +1527,6 @@ export default function Home() {
       wheelAnimationFrameRef.current = null;
     }
   }
-
   function putWheelAway(message?: string) {
     wheelRunIdRef.current += 1;
     clearWheelTimers();
@@ -1564,8 +1702,45 @@ export default function Home() {
   }
 
   function toggleListening() {
+    if (isGroqTranscribing) return;
     if (isListening) {
+      if (appSettings.transcriptionProvider === "groq" && window.DictaTaskAndroid?.stopGroqRecording) {
+        finishGroqCapture("Recording stopped. Groq is transcribing it now.");
+        return;
+      }
       stopListening();
+      return;
+    }
+
+    if (appSettings.transcriptionProvider === "groq") {
+      if (!groqKeySaved) {
+        setView("settings");
+        setNotice("Add your Groq API key in Settings before using Groq transcription.");
+        return;
+      }
+      if (!window.DictaTaskAndroid?.startGroqRecording) {
+        setNotice("Groq capture is available in the installed Android app. This browser preview uses device speech.");
+        return;
+      }
+      recordingStartedAtRef.current = Date.now();
+      setRecordingSeconds(0);
+      setIsListening(true);
+      setNotice("Recording for Groq. The transcript arrives after you stop.");
+      window.DictaTaskAndroid.startGroqRecording(appSettings.groqModel, appSettings.groqLanguage === "auto" ? "" : appSettings.groqLanguage, recordingLimitSeconds);
+      return;
+    }
+
+    if (window.DictaTaskAndroid?.startRecognition) {
+      const existingTranscript = transcript.trim();
+      voiceBufferRef.current = existingTranscript === starterTranscript ? "" : existingTranscript;
+      voiceInterimRef.current = "";
+      fallbackInterimRef.current = "";
+      keepListeningRef.current = true;
+      recordingStartedAtRef.current = Date.now();
+      setRecordingSeconds(0);
+      setIsListening(true);
+      setNotice("Recording now. Live transcript will appear as you speak.");
+      window.DictaTaskAndroid.startRecognition();
       return;
     }
 
@@ -1644,8 +1819,8 @@ export default function Home() {
         commitPendingSpeech(true);
         if (keepListeningRef.current) {
           const elapsed = (Date.now() - recordingStartedAtRef.current) / 1000;
-          finishListening(elapsed >= RECORDING_LIMIT_SECONDS
-            ? "30-second voice note complete. Scan it whenever you are ready."
+          finishListening(elapsed >= recordingLimitSeconds
+            ? `${recordingLimitSeconds}-second voice note complete. Scan it whenever you are ready.`
             : "Voice note captured. Scan it whenever you are ready.");
         }
       };
@@ -1902,7 +2077,7 @@ export default function Home() {
         }, crossedMilestone === 100 ? 2600 : 1700);
       }
 
-      setCelebratingTaskId(id);
+      setCelebratingTaskId(appSettings.celebrationsEnabled ? id : null);
       setNotice(nextCombo >= 4 ? "Focus streak. Keep the sequence moving." : `${nextCombo}x momentum. Next move handled.`);
 
       if (isWheelFocusTask) {
@@ -1928,7 +2103,7 @@ export default function Home() {
         });
         setCelebratingTaskId(null);
         celebrationTimerRef.current = null;
-      }, 1050);
+      }, appSettings.celebrationsEnabled ? 1050 : 0);
     } else {
       if (undoCompletion?.id === id) clearUndoCompletion();
       setTaskHistory((current) => current.filter((entry) => entry.id !== id));
@@ -2073,7 +2248,7 @@ export default function Home() {
   return (
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
       <div className="noise" aria-hidden="true" />
-      {celebratingTaskId && <CelebrationBurst key={celebrationNonce} variant={celebrationVariant} nonce={celebrationNonce} />}
+      {celebratingTaskId && appSettings.celebrationsEnabled && <CelebrationBurst key={celebrationNonce} variant={celebrationVariant} nonce={celebrationNonce} />}
       {milestone && (
         <div className={`milestone-overlay ${milestone === "LEVEL COMPLETE" ? "is-final" : ""}`} role="status" aria-live="polite">
           <span className="milestone-kicker">PROGRESS UNLOCKED</span>
@@ -2089,28 +2264,32 @@ export default function Home() {
         <span className="top-banner-block top-banner-block-orange" />
         <span className="top-banner-block top-banner-block-blue" />
         <span className="top-banner-block top-banner-block-lime" />
+        <button className="top-banner-settings" type="button" onClick={() => setView("settings")} aria-label="Open settings"><Icon name="settings" /></button>
       </header>
-      <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
+      {view === "settings" ? (
+        <SettingsPage theme={theme} setTheme={setTheme} settings={appSettings} setSettings={setAppSettings} wheelSettings={wheelSettings} setWheelSettings={setWheelSettings} groqKeySaved={groqKeySaved} onSaveGroqKey={(key) => { window.DictaTaskAndroid?.setGroqApiKey?.(key); setGroqKeySaved(Boolean(key.trim())); setNotice("Groq API key saved securely on this device."); }} onClearGroqKey={() => { window.DictaTaskAndroid?.clearGroqApiKey?.(); setGroqKeySaved(false); if (appSettings.transcriptionProvider === "groq") setAppSettings({ ...appSettings, transcriptionProvider: "device" }); setNotice("Groq API key removed from this device."); }} onBack={() => setView("board")} />
+      ) : <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">
             <button
-              className={`record-button ${isListening ? "is-listening" : ""}`}
+              className={`record-button ${isListening ? "is-listening" : ""} ${isGroqTranscribing ? "is-transcribing" : ""}`}
               type="button"
               aria-label={isListening
-                ? `Stop voice recording. ${RECORDING_LIMIT_SECONDS - recordingSeconds} seconds remaining`
-                : "Start a 30-second voice recording"}
+                ? `Stop voice recording. ${recordingLimitSeconds - recordingSeconds} seconds remaining`
+                : `Start a ${recordingLimitSeconds}-second voice recording`}
               style={{ "--recording-progress": `${recordingProgress}%` } as CSSProperties}
               onClick={toggleListening}
+              disabled={isGroqTranscribing}
             >
               <span className="record-button-progress" aria-hidden="true" />
               <span className="record-button-icon"><Icon name="mic" /></span>
               <span className="record-button-copy">
-                <strong>{isListening ? "LISTENING NOW" : "TAP TO RECORD"}</strong>
+                <strong>{isGroqTranscribing ? "TRANSCRIBING" : isListening ? "LISTENING NOW" : "TAP TO RECORD"}</strong>
               </span>
               <span className="record-button-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
-              <span className="shortcut">{isListening ? `${String(RECORDING_LIMIT_SECONDS - recordingSeconds).padStart(2, "0")}s LEFT` : "30s MAX"}</span>
+              <span className="shortcut">{isGroqTranscribing ? "GROQ" : isListening ? `${String(recordingLimitSeconds - recordingSeconds).padStart(2, "0")}s LEFT` : `${recordingLimitSeconds}s MAX`}</span>
             </button>
-            <span className="recording-hint">{isListening ? "Live transcript appears as you speak" : "or paste a transcription"}</span>
+            <span className="recording-hint">{isGroqTranscribing ? "Groq is turning your recording into text" : isListening ? appSettings.transcriptionProvider === "groq" ? "Tap again when you are done" : "Live transcript appears as you speak" : "or paste a transcription"}</span>
           </div>
 
           <textarea
@@ -2120,7 +2299,7 @@ export default function Home() {
             onChange={(event) => setTranscript(event.target.value)}
             onBlur={flushTranscript}
             placeholder="Start talking about everything you need to do…"
-            readOnly={isListening}
+            readOnly={isListening || isGroqTranscribing}
           />
 
           <div className="transcript-footer">
@@ -2131,7 +2310,7 @@ export default function Home() {
           </div>
 
           <div className="transcript-action-row">
-            <button className="scan-button compact-scan-button" type="button" onClick={generateTasks} disabled={!transcript.trim() || isListening}>
+            <button className="scan-button compact-scan-button" type="button" onClick={generateTasks} disabled={!transcript.trim() || isListening || isGroqTranscribing}>
               <span><Icon name="spark" /> CONVERT TO TASKS</span>
               <span className="button-arrow"><Icon name="arrow" /></span>
             </button>
@@ -2231,6 +2410,7 @@ export default function Home() {
                       daysOpen={task.completed
                         ? getTaskOpenDays(task.completedAt, taskAgeNow)
                         : getTaskOpenDays(task.createdAt ?? createdAtByTaskId.get(task.id), taskAgeNow)}
+                      showTaskAge={appSettings.showTaskAge}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}
@@ -2247,14 +2427,8 @@ export default function Home() {
               </div>
 
               <div className="task-actions task-actions-footer" aria-label="Task list actions">
-                <button
-                  className={`clear-button wheel-settings-button ${wheelSettingsOpen ? "is-open" : ""}`}
-                  type="button"
-                  onClick={() => setWheelSettingsOpen((open) => !open)}
-                  aria-expanded={wheelSettingsOpen}
-                  aria-controls="wheel-settings"
-                >
-                  <span>Focus clock</span><b>{wheelSettings.durationMinutes}m</b>
+                <button className="clear-button wheel-settings-button" type="button" onClick={() => setView("settings")}>
+                  <Icon name="settings" /> Settings
                 </button>
                 <button className="clear-button export-history-button" type="button" onClick={exportTaskHistory} disabled={!taskHistory.length && !tasks.length}>
                   <Icon name="download" /> Export .txt
@@ -2279,32 +2453,6 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
-              )}
-
-              {wheelSettingsOpen && (
-                  <section className="wheel-settings-inline" id="wheel-settings" aria-label="Focus countdown settings">
-                    <div className="wheel-settings-copy">
-                      <span>FOCUS CLOCK / SETTINGS</span>
-                      <strong>Focus countdown</strong>
-                      <small>Choose the clock for your next focus run.</small>
-                  </div>
-                  <div className="wheel-duration-options" role="group" aria-label="Focus countdown duration">
-                    {WHEEL_DURATION_OPTIONS.map((minutes) => (
-                      <button
-                        className={wheelSettings.durationMinutes === minutes ? "is-selected" : ""}
-                        key={minutes}
-                        type="button"
-                        aria-pressed={wheelSettings.durationMinutes === minutes}
-                        onClick={() => {
-                          setWheelSettings({ durationMinutes: minutes });
-                          setNotice(`Focus clock set for ${minutes} minutes. It applies to your next focus run.`);
-                        }}
-                      >
-                        {minutes} MIN
-                      </button>
-                    ))}
-                  </div>
-                </section>
               )}
 
             </div>
@@ -2452,7 +2600,7 @@ export default function Home() {
             </div>
           </section>
         )}
-      </section>
+      </section>}
 
     </main>
   );
