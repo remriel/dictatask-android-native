@@ -3982,10 +3982,20 @@ body {
   pointer-events: auto;
 }
 
-/* Persistent app-wide color themes. Each option keeps the same structural
-   brutalist layout while swapping the entire production palette. */
+/* Persistent app-wide color themes. Every palette owns the complete token set:
+   shell, panels, controls, task fills, task shadows, task borders, wheel wedges,
+   chart bars, and the Settings surface all change as one coherent system. */
 :root[data-dictatask-theme="midnight"],
 .app-shell.theme-midnight {
+  --ink: #0d0d12;
+  --paper: #f3ecd9;
+  --paper-2: #fff8e8;
+  --orange: #ff7417;
+  --blue: #155eea;
+  --cyan: #20bfe5;
+  --yellow: #ffd21f;
+  --lime: #49b878;
+  --violet: #6848c9;
   --juice-black: #0d0d12;
   --juice-cream: #f7f0df;
   --juice-yellow: #ffd21f;
@@ -3995,61 +4005,44 @@ body {
   --juice-cyan: #20bfe5;
   --juice-violet: #6848c9;
   --app-background: #0d0d12;
-  --app-grid-line: rgba(241, 230, 209, 0.09);
-  --app-glow-one: rgba(59, 125, 111, 0.24);
-  --app-glow-two: rgba(46, 79, 159, 0.22);
+  --app-grid-line: rgba(247, 240, 223, 0.09);
+  --app-glow-one: rgba(73, 184, 120, 0.24);
+  --app-glow-two: rgba(21, 94, 234, 0.22);
   --app-header-ink: #f7f0df;
   --theme-transcript-panel: #ffd21f;
   --theme-tasks-panel: #f7f0df;
   --theme-option-active-ink: #0d0d12;
   --task-tile-default-bg: #123d68;
   --task-tile-default-shadow: #20bfe5;
+  --task-tile-default-border: #082641;
   --task-tile-orange-bg: #9a3e00;
   --task-tile-orange-shadow: #ff7a18;
+  --task-tile-orange-border: #6d2d00;
   --task-tile-blue-bg: #123c9e;
   --task-tile-blue-shadow: #236cf3;
+  --task-tile-blue-border: #0d2d79;
   --task-tile-cyan-bg: #006b83;
   --task-tile-cyan-shadow: #25c7e9;
+  --task-tile-cyan-border: #004b5c;
   --task-tile-lime-bg: #2d9a61;
   --task-tile-lime-shadow: #49b878;
+  --task-tile-lime-border: #15502f;
   --task-tile-violet-bg: #4f3489;
   --task-tile-violet-shadow: #8060d5;
-}
-
-:root[data-dictatask-theme="ember"],
-.app-shell.theme-ember {
-  --juice-black: #1b1020;
-  --juice-cream: #fff0d9;
-  --juice-yellow: #e4a840;
-  --juice-blue: #4d63bb;
-  --juice-orange: #df5a3d;
-  --juice-lime: #58b070;
-  --juice-cyan: #3892a3;
-  --juice-violet: #83529a;
-  --app-background: #1b1020;
-  --app-grid-line: rgba(255, 240, 217, 0.1);
-  --app-glow-one: rgba(223, 90, 61, 0.28);
-  --app-glow-two: rgba(88, 176, 112, 0.2);
-  --app-header-ink: #fff0d9;
-  --theme-transcript-panel: #e4a840;
-  --theme-tasks-panel: #fff0d9;
-  --theme-option-active-ink: #1b1020;
-  --task-tile-default-bg: #314a7b;
-  --task-tile-default-shadow: #3892a3;
-  --task-tile-orange-bg: #a74632;
-  --task-tile-orange-shadow: #df5a3d;
-  --task-tile-blue-bg: #3d52a6;
-  --task-tile-blue-shadow: #657bd4;
-  --task-tile-cyan-bg: #1d7181;
-  --task-tile-cyan-shadow: #46a8b9;
-  --task-tile-lime-bg: #2d7c52;
-  --task-tile-lime-shadow: #58b070;
-  --task-tile-violet-bg: #68407b;
-  --task-tile-violet-shadow: #9b69b2;
+  --task-tile-violet-border: #2e1e52;
 }
 
 :root[data-dictatask-theme="paper"],
 .app-shell.theme-paper {
+  --ink: #172640;
+  --paper: #f0e2c2;
+  --paper-2: #fff8e7;
+  --orange: #d6673a;
+  --blue: #285cba;
+  --cyan: #237f91;
+  --yellow: #e7b63a;
+  --lime: #3c9660;
+  --violet: #704d9e;
   --juice-black: #172640;
   --juice-cream: #fff8e7;
   --juice-yellow: #e7b63a;
@@ -4067,17 +4060,164 @@ body {
   --theme-tasks-panel: #fff8e7;
   --theme-option-active-ink: #fff8e7;
   --task-tile-default-bg: #2b5e99;
-  --task-tile-default-shadow: #237f91;
-  --task-tile-orange-bg: #b94b2d;
-  --task-tile-orange-shadow: #d6673a;
+  --task-tile-default-shadow: #368fa1;
+  --task-tile-default-border: #183b67;
+  --task-tile-orange-bg: #a9432a;
+  --task-tile-orange-shadow: #dc7146;
+  --task-tile-orange-border: #702b1d;
   --task-tile-blue-bg: #234f9c;
   --task-tile-blue-shadow: #4d7ad2;
+  --task-tile-blue-border: #17366e;
   --task-tile-cyan-bg: #146b7c;
   --task-tile-cyan-shadow: #2d9eae;
+  --task-tile-cyan-border: #0b4652;
   --task-tile-lime-bg: #277f50;
-  --task-tile-lime-shadow: #3c9660;
+  --task-tile-lime-shadow: #4ba36b;
+  --task-tile-lime-border: #185234;
   --task-tile-violet-bg: #5f408c;
   --task-tile-violet-shadow: #8d6bc0;
+  --task-tile-violet-border: #3c285b;
+}
+
+:root[data-dictatask-theme="sunset"],
+.app-shell.theme-sunset {
+  --ink: #351625;
+  --paper: #ffd8ad;
+  --paper-2: #fff1d8;
+  --orange: #f05d43;
+  --blue: #247c8d;
+  --cyan: #2db8ad;
+  --yellow: #ffc93d;
+  --lime: #8dbd64;
+  --violet: #a94878;
+  --juice-black: #351625;
+  --juice-cream: #fff1d8;
+  --juice-yellow: #ffc93d;
+  --juice-blue: #247c8d;
+  --juice-orange: #f05d43;
+  --juice-lime: #8dbd64;
+  --juice-cyan: #2db8ad;
+  --juice-violet: #a94878;
+  --app-background: #4a2030;
+  --app-grid-line: rgba(255, 241, 216, 0.11);
+  --app-glow-one: rgba(240, 93, 67, 0.28);
+  --app-glow-two: rgba(255, 201, 61, 0.18);
+  --app-header-ink: #fff1d8;
+  --theme-transcript-panel: #ffbf58;
+  --theme-tasks-panel: #fff1d8;
+  --theme-option-active-ink: #351625;
+  --task-tile-default-bg: #245d68;
+  --task-tile-default-shadow: #3eb5b0;
+  --task-tile-default-border: #153b43;
+  --task-tile-orange-bg: #a53d2e;
+  --task-tile-orange-shadow: #f06b50;
+  --task-tile-orange-border: #68261f;
+  --task-tile-blue-bg: #2c6574;
+  --task-tile-blue-shadow: #4b9dae;
+  --task-tile-blue-border: #193e48;
+  --task-tile-cyan-bg: #31716d;
+  --task-tile-cyan-shadow: #61c3b6;
+  --task-tile-cyan-border: #1d4744;
+  --task-tile-lime-bg: #60763d;
+  --task-tile-lime-shadow: #9fc767;
+  --task-tile-lime-border: #3d4b28;
+  --task-tile-violet-bg: #6d2e59;
+  --task-tile-violet-shadow: #bb588a;
+  --task-tile-violet-border: #451d39;
+}
+
+:root[data-dictatask-theme="ocean"],
+.app-shell.theme-ocean {
+  --ink: #052d46;
+  --paper: #c9f3e7;
+  --paper-2: #e9fff6;
+  --orange: #ff7a34;
+  --blue: #087bc1;
+  --cyan: #1bbac7;
+  --yellow: #ffe45c;
+  --lime: #27be97;
+  --violet: #6268d6;
+  --juice-black: #052d46;
+  --juice-cream: #e9fff6;
+  --juice-yellow: #ffe45c;
+  --juice-blue: #087bc1;
+  --juice-orange: #ff7a34;
+  --juice-lime: #27be97;
+  --juice-cyan: #1bbac7;
+  --juice-violet: #6268d6;
+  --app-background: #06395d;
+  --app-grid-line: rgba(233, 255, 246, 0.1);
+  --app-glow-one: rgba(27, 186, 199, 0.25);
+  --app-glow-two: rgba(39, 190, 151, 0.2);
+  --app-header-ink: #e9fff6;
+  --theme-transcript-panel: #79dde0;
+  --theme-tasks-panel: #e9fff6;
+  --theme-option-active-ink: #052d46;
+  --task-tile-default-bg: #09637d;
+  --task-tile-default-shadow: #24bfd1;
+  --task-tile-default-border: #053e50;
+  --task-tile-orange-bg: #a84920;
+  --task-tile-orange-shadow: #ff813e;
+  --task-tile-orange-border: #6c2d14;
+  --task-tile-blue-bg: #07558b;
+  --task-tile-blue-shadow: #178ed8;
+  --task-tile-blue-border: #043755;
+  --task-tile-cyan-bg: #087786;
+  --task-tile-cyan-shadow: #2cc7d0;
+  --task-tile-cyan-border: #054c55;
+  --task-tile-lime-bg: #17785f;
+  --task-tile-lime-shadow: #32cda6;
+  --task-tile-lime-border: #0d4c3c;
+  --task-tile-violet-bg: #424796;
+  --task-tile-violet-shadow: #7278df;
+  --task-tile-violet-border: #292d61;
+}
+
+:root[data-dictatask-theme="grape"],
+.app-shell.theme-grape {
+  --ink: #271536;
+  --paper: #e3d2ef;
+  --paper-2: #fff3df;
+  --orange: #ff6d41;
+  --blue: #566dda;
+  --cyan: #34b6ae;
+  --yellow: #f4d94a;
+  --lime: #78be5d;
+  --violet: #8a5bc9;
+  --juice-black: #271536;
+  --juice-cream: #fff3df;
+  --juice-yellow: #f4d94a;
+  --juice-blue: #566dda;
+  --juice-orange: #ff6d41;
+  --juice-lime: #78be5d;
+  --juice-cyan: #34b6ae;
+  --juice-violet: #8a5bc9;
+  --app-background: #3c245c;
+  --app-grid-line: rgba(255, 243, 223, 0.1);
+  --app-glow-one: rgba(138, 91, 201, 0.3);
+  --app-glow-two: rgba(244, 217, 74, 0.16);
+  --app-header-ink: #fff3df;
+  --theme-transcript-panel: #d9baf0;
+  --theme-tasks-panel: #fff3df;
+  --theme-option-active-ink: #271536;
+  --task-tile-default-bg: #3b4b91;
+  --task-tile-default-shadow: #6c81e2;
+  --task-tile-default-border: #26305e;
+  --task-tile-orange-bg: #a8402d;
+  --task-tile-orange-shadow: #ff724c;
+  --task-tile-orange-border: #6d291d;
+  --task-tile-blue-bg: #39499b;
+  --task-tile-blue-shadow: #6579e5;
+  --task-tile-blue-border: #252f64;
+  --task-tile-cyan-bg: #24746f;
+  --task-tile-cyan-shadow: #47beb5;
+  --task-tile-cyan-border: #174945;
+  --task-tile-lime-bg: #4d7a3d;
+  --task-tile-lime-shadow: #82c767;
+  --task-tile-lime-border: #304d27;
+  --task-tile-violet-bg: #604092;
+  --task-tile-violet-shadow: #9569d2;
+  --task-tile-violet-border: #3d295d;
 }
 
 body {
@@ -5274,13 +5414,8 @@ textarea {
 
 }
 
-/* Dedicated Settings screen and selectable neo-brutalist palettes. The themes
-   only alter shared color tokens, so every familiar task interaction remains
-   intact while the whole system shifts together. */
-.theme-paper { --juice-black: #241f1a; --juice-cream: #fff4d8; --juice-yellow: #ffd21f; --juice-orange: #f16d20; --juice-blue: #225fd8; --juice-lime: #4dad76; --juice-violet: #7854c7; }
-.theme-sunset { --juice-black: #3b1c27; --juice-cream: #fff0cb; --juice-yellow: #ffd21f; --juice-orange: #ef5c3b; --juice-blue: #1f67d4; --juice-lime: #51b88c; --juice-violet: #8e4d92; }
-.theme-ocean { --juice-black: #062b4a; --juice-cream: #e8fff5; --juice-yellow: #ffe158; --juice-orange: #ff7a34; --juice-blue: #1269d9; --juice-lime: #28bfa0; --juice-violet: #6f67d7; }
-.theme-grape { --juice-black: #271536; --juice-cream: #fff3df; --juice-yellow: #f4d94a; --juice-orange: #ff6d41; --juice-blue: #386ee2; --juice-lime: #65bd78; --juice-violet: #8050c8; }
+/* Dedicated Settings screen. Theme cards deliberately use their own preview
+   tokens, so every palette stays colorful even when a different theme is active. */
 
 .top-banner { position: relative; }
 .top-banner-settings { position: absolute; z-index: 5; right: 11px; top: 7px; display: grid; width: 31px; height: 31px; place-items: center; border: 3px solid var(--juice-black); background: var(--juice-yellow); box-shadow: 3px 3px 0 var(--juice-black); padding: 0; }
@@ -5296,12 +5431,193 @@ textarea {
 .settings-section { margin-top: 19px; border: 4px solid var(--juice-black); background: var(--juice-cream); box-shadow: 6px 6px 0 var(--juice-black); padding: 15px; }
 .settings-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; border-bottom: 3px solid var(--juice-black); padding-bottom: 9px; }
 .settings-section-heading h2 { margin: 0; font-family: Archivo, sans-serif; font-size: 26px; font-weight: 950; letter-spacing: -.06em; line-height: .8; }
-.theme-choice-grid, .settings-option-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
-.theme-choice { min-height: 70px; border: 3px solid var(--juice-black); background: var(--juice-yellow); box-shadow: 4px 4px 0 var(--juice-black); padding: 9px; text-align: left; }
-.theme-choice strong, .theme-choice small { display: block; }
-.theme-choice strong { font-family: "Space Mono", monospace; font-size: 10px; font-weight: 950; letter-spacing: .06em; }
-.theme-choice small { margin-top: 4px; font-size: 10px; font-weight: 800; }
-.theme-choice-paper { background: #fff4d8; }.theme-choice-sunset { background: #ef5c3b; }.theme-choice-ocean { background: #28bfa0; }.theme-choice-grape { background: #8050c8; color: #fff3df; }.theme-choice-midnight { background: #0d0d12; color: #f7f0df; }.theme-choice.is-selected { outline: 4px solid var(--juice-blue); outline-offset: 2px; }
+.theme-choice-grid,
+.settings-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin-top: 13px;
+}
+
+.theme-choice {
+  --preview-ink: #0d0d12;
+  --preview-paper: #f7f0df;
+  --preview-one: #ffd21f;
+  --preview-two: #ff7417;
+  --preview-three: #155eea;
+  --preview-four: #49b878;
+  --preview-five: #6848c9;
+  --preview-shadow: #20bfe5;
+  --button-press-offset: 2px;
+  --button-press-shadow: var(--preview-shadow);
+  position: relative;
+  display: grid;
+  min-height: 96px;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 4px solid var(--preview-ink);
+  border-radius: 0;
+  background: var(--preview-paper);
+  box-shadow: 6px 6px 0 var(--preview-shadow);
+  color: var(--preview-ink);
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+  transition: box-shadow 110ms ease, transform 110ms ease;
+}
+
+.theme-choice.theme-choice-midnight {
+  --preview-ink: #0d0d12;
+  --preview-paper: #f7f0df;
+  --preview-one: #ffd21f;
+  --preview-two: #ff7417;
+  --preview-three: #155eea;
+  --preview-four: #49b878;
+  --preview-five: #6848c9;
+  --preview-shadow: #20bfe5;
+}
+
+.theme-choice.theme-choice-paper {
+  --preview-ink: #172640;
+  --preview-paper: #fff8e7;
+  --preview-one: #e7b63a;
+  --preview-two: #d6673a;
+  --preview-three: #285cba;
+  --preview-four: #3c9660;
+  --preview-five: #704d9e;
+  --preview-shadow: #237f91;
+}
+
+.theme-choice.theme-choice-sunset {
+  --preview-ink: #351625;
+  --preview-paper: #fff1d8;
+  --preview-one: #ffc93d;
+  --preview-two: #f05d43;
+  --preview-three: #247c8d;
+  --preview-four: #8dbd64;
+  --preview-five: #a94878;
+  --preview-shadow: #f06b50;
+}
+
+.theme-choice.theme-choice-ocean {
+  --preview-ink: #052d46;
+  --preview-paper: #e9fff6;
+  --preview-one: #79dde0;
+  --preview-two: #ff7a34;
+  --preview-three: #087bc1;
+  --preview-four: #27be97;
+  --preview-five: #6268d6;
+  --preview-shadow: #24bfd1;
+}
+
+.theme-choice.theme-choice-grape {
+  --preview-ink: #271536;
+  --preview-paper: #fff3df;
+  --preview-one: #f4d94a;
+  --preview-two: #ff6d41;
+  --preview-three: #566dda;
+  --preview-four: #78be5d;
+  --preview-five: #8a5bc9;
+  --preview-shadow: #9569d2;
+}
+
+.theme-choice-preview {
+  display: grid;
+  width: 78px;
+  height: 62px;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: end;
+  overflow: hidden;
+  border: 3px solid var(--preview-ink);
+  background: var(--preview-paper);
+  box-shadow: 3px 3px 0 var(--preview-ink);
+}
+
+.theme-choice-preview i {
+  display: block;
+  height: 100%;
+  background: var(--preview-one);
+}
+
+.theme-choice-preview i:nth-child(2) {
+  height: 72%;
+  background: var(--preview-two);
+}
+
+.theme-choice-preview i:nth-child(3) {
+  height: 88%;
+  background: var(--preview-three);
+}
+
+.theme-choice-preview i:nth-child(4) {
+  height: 58%;
+  background: var(--preview-four);
+}
+
+.theme-choice-preview i:nth-child(5) {
+  height: 82%;
+  background: var(--preview-five);
+}
+
+.theme-choice-copy {
+  min-width: 0;
+}
+
+.theme-choice strong,
+.theme-choice small {
+  display: block;
+}
+
+.theme-choice strong {
+  font-family: Archivo, sans-serif;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+}
+
+.theme-choice small {
+  margin-top: 6px;
+  font-family: "Space Mono", monospace;
+  font-size: 6.5px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+}
+
+.theme-choice-state {
+  align-self: start;
+  border: 2px solid var(--preview-ink);
+  background: var(--preview-ink);
+  color: var(--preview-paper);
+  font-family: "Space Mono", monospace;
+  font-size: 6px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 4px 5px;
+}
+
+.theme-choice:hover,
+.theme-choice:focus-visible {
+  box-shadow: 8px 8px 0 var(--preview-shadow);
+  transform: translate(-1px, -1px);
+}
+
+.theme-choice:active {
+  box-shadow: 2px 2px 0 var(--preview-shadow);
+  transform: translate(4px, 4px);
+}
+
+.theme-choice.is-selected {
+  outline: 4px solid var(--preview-one);
+  outline-offset: 3px;
+}
+
+.theme-choice.is-selected .theme-choice-state {
+  background: var(--preview-one);
+  color: var(--preview-ink);
+}
 .settings-field { display: grid; gap: 6px; min-width: 0; border: 3px solid var(--juice-black); background: var(--juice-yellow); padding: 10px; }
 .settings-field select, .settings-field input { width: 100%; min-height: 37px; border: 2px solid var(--juice-black); border-radius: 0; background: var(--juice-cream); color: var(--juice-black); padding: 7px; font-family: "Space Mono", monospace; font-size: 9px; font-weight: 950; }
 .settings-field small, .settings-warning { margin: 0; font-size: 10px; font-weight: 750; line-height: 1.28; }
@@ -6015,7 +6331,7 @@ button:active:not(:disabled) {
    old ink-colored card frame/shadow so a press never reveals a second black
    layer behind the tile. */
 .juice-panel .task-row {
-  --task-card-border: #6d2d00;
+  --task-card-border: var(--task-tile-default-border);
   border-color: var(--task-card-border);
   outline: none;
   background: var(--task-card-bg) !important;
@@ -6023,23 +6339,33 @@ button:active:not(:disabled) {
 }
 
 .juice-panel .task-row.task-orange {
-  --task-card-border: #6d2d00;
+  --task-card-border: var(--task-tile-orange-border);
+  --task-checkbox-bg: var(--juice-yellow);
+  border-color: var(--task-card-border);
 }
 
 .juice-panel .task-row.task-blue {
-  --task-card-border: #0d2d79;
+  --task-card-border: var(--task-tile-blue-border);
+  --task-checkbox-bg: var(--task-tile-blue-shadow);
+  border-color: var(--task-card-border);
 }
 
 .juice-panel .task-row.task-cyan {
-  --task-card-border: #004b5c;
+  --task-card-border: var(--task-tile-cyan-border);
+  --task-checkbox-bg: var(--task-tile-cyan-shadow);
+  border-color: var(--task-card-border);
 }
 
 .juice-panel .task-row.task-lime {
-  --task-card-border: #15502f;
+  --task-card-border: var(--task-tile-lime-border);
+  --task-checkbox-bg: var(--task-tile-lime-shadow);
+  border-color: var(--task-card-border);
 }
 
 .juice-panel .task-row.task-violet {
-  --task-card-border: #2e1e52;
+  --task-card-border: var(--task-tile-violet-border);
+  --task-checkbox-bg: var(--task-tile-violet-shadow);
+  border-color: var(--task-card-border);
 }
 
 .juice-panel .task-row:hover {

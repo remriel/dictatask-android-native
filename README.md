@@ -19,7 +19,7 @@ These screenshots show the current Android-first interface at a 390px mobile vie
 ## What it does
 
 - Records a configurable 15/30/60-second native voice session or accepts a pasted transcript.
-- Includes a dedicated Settings screen with five 90s-inspired themes, focus-clock defaults, task-age labels, completion celebration, and reduced-motion controls.
+- Includes a dedicated Settings screen with five fully developed 90s-inspired themes. Each selector shows its complete five-color palette, and every choice recolors the shell, panels, controls, task fills/borders/shadows, wheel wedges, and stats—not just a few accent buttons. Settings also owns focus-clock defaults, task-age labels, completion celebration, and reduced-motion controls.
 - Supports optional Groq Whisper transcription: enter a Groq API key in Settings, choose Whisper Large V3 Turbo or Large V3 plus the spoken language, then DictaTask records a temporary `.m4a`, sends it directly to Groq, and deletes the audio after the request. The key is encrypted with Android Keystore and never appears in exports or task storage.
 - Converts transcript text into editable tasks and supports quick manual entry with dictation.
 - Keeps tasks, transcripts, completion history, theme preference, and focus-clock settings on the device.
@@ -33,7 +33,7 @@ These screenshots show the current Android-first interface at a 390px mobile vie
 
 ## Download
 
-The latest internal-review APK is available from the [v1.5.33 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.33).
+The latest internal-review APK is available from the [v1.5.34 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.34).
 
 > Release builds are Android debug-signed for internal review. A Play Store release must be signed with the repository owner’s protected release key.
 
@@ -67,7 +67,7 @@ The optimized APK is written to `app/build/outputs/apk/release/app-release.apk`.
 
 ## Current release
 
-- Version: `1.5.33`
-- Version code: `19`
-- APK: `DictaTask-v1.5.33-groq-settings-themes.apk`
+- Version: `1.5.34`
+- Version code: `20`
+- APK: `DictaTask-v1.5.34-complete-color-themes.apk`
 - Branch: `main`
