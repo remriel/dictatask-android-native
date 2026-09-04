@@ -53,6 +53,8 @@ Keep the existing Android-first task board polished and local-first, then add a 
 - Settings optionally enables Groq Whisper transcription. The app accepts `whisper-large-v3-turbo` or `whisper-large-v3`, optional language selection, and records a short AAC/M4A capture. The audio is uploaded only to `https://api.groq.com/openai/v1/audio/transcriptions` when the user has chosen Groq and saved a key, then deleted in every completion/error path. The key is AES-GCM encrypted with a per-app Android Keystore key before private-preference storage, never returned to JavaScript, never written into task/export state, and can be removed from Settings.
 - The Android bridge now also feeds native device-speech results back into React through its explicit callback contract; device speech remains the default and Groq is an opt-in alternative. The manifest adds `INTERNET` solely for the explicit Groq request path.
 - v1.5.33 package: `DictaTask-v1.5.33-groq-settings-themes.apk`, `versionCode=19`, SHA-256 `B89092DCC3D617A29FBC5B2B100BD7FBCD7CA5A7B5026A05B94BC7ADBEB17BD3`, 1,219,102 bytes. Google Drive copy (new file, earlier versions retained): https://drive.google.com/file/d/1Sc4iOOEuCxA-b8z3P5Chm6sLCw1cXRsQ/view?usp=drivesdk
+- Public v1.5.33 GitHub release: https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.33
+- Direct v1.5.33 APK: https://github.com/remriel/dictatask-android-native/releases/download/v1.5.33/DictaTask-v1.5.33-groq-settings-themes.apk
 
 ## Verification completed
 

@@ -33,7 +33,7 @@ These screenshots show the current Android-first interface at a 390px mobile vie
 
 ## Download
 
-The latest internal-review APK is available from the [v1.5.32 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.32).
+The latest internal-review APK is available from the [v1.5.33 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.33).
 
 > Release builds are Android debug-signed for internal review. A Play Store release must be signed with the repository owner’s protected release key.
 
@@ -67,7 +67,7 @@ The optimized APK is written to `app/build/outputs/apk/release/app-release.apk`.
 
 ## Current release
 
-- Version: `1.5.32`
-- Version code: `18`
-- APK: `DictaTask-v1.5.32-public-readme-screenshots.apk`
+- Version: `1.5.33`
+- Version code: `19`
+- APK: `DictaTask-v1.5.33-groq-settings-themes.apk`
 - Branch: `main`
