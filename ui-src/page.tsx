@@ -22,7 +22,6 @@ type AppSettings = {
   recordingDurationSeconds: 15 | 30 | 60;
   showTaskAge: boolean;
   celebrationsEnabled: boolean;
-  reducedMotion: boolean;
 };
 
 type FocusEntry = "wheel" | "direct";
@@ -222,7 +221,6 @@ const defaultAppSettings: AppSettings = {
   recordingDurationSeconds: 30,
   showTaskAge: true,
   celebrationsEnabled: true,
-  reducedMotion: false,
 };
 const confettiPieces = Array.from({ length: 20 }, (_, index) => ({
   left: `${-8 + ((index * 29) % 116)}vw`,
@@ -503,7 +501,6 @@ function normalizeAppSettings(value: unknown): AppSettings {
     recordingDurationSeconds,
     showTaskAge: record.showTaskAge !== false,
     celebrationsEnabled: record.celebrationsEnabled !== false,
-    reducedMotion: record.reducedMotion === true,
   };
 }
 
@@ -1136,7 +1133,7 @@ function SettingsPage({ theme, setTheme, settings, setSettings, wheelSettings, s
     <div className="settings-title-card"><span>DICTATASK / SETTINGS</span><h1 id="settings-title">MAKE IT YOURS.</h1><p>Preferences save on this device. Your Groq key stays in Android’s encrypted storage and is never copied into task data or exports.</p></div>
     <section className="settings-section" aria-labelledby="theme-settings-title"><div className="settings-section-heading"><span>01 / VISUAL SYSTEM</span><h2 id="theme-settings-title">THEME</h2></div><div className="theme-choice-grid" role="group" aria-label="App theme">{themes.map(([value, label, copy]) => <button className={`theme-choice theme-choice-${value} ${theme === value ? "is-selected" : ""}`} type="button" key={value} aria-pressed={theme === value} onClick={() => setTheme(value)}><span className="theme-choice-preview" aria-hidden="true"><i /><i /><i /><i /><i /></span><span className="theme-choice-copy"><strong>{label}</strong><small>{copy}</small></span><span className="theme-choice-state">{theme === value ? "ACTIVE" : "SELECT"}</span></button>)}</div></section>
     <section className="settings-section" aria-labelledby="transcription-settings-title"><div className="settings-section-heading"><span>02 / VOICE CAPTURE</span><h2 id="transcription-settings-title">TRANSCRIPTION</h2></div><div className="settings-option-grid"><label className="settings-field"><span>TRANSCRIPTION ENGINE</span><select value={settings.transcriptionProvider} onChange={(event) => update("transcriptionProvider", event.target.value === "groq" ? "groq" : "device")}><option value="device">DEVICE SPEECH</option><option value="groq">GROQ WHISPER</option></select><small>{settings.transcriptionProvider === "groq" ? "Records a short .m4a then sends it directly to Groq for transcription." : "Uses the device or browser speech service. No API key needed."}</small></label><label className="settings-field"><span>RECORDING LENGTH</span><select value={settings.recordingDurationSeconds} onChange={(event) => update("recordingDurationSeconds", Number(event.target.value) as AppSettings["recordingDurationSeconds"])}><option value="15">15 SECONDS</option><option value="30">30 SECONDS</option><option value="60">60 SECONDS</option></select><small>Applies to the main Tap to Record capture. Groq audio is deleted after each request.</small></label></div>{settings.transcriptionProvider === "groq" && <div className="groq-settings-card"><div className="groq-settings-heading"><div><span>GROQ CLOUD TRANSCRIPTION</span><strong>{groqKeySaved ? "KEY CONNECTED" : "KEY REQUIRED"}</strong></div><i className={groqKeySaved ? "is-connected" : ""} aria-label={groqKeySaved ? "Groq API key saved" : "Groq API key not saved"} /></div>{!nativeGroqAvailable && <p className="settings-warning">Groq capture is available in the Android app. The browser preview uses device speech instead.</p>}<div className="settings-option-grid"><label className="settings-field"><span>WHISPER MODEL</span><select value={settings.groqModel} onChange={(event) => update("groqModel", event.target.value === "whisper-large-v3" ? "whisper-large-v3" : "whisper-large-v3-turbo")}><option value="whisper-large-v3-turbo">WHISPER LARGE V3 TURBO</option><option value="whisper-large-v3">WHISPER LARGE V3</option></select><small>Turbo is the fast default. Large V3 prioritizes accuracy.</small></label><label className="settings-field"><span>SPOKEN LANGUAGE</span><select value={settings.groqLanguage} onChange={(event) => update("groqLanguage", event.target.value as AppSettings["groqLanguage"])}><option value="auto">AUTO DETECT</option><option value="en">ENGLISH</option><option value="es">SPANISH</option><option value="fr">FRENCH</option><option value="de">GERMAN</option></select><small>Specifying a language can reduce latency and improve recognition.</small></label></div><label className="settings-field groq-key-field"><span>GROQ API KEY</span><div className="key-input-row"><input value={keyDraft} onChange={(event) => setKeyDraft(event.target.value)} type="password" autoComplete="off" spellCheck={false} placeholder={groqKeySaved ? "Saved securely — enter a replacement" : "gsk_…"} aria-label="Groq API key" /><button type="button" onClick={() => { onSaveGroqKey(keyDraft); setKeyDraft(""); }} disabled={!keyDraft.trim()}>SAVE KEY</button>{groqKeySaved && <button className="danger" type="button" onClick={onClearGroqKey}>REMOVE</button>}</div><small>The key is encrypted by Android Keystore before it is written to private app storage. It is used only for the Groq transcription request.</small></label></div>}</section>
-    <section className="settings-section" aria-labelledby="workflow-settings-title"><div className="settings-section-heading"><span>03 / WORKFLOW</span><h2 id="workflow-settings-title">TASK FLOW</h2></div><div className="settings-option-grid"><label className="settings-field"><span>DEFAULT FOCUS CLOCK</span><select value={wheelSettings.durationMinutes} onChange={(event) => setWheelSettings({ durationMinutes: Number(event.target.value) })}>{WHEEL_DURATION_OPTIONS.map((minutes) => <option value={minutes} key={minutes}>{minutes} MINUTES</option>)}</select><small>Used by direct focus and Spin the Wheel.</small></label><SettingsToggle label="SHOW TASK AGE" copy="Displays OPEN X DAYS and DONE X DAYS AGO on cards." checked={settings.showTaskAge} onChange={(value) => update("showTaskAge", value)} /><SettingsToggle label="COMPLETION CELEBRATION" copy="Plays the short confetti finish after a task is checked off." checked={settings.celebrationsEnabled} onChange={(value) => update("celebrationsEnabled", value)} /><SettingsToggle label="REDUCE MOTION" copy="Turns off decorative movement while preserving state changes." checked={settings.reducedMotion} onChange={(value) => update("reducedMotion", value)} /></div></section>
+    <section className="settings-section" aria-labelledby="workflow-settings-title"><div className="settings-section-heading"><span>03 / WORKFLOW</span><h2 id="workflow-settings-title">TASK FLOW</h2></div><div className="settings-option-grid"><label className="settings-field"><span>DEFAULT FOCUS CLOCK</span><select value={wheelSettings.durationMinutes} onChange={(event) => setWheelSettings({ durationMinutes: Number(event.target.value) })}>{WHEEL_DURATION_OPTIONS.map((minutes) => <option value={minutes} key={minutes}>{minutes} MINUTES</option>)}</select><small>Used by direct focus and Spin the Wheel.</small></label><SettingsToggle label="SHOW TASK AGE" copy="Displays OPEN X DAYS and DONE X DAYS AGO on cards." checked={settings.showTaskAge} onChange={(value) => update("showTaskAge", value)} /><SettingsToggle label="COMPLETION CELEBRATION" copy="Plays the short confetti finish after a task is checked off." checked={settings.celebrationsEnabled} onChange={(value) => update("celebrationsEnabled", value)} /></div></section>
   </section>;
 }
 
@@ -1259,11 +1256,6 @@ export default function Home() {
       document.documentElement.style.removeProperty("color-scheme");
     };
   }, [colorScheme, theme, themeChromeColor]);
-
-  useEffect(() => {
-    document.documentElement.dataset.reduceMotion = appSettings.reducedMotion ? "true" : "false";
-    return () => { delete document.documentElement.dataset.reduceMotion; };
-  }, [appSettings.reducedMotion]);
 
   useEffect(() => {
     try {
@@ -1626,16 +1618,12 @@ export default function Home() {
     const startRotation = wheelRotation;
     const normalizedCurrent = ((startRotation % 360) + 360) % 360;
     const alignment = (360 - targetAngle - normalizedCurrent + 360) % 360;
-    const targetRotation = startRotation + (6 * 360) + alignment;
+    const targetRotation = startRotation + (8 * 360) + alignment;
     const durationMinutes = wheelSettings.durationMinutes;
 
     setWheelCandidates(eligibleTasks);
     setPendingWheelTaskId(selectedTask.id);
     setWheelSettingsOpen(false);
-    if (appSettings.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      finishWheelSpin(runId, selectedTask, targetRotation, durationMinutes);
-      return;
-    }
     setWheelPhase("converging");
     setNotice("The board is closing in. One task is about to get the spotlight.");
 
@@ -1652,7 +1640,13 @@ export default function Home() {
           const animateWheel = (now: number) => {
             if (wheelRunIdRef.current !== runId) return;
             const progress = Math.min(1, (now - animationStartedAt) / WHEEL_SPIN_DURATION_MS);
-            const easedProgress = 1 - Math.pow(1 - progress, 4);
+            // A short wind-up makes the spin readable before it accelerates,
+            // then a long ease-out gives the landing marker a satisfying finish.
+            const windUpEnd = 0.12;
+            const windUpDistance = 0.08;
+            const easedProgress = progress < windUpEnd
+              ? windUpDistance * Math.pow(progress / windUpEnd, 2)
+              : windUpDistance + ((1 - windUpDistance) * (1 - Math.pow(1 - ((progress - windUpEnd) / (1 - windUpEnd)), 4)));
             const rotation = startRotation + ((targetRotation - startRotation) * easedProgress);
             if (wheelRotorRef.current) {
               wheelRotorRef.current.style.transform = `rotate(${rotation}deg)`;
@@ -2108,7 +2102,7 @@ export default function Home() {
         nextPercent >= threshold && previousPercent < threshold && !milestonesSeenRef.current.has(threshold)
       ));
 
-      if (crossedMilestone && appSettings.celebrationsEnabled && !appSettings.reducedMotion) {
+      if (crossedMilestone && appSettings.celebrationsEnabled) {
         milestonesSeenRef.current.add(crossedMilestone);
         setMilestone(crossedMilestone === 100 ? "LEVEL COMPLETE" : `${crossedMilestone}% UNLOCKED`);
         if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);

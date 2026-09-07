@@ -1443,15 +1443,6 @@ a:focus-visible {
 
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .task-row.is-celebrating,
-  .task-checkbox.is-celebrating,
-  .task-checkbox.is-celebrating::before,
-  .task-checkbox.is-celebrating svg {
-    animation: none;
-  }
-}
-
 /* MAXIMUM JUICE */
 :root {
   --juice-black: #0d0d12;
@@ -3567,29 +3558,6 @@ body {
 
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .juice-shell *,
-  .juice-shell *::before,
-  .juice-shell *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 1ms !important;
-  }
-
-  .juice-shell .task-row.is-celebrating,
-  .juice-shell .celebration-burst,
-  .juice-shell .milestone-overlay {
-    opacity: 1;
-    transform: none;
-  }
-
-  .juice-shell .task-row.is-complete .task-title::after {
-    animation: none !important;
-    clip-path: inset(0);
-  }
-}
-
 /* The removed mission deck should not leave decorative ghosts behind. */
 .juice-shell::after,
 .juice-shell .sticker-surface {
@@ -3906,30 +3874,6 @@ body {
   .confetti-piece {
     border-width: 1px;
     box-shadow: 2px 2px 0 var(--juice-black);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .juice-shell.is-screen-celebrating,
-  .screen-celebration,
-  .screen-celebration::before,
-  .screen-celebration::after,
-  .screen-wash,
-  .screen-grid,
-  .confetti-piece {
-    animation: none !important;
-  }
-
-  .screen-celebration {
-    opacity: 1;
-  }
-
-  .screen-wash,
-  .screen-grid,
-  .confetti-piece,
-  .screen-celebration::before,
-  .screen-celebration::after {
-    opacity: 0;
   }
 }
 
@@ -5414,6 +5358,16 @@ textarea {
 
 }
 
+.wheel-machine.is-spinning .wheel-landing-marker {
+  animation: wheel-marker-tick 118ms steps(2, end) infinite;
+  transform-origin: 50% 100%;
+}
+
+@keyframes wheel-marker-tick {
+  0%, 100% { transform: translateX(-50%) rotate(-4deg); }
+  50% { transform: translateX(-50%) rotate(4deg); }
+}
+
 /* Dedicated Settings screen. Theme cards deliberately use their own preview
    tokens, so every palette stays colorful even when a different theme is active. */
 
@@ -5629,21 +5583,7 @@ textarea {
 .groq-key-field { margin-top: 12px; }.key-input-row { display: flex; gap: 6px; }.key-input-row input { min-width: 0; flex: 1; }.key-input-row button { min-height: 37px; border: 2px solid var(--juice-black); background: var(--juice-lime); padding: 5px 7px; font-family: "Space Mono", monospace; font-size: 8px; font-weight: 950; }.key-input-row button.danger { background: var(--juice-orange); }
 .settings-toggle { position: relative; display: flex; min-height: 78px; align-items: center; justify-content: space-between; gap: 10px; border: 3px solid var(--juice-black); background: var(--juice-cream); padding: 10px; }.settings-toggle span { display: grid; gap: 4px; }.settings-toggle strong { font-family: "Space Mono", monospace; font-size: 9px; letter-spacing: .06em; }.settings-toggle small { font-size: 10px; font-weight: 750; line-height: 1.2; }.settings-toggle input { position: absolute; opacity: 0; }.settings-toggle i { width: 39px; height: 22px; flex: 0 0 auto; border: 3px solid var(--juice-black); background: var(--juice-orange); }.settings-toggle i::after { display: block; width: 12px; height: 12px; margin: 2px; background: var(--juice-black); content: ""; transition: transform 120ms ease; }.settings-toggle input:checked + i { background: var(--juice-lime); }.settings-toggle input:checked + i::after { transform: translateX(17px); }
 
-html[data-reduce-motion="true"] *, html[data-reduce-motion="true"] *::before, html[data-reduce-motion="true"] *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 @media (max-width: 480px) { .settings-page { padding: 12px 0 24px; }.settings-page-topline { padding-inline: 14px; }.settings-title-card, .settings-section { border-width: 4px 0; box-shadow: none; }.theme-choice-grid, .settings-option-grid { grid-template-columns: 1fr; }.key-input-row { flex-wrap: wrap; }.key-input-row input { flex-basis: 100%; }.settings-title-card h1 { font-size: 38px; } }
-
-@media (prefers-reduced-motion: reduce) {
-  .juice-panel .record-button.is-listening .record-button-wave i,
-  .task-board-flip,
-  .wheel-rotor,
-  .tasks-card.is-wheel-converging .task-row,
-  .tasks-card.is-wheel-converging .card-heading,
-  .tasks-card.is-wheel-converging .task-toolbar,
-  .tasks-card.is-wheel-converging .add-task-form {
-    animation: none !important;
-    transition: none !important;
-  }
-}
 
 @media (max-width: 720px) {
   body {

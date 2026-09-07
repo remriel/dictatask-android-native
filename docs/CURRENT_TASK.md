@@ -6,6 +6,9 @@ Audit and improve Android reliability, responsiveness, storage, speech capture, 
 
 ## Active milestone — 2026-09-06
 
+- v1.5.36 hotfix complete locally: v1.5.35 incorrectly skipped the wheel's core animation whenever Reduce Motion or the Android accessibility preference was active. Reduced-motion behavior and its setting are removed entirely at the user's direction. The wheel now always performs its visible three-second selection spin, with an 8-turn slow wind-up, fast middle, long controlled landing, and stationary marker tick; the rotor remains flat, centered, and its fixed shadow does not rotate.
+- Frame-by-frame Playwright mobile check passed with a migrated saved `reducedMotion: true` value: retired setting absent, four distinct sampled rotor angles, active marker tick, successful focus landing. TypeScript, production UI build, Android lint (no issues), APK assembly and v2 signature verification passed. APK `dist/DictaTask-v1.5.36-wheel-is-fun.apk`, versionCode 22, 1,226,162 bytes, SHA-256 `2C4A12000D50ECFCFEA0EA46AC157C944D9556CC252E801FBFAEF4FB20EA99BD`. No device/AVD was available.
+
 - Fixed Android/manual speech ownership by using the existing recognition adapter for both inputs. Browser speech is no longer overwritten by an Android-only shim. Prevent overlapping native sessions and preserve late manual results after Stop.
 - Restored dismissible error/status notices; added native Back handling for settings, focus/wheel, and remove-all confirmation. Respect IME insets and cancelled microphone permission requests.
 - Groq preserves existing transcript text, reports secure-key storage success honestly, and releases a recorder even if initialization fails. Generic native state access excludes secret preferences.
