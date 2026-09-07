@@ -5,6 +5,10 @@
     <!-- Only used when the user explicitly enables Groq cloud transcription in Settings. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <queries>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

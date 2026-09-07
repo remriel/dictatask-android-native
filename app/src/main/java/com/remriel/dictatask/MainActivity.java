@@ -31,6 +31,7 @@ import android.security.keystore.KeyProperties;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
@@ -98,6 +99,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean awaitingMicrophonePermission;
     private boolean recognitionActive;
     private boolean groqRecordingActive;
+    private OnBackPressedCallback appBackCallback;
     private CaptureMode pendingCaptureMode = CaptureMode.NONE;
     private String pendingGroqModel = "whisper-large-v3-turbo";
     private String pendingGroqLanguage = "";
@@ -128,6 +130,12 @@ public final class MainActivity extends ComponentActivity {
         configureMicrophonePermission();
         configureExportFilePicker();
         configureWebView();
+        appBackCallback = new OnBackPressedCallback(false) {
+            @Override public void handleOnBackPressed() {
+                evaluateJavascript("window.__dictaBack && window.__dictaBack();");
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, appBackCallback);
     }
 
     /** Removes the retired custom reminder surface from upgraded installs. */
@@ -211,6 +219,7 @@ public final class MainActivity extends ComponentActivity {
                     CaptureMode requested = pendingCaptureMode;
                     pendingCaptureMode = CaptureMode.NONE;
                     awaitingMicrophonePermission = false;
+                    if (requested == CaptureMode.NONE) return;
                     if (granted && requested == CaptureMode.PLATFORM) startNativeRecognition();
                     else if (granted && requested == CaptureMode.GROQ) startGroqRecordingInternal();
                     else if (!granted && requested == CaptureMode.GROQ) {
@@ -229,7 +238,7 @@ public final class MainActivity extends ComponentActivity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.rgb(21, 18, 28));
         ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
-            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.ime());
             view.setPadding(
                     systemBars.left,
                     systemBars.top,
@@ -431,6 +440,11 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void stopNativeRecognition() {
+        if (awaitingMicrophonePermission) {
+            pendingCaptureMode = CaptureMode.NONE;
+            emitSpeechEnd();
+            return;
+        }
         if (speechRecognizer != null) {
             try {
                 speechRecognizer.stopListening();
@@ -441,6 +455,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void abortNativeRecognition() {
+        pendingCaptureMode = CaptureMode.NONE;
         clearPendingPartialResult();
         if (speechRecognizer != null) {
             try {
@@ -477,6 +492,7 @@ public final class MainActivity extends ComponentActivity {
             File cacheDirectory = getCacheDir();
             groqAudioFile = File.createTempFile("dictatask-groq-", ".m4a", cacheDirectory);
             MediaRecorder recorder = new MediaRecorder();
+            groqRecorder = recorder;
             recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
@@ -503,6 +519,11 @@ public final class MainActivity extends ComponentActivity {
 
     private void stopGroqRecordingInternal() {
         mainHandler.removeCallbacks(groqAutoStopper);
+        if (pendingCaptureMode == CaptureMode.GROQ) {
+            pendingCaptureMode = CaptureMode.NONE;
+            emitGroqEnd();
+            return;
+        }
         if (!groqRecordingActive) return;
         groqRecordingActive = false;
         File audioFile = groqAudioFile;
@@ -712,14 +733,14 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private String getStoredState(String key) {
-        if (key == null || key.isEmpty()) {
+        if (key == null || !key.startsWith("dictatask-")) {
             return "";
         }
         return statePreferences == null ? "" : statePreferences.getString(key, "");
     }
 
     private void setStoredState(String key, String raw) {
-        if (key == null || key.isEmpty() || raw == null) {
+        if (key == null || !key.startsWith("dictatask-") || raw == null) {
             return;
         }
         if (statePreferences != null) {
@@ -743,7 +764,9 @@ public final class MainActivity extends ComponentActivity {
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             String payload = Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP) + "." + Base64.encodeToString(cipher.doFinal(key.getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP);
             statePreferences.edit().putString(GROQ_KEY_PREFERENCE, payload).apply();
+            evaluateJavascript("window.__dictaGroqKeySaved && window.__dictaGroqKeySaved(true);");
         } catch (Exception ignored) {
+            evaluateJavascript("window.__dictaGroqKeySaved && window.__dictaGroqKeySaved(false);");
             // Keep the key out of plaintext storage if secure storage is unavailable.
             Toast.makeText(this, "Could not save the Groq key securely.", Toast.LENGTH_LONG).show();
         }
@@ -827,6 +850,10 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private final class NativeSpeechBridge {
+        @JavascriptInterface
+        public void setBackHandlerEnabled(boolean enabled) {
+            runOnUiThread(() -> { if (appBackCallback != null) appBackCallback.setEnabled(enabled); });
+        }
         @JavascriptInterface
         public void startRecognition() {
             runOnUiThread(MainActivity.this::startNativeRecognition);

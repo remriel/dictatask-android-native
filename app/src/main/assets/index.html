@@ -9,6 +9,7 @@
     <title>DictaTask — Voice to action</title>
     <script>
       (() => {
+        if (typeof window.DictaTaskAndroid?.startRecognition !== "function") return;
         let activeRecognition = null;
 
         class AndroidSpeechRecognition {
@@ -22,6 +23,7 @@
           }
 
           start() {
+            if (activeRecognition) throw new DOMException("A recording is still ending. Try again in a moment.", "InvalidStateError");
             activeRecognition = this;
             if (window.DictaTaskAndroid && typeof window.DictaTaskAndroid.startRecognition === "function") {
               window.DictaTaskAndroid.startRecognition();
@@ -82,8 +84,8 @@
         };
       })();
     </script>
-    <script type="module" crossorigin src="./assets/index-DdBS-M5W.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/style-DUbmtMqU.css">
+    <script type="module" crossorigin src="./assets/index-B_QE_Rbm.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/style-B0tChZTN.css">
   </head>
   <body class="antialiased">
     <div id="root"></div>

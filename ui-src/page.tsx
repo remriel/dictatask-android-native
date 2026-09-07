@@ -113,6 +113,7 @@ declare global {
       setGroqApiKey?: (key: string) => void;
       clearGroqApiKey?: () => void;
       hasGroqApiKey?: () => boolean;
+      setBackHandlerEnabled?: (enabled: boolean) => void;
     };
     __dictaSpeechResult?: (transcript: string, isFinal: boolean) => void;
     __dictaSpeechError?: (code: string) => void;
@@ -120,6 +121,8 @@ declare global {
     __dictaGroqResult?: (transcript: string) => void;
     __dictaGroqError?: (code: string) => void;
     __dictaGroqEnd?: () => void;
+    __dictaBack?: () => void;
+    __dictaGroqKeySaved?: (saved: boolean) => void;
   }
 }
 
@@ -197,7 +200,6 @@ const taskColorAliases: Record<string, TaskColor> = {
 };
 const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
-const MAX_HISTORY_RECORDS = 500;
 const EMPTY_STRING_ARRAY: string[] = [];
 const TASK_AGE_REFRESH_PADDING_MS = 250;
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
@@ -270,11 +272,13 @@ function setNativeStoredRaw(key: string, raw: string) {
 
 function readStoredValue<T>(key: string, fallback: T) {
   if (typeof window === "undefined") return fallback;
+  if (memoryValues.has(key)) return memoryValues.get(key) as T;
   const storage = getStorage();
   const isNative = typeof window.DictaTaskAndroid?.getStoredState === "function";
   const nativeRaw = isNative ? getNativeStoredRaw(key) : null;
   if (!storage && !nativeRaw && memoryValues.has(key)) return memoryValues.get(key) as T;
-  const raw = nativeRaw ?? storage?.getItem(key) ?? null;
+  let raw = nativeRaw;
+  try { raw ??= storage?.getItem(key) ?? null; } catch { /* Restricted storage remains usable in memory. */ }
   const cached = storageSnapshots.get(key);
   if (cached?.raw === raw) return cached.value as T;
 
@@ -283,7 +287,7 @@ function readStoredValue<T>(key: string, fallback: T) {
     try {
       value = JSON.parse(raw) as T;
     } catch {
-      storage?.removeItem(key);
+      // Leave malformed persisted bytes intact; a subsequent edit repairs them.
     }
   }
   storageSnapshots.set(key, { raw, value });
@@ -333,7 +337,8 @@ function useStoredState<T>(key: string, fallback: T) {
 }
 
 function useDebouncedStoredString(key: string, fallback: string, delay = 350) {
-  const [persisted, setPersisted] = useStoredState(key, fallback);
+  const [stored, setPersisted] = useStoredState(key, fallback);
+  const persisted = typeof stored === "string" ? stored : fallback;
   const [draft, setDraft] = useState(persisted);
   const draftRef = useRef(draft);
   const persistedRef = useRef(persisted);
@@ -367,6 +372,16 @@ function useDebouncedStoredString(key: string, fallback: string, delay = 350) {
   }, [delay, draft, flush, persisted]);
 
   useEffect(() => () => flush(), [flush]);
+
+  useEffect(() => {
+    const onHidden = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onHidden);
+    };
+  }, [flush]);
 
   return [draft, updateDraft, flush] as const;
 }
@@ -552,8 +567,7 @@ function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
     .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0));
   const permanentDoneHistory = sorted.filter((entry) => entry.completed || entry.completedAt !== null);
   const openHistory = sorted
-    .filter((entry) => !entry.completed && entry.completedAt === null)
-    .slice(0, MAX_HISTORY_RECORDS);
+    .filter((entry) => !entry.completed && entry.completedAt === null);
 
   return [...permanentDoneHistory, ...openHistory];
 }
@@ -1150,7 +1164,12 @@ export default function Home() {
   const [groqKeySaved, setGroqKeySaved] = useState(false);
   const [isManualDictating, setIsManualDictating] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const setNotice = useCallback((_message: string) => undefined, []);
+  const [notice, setNotice] = useState("");
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 8000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   const [undoCompletion, setUndoCompletion] = useState<UndoCompletion | null>(null);
   const [removeAllConfirmOpen, setRemoveAllConfirmOpen] = useState(false);
   const [undoRemoveAll, setUndoRemoveAll] = useState<UndoRemoveAll | null>(null);
@@ -1194,6 +1213,24 @@ export default function Home() {
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
   const handleTaskDelete = useCallback((id: string) => deleteTaskRef.current(id), []);
+
+  useEffect(() => {
+    window.__dictaGroqKeySaved = (saved) => {
+      setGroqKeySaved(saved);
+      setNotice(saved ? "Groq key saved." : "Could not save the key. Please try again.");
+    };
+    return () => { delete window.__dictaGroqKeySaved; };
+  }, []);
+
+  useEffect(() => {
+    window.__dictaBack = () => {
+      if (view === "settings") setView("board");
+      else if (removeAllConfirmOpen) setRemoveAllConfirmOpen(false);
+      else if (wheelPhase !== "list") putWheelAway();
+    };
+    window.DictaTaskAndroid?.setBackHandlerEnabled?.(view === "settings" || removeAllConfirmOpen || wheelPhase !== "list");
+    return () => { delete window.__dictaBack; };
+  }, [view, removeAllConfirmOpen, wheelPhase]);
   const colorScheme = theme === "paper" ? "light" : "dark";
   const themeChromeColor = theme === "paper"
     ? "#f0e2c2"
@@ -1289,7 +1326,7 @@ export default function Home() {
       const next = Array.from(new Set([
         ...current.filter((id) => activeIds.has(id)),
         ...completedIds,
-      ])).slice(-MAX_HISTORY_RECORDS);
+      ]));
       return next.length === current.length && next.every((id, index) => id === current[index])
         ? current
         : next;
@@ -1453,7 +1490,6 @@ export default function Home() {
     } catch {
       recognitionRef.current?.abort?.();
     }
-    window.DictaTaskAndroid?.stopRecognition?.();
     commitPendingSpeech(true);
     setTranscript(voiceBufferRef.current.trim());
     setIsListening(false);
@@ -1470,23 +1506,14 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const previousResult = window.__dictaSpeechResult;
-    const previousError = window.__dictaSpeechError;
-    const previousEnd = window.__dictaSpeechEnd;
     const previousGroqResult = window.__dictaGroqResult;
     const previousGroqError = window.__dictaGroqError;
     const previousGroqEnd = window.__dictaGroqEnd;
-    window.__dictaSpeechResult = (spoken, isFinal) => {
-      if (isFinal) appendFinalSpeech(spoken);
-      else { voiceInterimRef.current = spoken.trim(); publishTranscriptPreview(); }
-    };
-    window.__dictaSpeechError = (code) => setNotice(code === "not-allowed" ? "Microphone permission is blocked. You can still paste a transcript here." : "Device speech stopped. You can try again or use Groq in Settings.");
-    window.__dictaSpeechEnd = () => { if (keepListeningRef.current) finishListening("Voice note captured. Scan it whenever you are ready."); };
-    window.__dictaGroqResult = (spoken) => { if (spoken.trim()) setTranscript(spoken.trim()); };
+    window.__dictaGroqResult = (spoken) => { if (spoken.trim()) setTranscript([voiceBufferRef.current.trim(), spoken.trim()].filter(Boolean).join(" ")); };
     window.__dictaGroqError = (code) => setNotice(code === "api-key" ? "Groq rejected the saved key. Update it in Settings." : code === "network" ? "Groq could not be reached. Check your connection and try again." : code === "no-speech" ? "No speech was captured. Try again closer to the mic." : "Groq could not transcribe that recording. Try again.");
     window.__dictaGroqEnd = () => { setIsListening(false); setIsGroqTranscribing(false); setRecordingSeconds(0); };
-    return () => { window.__dictaSpeechResult = previousResult; window.__dictaSpeechError = previousError; window.__dictaSpeechEnd = previousEnd; window.__dictaGroqResult = previousGroqResult; window.__dictaGroqError = previousGroqError; window.__dictaGroqEnd = previousGroqEnd; };
-  }, [isListening, isGroqTranscribing]);
+    return () => { window.__dictaGroqResult = previousGroqResult; window.__dictaGroqError = previousGroqError; window.__dictaGroqEnd = previousGroqEnd; };
+  }, []);
 
   useEffect(() => {
     if (!isListening) return;
@@ -1605,6 +1632,10 @@ export default function Home() {
     setWheelCandidates(eligibleTasks);
     setPendingWheelTaskId(selectedTask.id);
     setWheelSettingsOpen(false);
+    if (appSettings.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finishWheelSpin(runId, selectedTask, targetRotation, durationMinutes);
+      return;
+    }
     setWheelPhase("converging");
     setNotice("The board is closing in. One task is about to get the spotlight.");
 
@@ -1718,6 +1749,7 @@ export default function Home() {
 
   function toggleListening() {
     if (isGroqTranscribing) return;
+    if (isManualDictating) { setNotice("Stop task dictation before recording a voice note."); return; }
     if (isListening) {
       if (appSettings.transcriptionProvider === "groq" && window.DictaTaskAndroid?.stopGroqRecording) {
         finishGroqCapture("Recording stopped. Groq is transcribing it now.");
@@ -1737,25 +1769,12 @@ export default function Home() {
         setNotice("Groq capture is available in the installed Android app. This browser preview uses device speech.");
         return;
       }
+      voiceBufferRef.current = transcript.trim() === starterTranscript ? "" : transcript.trim();
       recordingStartedAtRef.current = Date.now();
       setRecordingSeconds(0);
       setIsListening(true);
       setNotice("Recording for Groq. The transcript arrives after you stop.");
       window.DictaTaskAndroid.startGroqRecording(appSettings.groqModel, appSettings.groqLanguage === "auto" ? "" : appSettings.groqLanguage, recordingLimitSeconds);
-      return;
-    }
-
-    if (window.DictaTaskAndroid?.startRecognition) {
-      const existingTranscript = transcript.trim();
-      voiceBufferRef.current = existingTranscript === starterTranscript ? "" : existingTranscript;
-      voiceInterimRef.current = "";
-      fallbackInterimRef.current = "";
-      keepListeningRef.current = true;
-      recordingStartedAtRef.current = Date.now();
-      setRecordingSeconds(0);
-      setIsListening(true);
-      setNotice("Recording now. Live transcript will appear as you speak.");
-      window.DictaTaskAndroid.startRecognition();
       return;
     }
 
@@ -1811,6 +1830,9 @@ export default function Home() {
       };
       recognition.onerror = (event) => {
         if (sessionId !== voiceSessionRef.current || recognitionRef.current !== recognition) return;
+        keepListeningRef.current = false;
+        setIsListening(false);
+        setRecordingSeconds(0);
 
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
           keepListeningRef.current = false;
@@ -1825,7 +1847,7 @@ export default function Home() {
         } else if (event.error === "network") {
           setNotice("Transcription service paused. Stop and try again.");
         } else if (event.error !== "aborted") {
-          setNotice("Still listening... take your time.");
+          setNotice("No speech was captured. Tap the microphone to try again.");
         }
       };
       recognition.onend = () => {
@@ -1857,14 +1879,12 @@ export default function Home() {
   }
 
   function stopManualDictation(message = "Task dictation stopped.") {
-    voiceSessionRef.current += 1;
     if (manualRecognitionTimerRef.current !== null) {
       window.clearTimeout(manualRecognitionTimerRef.current);
       manualRecognitionTimerRef.current = null;
     }
 
     const recognition = recognitionRef.current;
-    recognitionRef.current = null;
     try {
       recognition?.stop();
     } catch {
@@ -1877,6 +1897,11 @@ export default function Home() {
   function toggleManualDictation() {
     if (isManualDictating) {
       stopManualDictation();
+      return;
+    }
+
+    if (isListening || isGroqTranscribing) {
+      setNotice("Finish the voice recording before dictating a task.");
       return;
     }
 
@@ -1963,7 +1988,8 @@ export default function Home() {
       } catch {
         recognition.abort?.();
       }
-      finishManualSession("30-second task dictation complete.");
+      setIsManualDictating(false);
+      setNotice("Finishing task dictation…");
     }, RECORDING_LIMIT_SECONDS * 1000);
 
     try {
@@ -1990,7 +2016,7 @@ export default function Home() {
     )));
     setTaskHistory((current) => {
       if (!action.previousHistory) return current.filter((entry) => entry.id !== action.id);
-      const restored = { ...action.previousHistory, completed: false };
+      const restored = { ...action.previousHistory, completed: false, completedAt: null };
       let restoredInPlace = false;
       const next = current.map((entry) => {
         if (entry.id !== action.id) return entry;
@@ -2082,7 +2108,7 @@ export default function Home() {
         nextPercent >= threshold && previousPercent < threshold && !milestonesSeenRef.current.has(threshold)
       ));
 
-      if (crossedMilestone) {
+      if (crossedMilestone && appSettings.celebrationsEnabled && !appSettings.reducedMotion) {
         milestonesSeenRef.current.add(crossedMilestone);
         setMilestone(crossedMilestone === 100 ? "LEVEL COMPLETE" : `${crossedMilestone}% UNLOCKED`);
         if (milestoneTimerRef.current !== null) window.clearTimeout(milestoneTimerRef.current);
@@ -2281,8 +2307,13 @@ export default function Home() {
         <span className="top-banner-block top-banner-block-lime" />
         <button className="top-banner-settings" type="button" onClick={() => setView("settings")} aria-label="Open settings"><Icon name="settings" /></button>
       </header>
+      {notice && <div className="app-notice" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss message" onClick={() => setNotice("")}>×</button></div>}
       {view === "settings" ? (
-        <SettingsPage theme={theme} setTheme={setTheme} settings={appSettings} setSettings={setAppSettings} wheelSettings={wheelSettings} setWheelSettings={setWheelSettings} groqKeySaved={groqKeySaved} onSaveGroqKey={(key) => { window.DictaTaskAndroid?.setGroqApiKey?.(key); setGroqKeySaved(Boolean(key.trim())); setNotice("Groq API key saved securely on this device."); }} onClearGroqKey={() => { window.DictaTaskAndroid?.clearGroqApiKey?.(); setGroqKeySaved(false); if (appSettings.transcriptionProvider === "groq") setAppSettings({ ...appSettings, transcriptionProvider: "device" }); setNotice("Groq API key removed from this device."); }} onBack={() => setView("board")} />
+        <SettingsPage theme={theme} setTheme={setTheme} settings={appSettings} setSettings={setAppSettings} wheelSettings={wheelSettings} setWheelSettings={setWheelSettings} groqKeySaved={groqKeySaved} onSaveGroqKey={(key) => {
+          if (!window.DictaTaskAndroid?.setGroqApiKey) { setNotice("Save your Groq key in the Android app."); return; }
+          setNotice("Saving key…");
+          window.DictaTaskAndroid.setGroqApiKey(key);
+        }} onClearGroqKey={() => { window.DictaTaskAndroid?.clearGroqApiKey?.(); setGroqKeySaved(false); if (appSettings.transcriptionProvider === "groq") setAppSettings({ ...appSettings, transcriptionProvider: "device" }); setNotice("Groq API key removed from this device."); }} onBack={() => setView("board")} />
       ) : <section className="workspace-grid juice-workspace" aria-label="Dictation workspace">
         <article className="transcript-card card-shadow juice-panel">
           <div className="recording-bar">

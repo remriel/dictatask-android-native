@@ -8,3 +8,32 @@ html,
 body {
   overscroll-behavior: none;
 }
+
+.app-notice {
+  position: fixed;
+  z-index: 10000;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 12px;
+  right: 12px;
+  max-width: 640px;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 3px solid var(--juice-black);
+  background: var(--juice-cream);
+  color: var(--juice-black);
+  box-shadow: 4px 4px 0 var(--juice-blue);
+  font: 700 13px/1.35 Archivo, sans-serif;
+}
+.app-notice span { flex: 1; }
+.app-notice button {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 2px solid var(--juice-black);
+  background: var(--juice-yellow);
+  font-size: 22px;
+}
+.settings-toggle:focus-within { outline: 3px solid var(--juice-blue); outline-offset: 2px; }

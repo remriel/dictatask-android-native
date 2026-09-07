@@ -2,7 +2,20 @@
 
 ## Objective
 
-Keep the existing Android-first task board polished and local-first, then add a dedicated Settings screen for configurable app behavior and an opt-in Groq Whisper transcription route using a securely stored user API key.
+Audit and improve Android reliability, responsiveness, storage, speech capture, and themes without changing the established task-board design. Ship v1.5.35 after checks; synchronize GitHub and upload a uniquely named APK to Drive.
+
+## Active milestone — 2026-09-06
+
+- Fixed Android/manual speech ownership by using the existing recognition adapter for both inputs. Browser speech is no longer overwritten by an Android-only shim. Prevent overlapping native sessions and preserve late manual results after Stop.
+- Restored dismissible error/status notices; added native Back handling for settings, focus/wheel, and remove-all confirmation. Respect IME insets and cancelled microphone permission requests.
+- Groq preserves existing transcript text, reports secure-key storage success honestly, and releases a recorder even if initialization fails. Generic native state access excludes secret preferences.
+- Storage edits remain usable when localStorage fails; transcript flushes on background/pagehide and tolerates malformed saved value types. Removed the 500-entry open-history/dismissal cap (DONE history was already permanent). Undo clears stale completion timestamps.
+- Fixed hard-coded green card color overriding themes. Reduced-motion setting now skips the JavaScript wheel animation; disabled celebrations also suppress milestone overlays.
+- Verified TypeScript, production UI build, npm audit (zero known vulnerabilities), and Playwright at 390px: manual speech isolation, main transcript append, permission errors, complete/reopen, Back callback, immediate background persistence. Native bridge is mocked; there is no attached device or configured AVD. First browser assertion raced React rendering; event-based wait passed and is retained.
+- Final TypeScript/UI build and Android release build passed; Android lint reports no issues. Unit-test task reports NO-SOURCE: do not call it a passing unit-test suite. npm audit reports zero known vulnerabilities.
+- Additional Playwright checks passed: five distinct theme green palettes; reduced-motion selection and safe wheel cancellation; Remove All confirmation, cancel, and undo; task addition/theme switching under simulated storage quota failure. Mobile screenshot inspected. Native/Groq network capture remains untested on hardware.
+- APK: `dist/DictaTask-v1.5.35-reliability-responsiveness.apk`, versionCode 21, 1,226,526 bytes, SHA-256 `68315AC0727A737CC68678A6CA3B23BA8C09401A0D6AB3422ABA2AB0DC62701E`. APK v2 signature verified and certificate matches downloaded GitHub v1.5.34. Still the existing Android Debug signing identity, not a Play Store production key.
+- Next: commit/push release and verify Drive upload. Browser evidence/scripts live in ignored output/playwright. Remaining limitation: no connected Android device/AVD, no live Groq credential test, and no instrumented performance baseline; no claim that every possible bug is eliminated.
 
 ## Current implementation
 

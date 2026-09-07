@@ -4567,7 +4567,7 @@ textarea {
 }
 
 .juice-panel .task-row.task-lime {
-  --task-card-bg: #176b48;
+  --task-card-bg: var(--task-tile-lime-bg);
 }
 
 .juice-panel .task-title {
