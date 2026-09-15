@@ -33,4 +33,5 @@
 - SHA-256: `9A53F7E35442C7386E4CAAEBE50976BB333FA2186493F2D006280691D772DFD7`; size: `1,234,130` bytes.
 - Signature verification: Android APK Signature Scheme v2 verified with Build Tools 36.0.0; one signer.
 - Google Drive: [DictaTask-v1.6.0-recurring-task-board.apk](https://drive.google.com/file/d/1089yblmlh7Ju31xF2nM1kQgY9PjWMl0W/view?usp=drivesdk).
-- GitHub release: pending final branch publication.
+- GitHub release: [v1.6.0 — Recurring task board](https://github.com/remriel/dictatask-android-native/releases/tag/v1.6.0).
+- GitHub APK download: [DictaTask-v1.6.0-recurring-task-board.apk](https://github.com/remriel/dictatask-android-native/releases/download/v1.6.0/DictaTask-v1.6.0-recurring-task-board.apk).

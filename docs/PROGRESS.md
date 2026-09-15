@@ -39,10 +39,8 @@ Ship the recurring-task board requested in `DictaTask-Luna-Max-Prompt.md` from t
 ## Constraints and unresolved work
 
 - No Android device or configured AVD is available for hardware microphone, Android Back/IME, or live Groq validation; browser/native bridge evidence must be labeled separately.
-- The branch still needs its final commit/push and a reviewable GitHub link.
+- Commit `6b71f12` is pushed to `codex/recurring-task-board`, and the verified APK is published in the [GitHub v1.6.0 release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.6.0).
 
 ## Exact next steps
 
-1. Commit all source, generated assets, tests, and release documentation.
-2. Push `codex/recurring-task-board` and verify the remote branch/ref.
-3. If GitHub CLI release creation is available, publish the verified APK as v1.6.0; otherwise leave the branch and Drive artifact as the reviewable handoff.
+1. Hardware follow-up only: validate microphone, Android Back/IME, live Groq, and device performance when an Android device or AVD is available.
