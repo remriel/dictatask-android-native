@@ -1,8 +1,12 @@
 # Current task
 
+## Active milestone — 2026-09-15 — v1.6.0 recurring task board
+
+The current work is the recurring-task/search/progress implementation on branch `codex/recurring-task-board`, based on `98ee34c` / v1.5.36. The authoritative handoff is now [`docs/PROGRESS.md`](PROGRESS.md); the older v1.5.x audit notes below are retained as historical context. Android 1.6.0 (`versionCode 23`) is built, v2-signature verified, hashed, copied to the task outputs, and uploaded to [Google Drive](https://drive.google.com/file/d/1089yblmlh7Ju31xF2nM1kQgY9PjWMl0W/view?usp=drivesdk). Final remaining step is commit and GitHub branch publication.
+
 ## Objective
 
-Audit and improve Android reliability, responsiveness, storage, speech capture, and themes without changing the established task-board design. Ship v1.5.35 after checks; synchronize GitHub and upload a uniquely named APK to Drive.
+Historical v1.5.x objective: audit and improve Android reliability, responsiveness, storage, speech capture, and themes without changing the established task-board design.
 
 ## Active milestone — 2026-09-06
 

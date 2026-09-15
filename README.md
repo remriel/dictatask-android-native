@@ -22,6 +22,8 @@ These screenshots show the current Android-first interface at a 390px mobile vie
 - Includes a dedicated Settings screen with five fully developed 90s-inspired themes. Each selector shows its complete five-color palette, and every choice recolors the shell, panels, controls, task fills/borders/shadows, wheel wedges, and stats—not just a few accent buttons. Settings also owns focus-clock defaults, task-age labels, completion celebration, and reduced-motion controls.
 - Supports optional Groq Whisper transcription: enter a Groq API key in Settings, choose Whisper Large V3 Turbo or Large V3 plus the spoken language, then DictaTask records a temporary `.m4a`, sends it directly to Groq, and deletes the audio after the request. The key is encrypted with Android Keystore and never appears in exports or task storage.
 - Converts transcript text into editable tasks and supports quick manual entry with dictation.
+- Supports daily-at-local-time and fixed-hourly recurring tasks with distinct occurrence history, missed-period carry-forward, upcoming-work controls, safe stop/delete/reopen/undo behavior, and recurrence-aware exports.
+- Adds case-insensitive title search in both task tabs, Important/Repeating/category filters, matching counts, no-match states, and incremental rendering for large histories. A device-independent progress strip shows done-today versus actionable ready work.
 - Keeps tasks, transcripts, completion history, theme preference, and focus-clock settings on the device.
 - Uses only `TO DO` and `DONE` tabs; completed history stays ordered by most recent completion.
 - Lets the checkbox be the only completion control, with undo and safe recovery for accidental actions.
@@ -33,13 +35,15 @@ These screenshots show the current Android-first interface at a 390px mobile vie
 
 ## Download
 
-The latest internal-review APK is available from the [v1.5.34 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.34).
+The latest internal-review APK is available from the [v1.6.0 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.6.0).
 
 > Release builds are Android debug-signed for internal review. A Play Store release must be signed with the repository owner’s protected release key.
 
 ## Source layout
 
 - `ui-src/` — maintainable React, TypeScript, CSS, font licenses, and production artwork.
+- `ui-src/task-model.ts` — recurrence, normalization, history, filtering, progress, statistics, and export logic.
+- `ui-src/task-model.test.ts` — controlled-clock model tests for schedule boundaries, migration, history, filtering, and recovery.
 - `app/src/main/assets/` — generated offline web bundle packaged into the APK.
 - `app/src/main/java/com/remriel/dictatask/` — speech, persistence, export, and theme bridges.
 - `docs/screenshots/` — current mobile UI screenshots used in this README.
@@ -60,14 +64,14 @@ npm run build
 Pop-Location
 
 .\gradlew.bat :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease
-Copy-Item app\build\outputs\apk\release\app-release.apk dist\DictaTask.apk -Force
+Copy-Item app\build\outputs\apk\release\app-release.apk dist\DictaTask-v1.6.0-recurring-task-board.apk -Force
 ```
 
 The optimized APK is written to `app/build/outputs/apk/release/app-release.apk`. The release build runs offline after the web bundle is generated; no runtime network connection is needed.
 
 ## Current release
 
-- Version: `1.5.34`
-- Version code: `20`
-- APK: `DictaTask-v1.5.34-complete-color-themes.apk`
-- Branch: `main`
+- Version: `1.6.0`
+- Version code: `23`
+- APK: `DictaTask-v1.6.0-recurring-task-board.apk`
+- Branch: `codex/recurring-task-board`

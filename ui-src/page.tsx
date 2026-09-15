@@ -3,8 +3,31 @@
 import type { CSSProperties, FormEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import {
+  buildDailyTaskProgress,
+  buildSevenDayTaskStats,
+  createRecurrenceRule,
+  formatRecurrenceLabel,
+  formatTaskHistory as formatRecurringTaskHistory,
+  getNextRecurrenceBoundary,
+  isTaskActionable,
+  mergeTaskHistory as mergeRecurringTaskHistory,
+  normalizeTaskHistoryList,
+  normalizeTaskList,
+  reopenOccurrence,
+  reconcileRecurringState,
+  scheduledAtForOccurrence,
+  stopRecurringSeries,
+  taskMatchesFilters,
+  type DailyTaskStat,
+  type RecurrenceRule,
+  type RepeatFrequency,
+  type RepeatSelection,
+  type Task,
+  type TaskColor,
+  type TaskHistoryEntry,
+} from "./task-model";
 
-type TaskColor = "orange" | "blue" | "cyan" | "lime" | "violet";
 type Filter = "open" | "done";
 type Theme = "midnight" | "paper" | "sunset" | "ocean" | "grape";
 type AppView = "board" | "settings";
@@ -36,34 +59,14 @@ type WheelChallenge = {
 
 type WheelPhase = "list" | "converging" | "wheel" | "spinning" | "challenge" | "complete";
 
-type Task = {
-  id: string;
-  title: string;
-  color: TaskColor;
-  completed: boolean;
-  createdAt?: number | null;
-  completedAt?: number | null;
-  historyOnly?: boolean;
-};
-
-type TaskHistoryEntry = Task & {
-  createdAt: number | null;
-  completedAt: number | null;
-};
-
-type DailyTaskStat = {
-  dayNumber: number;
-  dayLabel: string;
-  dateLabel: string;
-  added: number;
-  completed: number;
-};
-
 type UndoCompletion = {
   id: string;
   title: string;
+  previousTask: Task | null;
   previousHistory: TaskHistoryEntry | null;
   wasDismissed: boolean;
+  seriesId: string | null;
+  occurrenceIndex: number | null;
 };
 
 type UndoRemoveAll = {
@@ -71,6 +74,15 @@ type UndoRemoveAll = {
   taskHistory: TaskHistoryEntry[];
   dismissedTaskIds: string[];
   filter: Filter;
+};
+
+type TaskDetailsDraft = {
+  title: string;
+  category: string;
+  important: boolean;
+  repeat: RepeatSelection;
+  dailyTime: string;
+  hourlyStart: string;
 };
 
 type SpeechRecognitionLike = {
@@ -172,35 +184,11 @@ const actionWords = new RegExp(`\\b${taskVerbPattern}\\b`, "i");
 const taskLeadPattern = "(?:i|we)\\s+(?:need to|have to|should|must|want to|can|need|have)";
 
 const colors: TaskColor[] = ["orange", "blue", "cyan", "lime", "violet"];
-const taskColorAliases: Record<string, TaskColor> = {
-  orange: "orange",
-  rust: "orange",
-  tangerine: "orange",
-  amber: "orange",
-  brick: "orange",
-  red: "orange",
-  coral: "orange",
-  crimson: "orange",
-  pink: "orange",
-  magenta: "orange",
-  blue: "blue",
-  cobalt: "blue",
-  navy: "blue",
-  cyan: "cyan",
-  teal: "cyan",
-  aqua: "cyan",
-  lime: "lime",
-  green: "lime",
-  mint: "lime",
-  forest: "lime",
-  violet: "violet",
-  purple: "violet",
-  lavender: "violet",
-};
 const RECORDING_LIMIT_SECONDS = 30;
 const RECOGNITION_RESTART_DELAY_MS = 350;
 const EMPTY_STRING_ARRAY: string[] = [];
 const TASK_AGE_REFRESH_PADDING_MS = 250;
+const MAX_RECURRENCE_REFRESH_DELAY_MS = 60_000;
 const WHEEL_DURATION_OPTIONS = [5, 10, 15, 25] as const;
 const WHEEL_CONVERGE_DURATION_MS = 560;
 const WHEEL_SPIN_DURATION_MS = 3000;
@@ -415,67 +403,12 @@ function createId() {
   return `task-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function stableColorIndex(seed: string) {
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = ((hash << 5) - hash + seed.charCodeAt(index)) | 0;
-  }
-  return Math.abs(hash) % colors.length;
-}
-
-function normalizeTaskColor(value: unknown, seed: string, index: number): TaskColor {
-  const token = typeof value === "string" ? value.trim().toLowerCase() : "";
-  return taskColorAliases[token] ?? colors[seed ? stableColorIndex(seed) : index % colors.length];
-}
-
-function normalizeTaskEntry(value: unknown, index: number): Task | null {
-  if (!value || typeof value !== "object") return null;
-  const entry = value as Record<string, unknown>;
-  const title = typeof entry.title === "string" ? entry.title.trim() : "";
-  if (!title) return null;
-
-  const id = typeof entry.id === "string" && entry.id.trim()
-    ? entry.id
-    : `legacy-task-${index}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
-
-  return {
-    id,
-    title,
-    color: normalizeTaskColor(entry.color, `${id}:${title}`, index),
-    completed: entry.completed === true,
-    createdAt: typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)
-      ? entry.createdAt
-      : null,
-    completedAt: typeof entry.completedAt === "number" && Number.isFinite(entry.completedAt)
-      ? entry.completedAt
-      : null,
-  };
-}
-
 function normalizeTasks(value: unknown): Task[] {
-  if (!Array.isArray(value)) return starterTasks;
-  return value.flatMap((entry, index) => {
-    const task = normalizeTaskEntry(entry, index);
-    return task ? [task] : [];
-  });
+  return normalizeTaskList(value, starterTasks);
 }
 
 function normalizeTaskHistory(value: unknown): TaskHistoryEntry[] {
-  if (!Array.isArray(value)) return starterTaskHistory;
-  return value.flatMap((entry, index) => {
-    const task = normalizeTaskEntry(entry, index);
-    if (!task || !entry || typeof entry !== "object") return [];
-    const record = entry as Record<string, unknown>;
-    return [{
-      ...task,
-      createdAt: typeof record.createdAt === "number" && Number.isFinite(record.createdAt)
-        ? record.createdAt
-        : null,
-      completedAt: typeof record.completedAt === "number" && Number.isFinite(record.completedAt)
-        ? record.completedAt
-        : null,
-    }];
-  });
+  return normalizeTaskHistoryList(value, starterTaskHistory);
 }
 
 function normalizeTheme(value: unknown): Theme {
@@ -538,35 +471,8 @@ function normalizeWheelChallenge(value: unknown): WheelChallenge | null {
   };
 }
 
-function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[]) {
-  const now = Date.now();
-  const byId = new Map(current.map((entry) => [entry.id, {
-    id: entry.id,
-    title: entry.title,
-    color: entry.color,
-    completed: entry.completed,
-    createdAt: entry.createdAt,
-    completedAt: entry.completedAt,
-  }]));
-
-  tasks.forEach((task) => {
-    const previous = byId.get(task.id);
-    byId.set(task.id, {
-      ...task,
-      createdAt: task.createdAt ?? previous?.createdAt ?? now,
-      completedAt: task.completed
-        ? task.completedAt ?? (previous?.completed ? previous.completedAt ?? now : now)
-        : null,
-    });
-  });
-
-  const sorted = Array.from(byId.values())
-    .sort((left, right) => (right.createdAt ?? 0) - (left.createdAt ?? 0));
-  const permanentDoneHistory = sorted.filter((entry) => entry.completed || entry.completedAt !== null);
-  const openHistory = sorted
-    .filter((entry) => !entry.completed && entry.completedAt === null);
-
-  return [...permanentDoneHistory, ...openHistory];
+function mergeTaskHistory(current: TaskHistoryEntry[], tasks: Task[], now = Date.now()) {
+  return mergeRecurringTaskHistory(current, tasks, now);
 }
 
 function getRemainingFocusSeconds(challenge: WheelChallenge) {
@@ -594,10 +500,6 @@ function buildWheelGradient(tasks: Task[]) {
   });
 
   return `conic-gradient(from 0deg, ${stops.join(", ")})`;
-}
-
-function formatHistoryDate(timestamp: number | null) {
-  return timestamp ? new Date(timestamp).toLocaleString() : "Not recorded";
 }
 
 function getLocalDayNumber(timestamp: number) {
@@ -637,52 +539,92 @@ function getNextLocalMidnightDelay(timestamp: number) {
   return Math.max(1000, nextMidnight - timestamp + TASK_AGE_REFRESH_PADDING_MS);
 }
 
-function buildSevenDayTaskStats(entries: TaskHistoryEntry[], now: number): DailyTaskStat[] {
-  const today = new Date(now);
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const stats = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate() - (6 - index));
-    return {
-      dayNumber: getLocalDayNumber(date.getTime()),
-      dayLabel: date.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase(),
-      dateLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      added: 0,
-      completed: 0,
-    };
-  });
-  const byDayNumber = new Map(stats.map((stat) => [stat.dayNumber, stat]));
-
-  entries.forEach((entry) => {
-    if (typeof entry.createdAt === "number" && Number.isFinite(entry.createdAt)) {
-      const stat = byDayNumber.get(getLocalDayNumber(entry.createdAt));
-      if (stat) stat.added += 1;
-    }
-    if (typeof entry.completedAt === "number" && Number.isFinite(entry.completedAt)) {
-      const stat = byDayNumber.get(getLocalDayNumber(entry.completedAt));
-      if (stat) stat.completed += 1;
-    }
-  });
-
-  return stats;
+function padTimePart(value: number) {
+  return String(value).padStart(2, "0");
 }
 
-function formatTaskHistory(entries: TaskHistoryEntry[]) {
-  const sortedEntries = [...entries].sort((a, b) => (
-    (a.createdAt ?? 0) - (b.createdAt ?? 0)
-  ));
+function minutesToTimeInput(minutes: number) {
+  const safeMinutes = Math.max(0, Math.min(1439, Math.round(minutes)));
+  return `${padTimePart(Math.floor(safeMinutes / 60))}:${padTimePart(safeMinutes % 60)}`;
+}
 
-  return [
-    "DICTATASK TASK HISTORY",
-    `EXPORTED: ${new Date().toLocaleString()}`,
-    `TOTAL RECORDS: ${sortedEntries.length}`,
-    "",
-    ...sortedEntries.map((task, index) => [
-      `${index + 1}. [${task.completed ? "DONE" : "OPEN"}] ${task.title}`,
-      `   CREATED: ${formatHistoryDate(task.createdAt)}`,
-      `   FIRST COMPLETED: ${formatHistoryDate(task.completedAt)}`,
-      "",
-    ].join("\n")),
-  ].join("\n");
+function localTimeInputValue(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  return minutesToTimeInput(date.getHours() * 60 + date.getMinutes());
+}
+
+function parseTimeInput(value: string, fallbackMinutes: number) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return fallbackMinutes;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return fallbackMinutes;
+  return (hours * 60) + minutes;
+}
+
+function localDateTimeInputValue(timestamp: number) {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${padTimePart(date.getMonth() + 1)}-${padTimePart(date.getDate())}T${padTimePart(date.getHours())}:${padTimePart(date.getMinutes())}`;
+}
+
+function nextWholeHour(timestamp: number) {
+  const date = new Date(timestamp);
+  date.setMinutes(0, 0, 0);
+  date.setHours(date.getHours() + 1);
+  return date.getTime();
+}
+
+function parseLocalDateTimeInput(value: string, fallbackTimestamp: number) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return fallbackTimestamp;
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5]),
+    0,
+    0,
+  );
+  return Number.isFinite(date.getTime()) ? date.getTime() : fallbackTimestamp;
+}
+
+function defaultTaskDetailsDraft(task: Task, now = Date.now()): TaskDetailsDraft {
+  const recurrence = task.recurrence;
+  const dailyMinutes = recurrence?.timeOfDayMinutes ?? (task.scheduledAt ? new Date(task.scheduledAt).getHours() * 60 + new Date(task.scheduledAt).getMinutes() : new Date(now).getHours() * 60 + new Date(now).getMinutes());
+  return {
+    title: task.title,
+    category: task.category ?? "",
+    important: task.important === true,
+    repeat: recurrence?.frequency ?? "none",
+    dailyTime: minutesToTimeInput(dailyMinutes),
+    hourlyStart: localDateTimeInputValue(task.scheduledAt ?? recurrence?.anchorAt ?? nextWholeHour(now)),
+  };
+}
+
+function recurrenceFromTaskDraft(
+  draft: TaskDetailsDraft,
+  task: Task | null,
+  now: number,
+): { recurrence: RecurrenceRule | null; scheduledAt: number | null; occurrenceIndex: number | null } {
+  if (draft.repeat === "none") {
+    return { recurrence: null, scheduledAt: null, occurrenceIndex: null };
+  }
+
+  const existing = task?.recurrence;
+  const seriesId = existing?.seriesId ?? createId();
+  if (draft.repeat === "daily") {
+    const minutes = parseTimeInput(draft.dailyTime, new Date(now).getHours() * 60 + new Date(now).getMinutes());
+    const baseTimestamp = existing?.anchorAt ?? now;
+    const recurrence = createRecurrenceRule("daily", baseTimestamp, seriesId, minutes);
+    const occurrenceIndex = task?.occurrenceIndex ?? 0;
+    const scheduledAt = scheduledAtForOccurrence(recurrence, occurrenceIndex);
+    return { recurrence, scheduledAt, occurrenceIndex };
+  }
+
+  const scheduledAt = parseLocalDateTimeInput(draft.hourlyStart, task?.scheduledAt ?? nextWholeHour(now));
+  const recurrence = createRecurrenceRule("hourly", scheduledAt, seriesId, null);
+  return { recurrence, scheduledAt, occurrenceIndex: 0 };
 }
 
 function tidyTask(raw: string) {
@@ -694,10 +636,6 @@ function tidyTask(raw: string) {
     .replace(/[.!?,;:]+$/g, "")
     .trim()
     .replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function taskKey(title: string) {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function extractTasks(transcript: string): Task[] {
@@ -801,27 +739,149 @@ function Icon({ name }: { name: "mic" | "spark" | "arrow" | "plus" | "trash" | "
   );
 }
 
+function TaskDetailsEditor({
+  task,
+  now,
+  onSave,
+  onClose,
+  onStop,
+  onDelete,
+}: {
+  task: Task;
+  now: number;
+  onSave: (draft: TaskDetailsDraft) => void;
+  onClose: () => void;
+  onStop: (() => void) | null;
+  onDelete: (() => void) | null;
+}) {
+  const [draft, setDraft] = useState(() => defaultTaskDetailsDraft(task, now));
+
+  useEffect(() => {
+    setDraft(defaultTaskDetailsDraft(task, now));
+  }, [now, task.id]);
+
+  const updateDraft = <K extends keyof TaskDetailsDraft>(key: K, value: TaskDetailsDraft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  return (
+    <form className="task-details-panel" onSubmit={(event) => { event.preventDefault(); onSave(draft); onClose(); }} aria-label={`Edit details for ${task.title}`}>
+      <div className="task-details-heading">
+        <div>
+          <span> TASK DETAILS</span>
+          <strong>{task.recurrence ? "SERIES-AWARE OCCURRENCE" : "ONE-OFF TASK"}</strong>
+        </div>
+        <button type="button" className="task-details-close" onClick={onClose} aria-label={`Close details for ${task.title}`}>×</button>
+      </div>
+      <div className="task-details-fields">
+        <label>
+          <span>TITLE</span>
+          <input value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} aria-label="Task title" />
+        </label>
+        <label>
+          <span>CATEGORY <small>(OPTIONAL)</small></span>
+          <input value={draft.category} maxLength={32} onChange={(event) => updateDraft("category", event.target.value)} placeholder="e.g. HOME" aria-label="Task category" />
+        </label>
+        <label className="task-important-toggle">
+          <span>IMPORTANT</span>
+          <input type="checkbox" checked={draft.important} onChange={(event) => updateDraft("important", event.target.checked)} />
+          <i aria-hidden="true" />
+        </label>
+        <label>
+          <span>REPEAT</span>
+          <select value={draft.repeat} onChange={(event) => updateDraft("repeat", event.target.value as RepeatSelection)} aria-label="Repeat schedule">
+            <option value="none">OFF</option>
+            <option value="daily">DAILY</option>
+            <option value="hourly">HOURLY</option>
+          </select>
+        </label>
+        {draft.repeat === "daily" && (
+          <label>
+            <span>DAILY AT LOCAL TIME</span>
+            <input type="time" value={draft.dailyTime} onChange={(event) => updateDraft("dailyTime", event.target.value)} aria-label="Daily local time" />
+          </label>
+        )}
+        {draft.repeat === "hourly" && (
+          <label>
+            <span>HOURLY START</span>
+            <input type="datetime-local" value={draft.hourlyStart} onChange={(event) => updateDraft("hourlyStart", event.target.value)} aria-label="Hourly schedule start" />
+          </label>
+        )}
+      </div>
+      <p className="task-details-schedule">
+        {task.recurrence
+          ? `Saved schedule: ${formatRecurrenceLabel(task, now)}. ${task.recurrence.active ? "The next completed occurrence creates one successor." : "Repeating is stopped."}`
+          : "Repeating is off. Turn it on to keep one scheduled occurrence moving forward."}
+      </p>
+      <div className="task-details-actions">
+        <button type="submit" className="task-details-save">SAVE DETAILS</button>
+        {onStop && <button type="button" className="task-details-stop" onClick={onStop}>STOP REPEATING</button>}
+        {onDelete && <button type="button" className="task-details-delete" onClick={onDelete}><Icon name="trash" /> DELETE</button>}
+      </div>
+    </form>
+  );
+}
+
+function UpcomingTaskRow({
+  task,
+  now,
+  onSave,
+  onStop,
+  onDelete,
+}: {
+  task: Task;
+  now: number;
+  onSave: (id: string, draft: TaskDetailsDraft) => void;
+  onStop: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  return (
+    <article className={`upcoming-task task-${task.color}`}>
+      <div className="upcoming-task-copy">
+        <span>UPCOMING OCCURRENCE</span>
+        <strong>{task.title}</strong>
+        <small>{formatRecurrenceLabel(task, now)}</small>
+      </div>
+      <div className="upcoming-task-actions">
+        <button type="button" onClick={() => setDetailsOpen((open) => !open)} aria-expanded={detailsOpen} aria-label={`Edit details for upcoming ${task.title}`}>DETAILS</button>
+        <button type="button" onClick={() => onStop(task.id)} aria-label={`Stop repeating ${task.title}`}>STOP</button>
+      </div>
+      {detailsOpen && <TaskDetailsEditor task={task} now={now} onSave={(draft) => onSave(task.id, draft)} onClose={() => setDetailsOpen(false)} onStop={() => onStop(task.id)} onDelete={() => onDelete(task.id)} />}
+    </article>
+  );
+}
+
 const TaskRow = memo(function TaskRow({
   task,
   index,
   daysOpen,
+  now,
   showTaskAge,
+  actionable,
   celebrating,
   onToggle,
   onFocus,
   onDelete,
+  onSaveDetails,
+  onStopRepeating,
 }: {
   task: Task;
   index: number;
   daysOpen: number;
+  now: number;
   showTaskAge: boolean;
+  actionable: boolean;
   celebrating: boolean;
   onToggle: (id: string) => void;
   onFocus: (id: string) => void;
   onDelete: (id: string) => void;
+  onSaveDetails: (id: string, draft: TaskDetailsDraft) => void;
+  onStopRepeating: (id: string) => void;
 }) {
   const historyOnly = task.historyOnly === true;
   const canDelete = !task.completed && !historyOnly;
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwipeOpen, setIsSwipeOpen] = useState(false);
   const [isSwiping, setIsSwiping] = useState(false);
@@ -984,11 +1044,17 @@ const TaskRow = memo(function TaskRow({
         <div className="task-content">
           <span className="task-index">{String(index + 1).padStart(2, "0")}</span>
           <div>
-            <p className="task-title" data-title={task.title}>{task.title}</p>
+                    <p className="task-title" data-title={task.title}>
+                      {task.title}
+                      <span className="task-title-strike" aria-hidden="true">{task.title}</span>
+                    </p>
             <div className="task-detail-row">
-              {showTaskAge && <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}><span>{formatTaskOpenAge(daysOpen, task.completed)}</span></div>}
-              {!task.completed && (
-                <button
+               {showTaskAge && <div className="task-meta" aria-label={task.completed ? `${formatTaskOpenAge(daysOpen, true)} since completion` : `${formatTaskOpenAge(daysOpen, false)} since this task was created`}><span>{formatTaskOpenAge(daysOpen, task.completed)}</span></div>}
+               {task.important && <span className="task-important-badge" aria-label="Important task">IMPORTANT</span>}
+               {task.recurrence && <span className={`task-repeat-badge ${task.recurrence.active ? "is-active" : "is-stopped"}`} aria-label={task.recurrence.active ? "Repeating task" : "Repeating stopped"}>{task.recurrence.active ? "REPEAT" : "STOPPED"}</span>}
+               {task.recurrence && <span className="task-schedule-label" title={formatRecurrenceLabel(task, now)}>{formatRecurrenceLabel(task, now)}</span>}
+               {!task.completed && actionable && (
+                 <button
                   className="task-focus-button"
                   type="button"
                   onClick={(event) => {
@@ -998,17 +1064,21 @@ const TaskRow = memo(function TaskRow({
                   onKeyDown={(event) => event.stopPropagation()}
                   aria-label={`Focus ${task.title} without spinning the wheel`}
                 >
-                  FOCUS
-                </button>
-              )}
-            </div>
-          </div>
+                   FOCUS
+                 </button>
+               )}
+               <button className="task-details-trigger" type="button" onClick={(event) => { event.stopPropagation(); setDetailsOpen((open) => !open); }} aria-expanded={detailsOpen} aria-label={`${detailsOpen ? "Close" : "Open"} details for ${task.title}`}>
+                 {detailsOpen ? "CLOSE" : "DETAILS"}
+               </button>
+             </div>
+           </div>
         </div>
         <span className="task-badge">{historyOnly ? "HISTORY" : task.completed ? "DONE" : "NEXT"}</span>
-        {canDelete && <span className="task-swipe" aria-hidden="true">←</span>}
-      </div>
-    </div>
-  );
+         {canDelete && <span className="task-swipe" aria-hidden="true">←</span>}
+       </div>
+       {detailsOpen && <TaskDetailsEditor task={task} now={now} onSave={(draft) => onSaveDetails(task.id, draft)} onClose={() => setDetailsOpen(false)} onStop={task.recurrence?.active ? () => onStopRepeating(task.id) : null} onDelete={canDelete ? () => onDelete(task.id) : null} />}
+     </div>
+   );
 });
 
 const FocusCountdown = memo(function FocusCountdown({
@@ -1045,14 +1115,23 @@ const FocusCountdown = memo(function FocusCountdown({
   }, [challenge.expired, deadline]);
 
   const expired = challenge.expired || remainingSeconds === 0;
+  const totalSeconds = challenge.durationSeconds;
+  const elapsedSeconds = Math.max(0, Math.min(totalSeconds, totalSeconds - remainingSeconds));
+  const elapsedPercentage = totalSeconds ? Math.min(100, (elapsedSeconds / totalSeconds) * 100) : 0;
   return (
-    <span
-      className={`wheel-countdown ${expired ? "is-expired" : ""}`}
-      role="timer"
-      aria-label={expired ? "Focus timer ended" : `${remainingSeconds} seconds remaining`}
-      aria-live="off"
-    >
-      {expired ? "TIME CALLED" : formatFocusCountdown(remainingSeconds)}
+    <span className="focus-timer-wrap">
+      <span
+        className={`wheel-countdown ${expired ? "is-expired" : ""}`}
+        role="timer"
+        aria-label={expired ? "Focus timer ended" : `${remainingSeconds} seconds remaining`}
+        aria-live="off"
+      >
+        {expired ? "TIME CALLED" : formatFocusCountdown(remainingSeconds)}
+      </span>
+      <span className="focus-progress-bar" role="progressbar" aria-label={`${formatFocusCountdown(elapsedSeconds)} elapsed of ${formatFocusCountdown(totalSeconds)}`} aria-valuemin={0} aria-valuemax={totalSeconds} aria-valuenow={elapsedSeconds}>
+        <span style={{ width: `${elapsedPercentage}%` }} />
+      </span>
+      <span className="focus-progress-labels"><small>ELAPSED {formatFocusCountdown(elapsedSeconds)}</small><small>{expired ? "FINISHED" : `REMAINING ${formatFocusCountdown(remainingSeconds)}`}</small></span>
     </span>
   );
 });
@@ -1154,8 +1233,18 @@ export default function Home() {
     normalizeWheelChallenge,
   );
   const [filter, setFilter] = useState<Filter>("open");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [importantOnly, setImportantOnly] = useState(false);
+  const [repeatingOnly, setRepeatingOnly] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [visibleTaskLimit, setVisibleTaskLimit] = useState(30);
   const [view, setView] = useState<AppView>("board");
   const [newTask, setNewTask] = useState("");
+  const [newTaskRepeat, setNewTaskRepeat] = useState<RepeatSelection>("none");
+  const [newTaskDailyTime, setNewTaskDailyTime] = useState(() => localTimeInputValue());
+  const [newTaskHourlyStart, setNewTaskHourlyStart] = useState(() => localDateTimeInputValue(nextWholeHour(Date.now())));
+  const [newTaskCategory, setNewTaskCategory] = useState("");
+  const [newTaskImportant, setNewTaskImportant] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isGroqTranscribing, setIsGroqTranscribing] = useState(false);
   const [groqKeySaved, setGroqKeySaved] = useState(false);
@@ -1207,9 +1296,13 @@ export default function Home() {
   const toggleTaskRef = useRef<(id: string) => void>(() => undefined);
   const focusTaskRef = useRef<(id: string) => void>(() => undefined);
   const deleteTaskRef = useRef<(id: string) => void>(() => undefined);
+  const saveTaskDetailsRef = useRef<(id: string, draft: TaskDetailsDraft) => void>(() => undefined);
+  const stopRepeatingRef = useRef<(id: string) => void>(() => undefined);
   const handleTaskToggle = useCallback((id: string) => toggleTaskRef.current(id), []);
   const handleTaskFocus = useCallback((id: string) => focusTaskRef.current(id), []);
   const handleTaskDelete = useCallback((id: string) => deleteTaskRef.current(id), []);
+  const handleTaskDetailsSave = useCallback((id: string, draft: TaskDetailsDraft) => saveTaskDetailsRef.current(id, draft), []);
+  const handleStopRepeating = useCallback((id: string) => stopRepeatingRef.current(id), []);
 
   useEffect(() => {
     window.__dictaGroqKeySaved = (saved) => {
@@ -1267,26 +1360,38 @@ export default function Home() {
 
   useEffect(() => {
     let timer: number | null = null;
-    const refresh = () => {
+    const refresh = () => setTaskAgeNow(Date.now());
+    const scheduleNextRefresh = () => {
       const now = Date.now();
-      setTaskAgeNow(now);
-      timer = window.setTimeout(refresh, getNextLocalMidnightDelay(now));
+      const boundary = getNextRecurrenceBoundary(tasks, now);
+      const delay = boundary
+        ? Math.min(MAX_RECURRENCE_REFRESH_DELAY_MS, Math.max(1000, boundary - now + 80))
+        : getNextLocalMidnightDelay(now);
+      timer = window.setTimeout(() => {
+        refresh();
+        scheduleNextRefresh();
+      }, delay);
     };
     const refreshWhenVisible = () => {
-      if (document.visibilityState === "visible") setTaskAgeNow(Date.now());
+      if (document.visibilityState === "visible") refresh();
     };
 
     refresh();
+    scheduleNextRefresh();
     document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
     return () => {
       if (timer !== null) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
     };
-  }, []);
+  }, [tasks]);
 
   useEffect(() => {
-    setTaskHistory((current) => mergeTaskHistory(current, tasks));
-  }, [setTaskHistory, tasks]);
+    const reconciled = reconcileRecurringState(tasks, taskHistory, taskAgeNow);
+    if (JSON.stringify(reconciled.tasks) !== JSON.stringify(tasks)) setTasks(reconciled.tasks);
+    if (JSON.stringify(reconciled.history) !== JSON.stringify(taskHistory)) setTaskHistory(reconciled.history);
+  }, [setTaskHistory, setTasks, taskAgeNow, taskHistory, tasks]);
 
   useEffect(() => {
     const historyById = new Map(taskHistory.map((entry) => [entry.id, entry]));
@@ -1325,8 +1430,8 @@ export default function Home() {
     });
   }, [setDismissedTaskIds, tasks]);
 
-  const openTasks = useMemo(() => sortTasksNewestFirst(tasks.filter((task) => !task.completed)), [tasks]);
-  const openCount = openTasks.length;
+  const allOpenTasks = useMemo(() => sortTasksNewestFirst(tasks.filter((task) => !task.completed)), [tasks]);
+  const openCount = allOpenTasks.length;
   const completedCount = tasks.filter((task) => task.completed).length;
   const doneHistoryTasks = useMemo(() => {
     const fallbackCompletionTime = Date.now();
@@ -1358,18 +1463,25 @@ export default function Home() {
       .sort((left, right) => (
         (right.completedAt ?? 0) - (left.completedAt ?? 0)
         || (right.createdAt ?? 0) - (left.createdAt ?? 0)
-      ))
-      .map(({ id, title, color, completed, createdAt, completedAt, historyOnly }) => ({
-        id,
-        title,
-        color,
-        completed,
-        createdAt,
-        completedAt,
-        historyOnly,
-      }));
+      ));
   }, [taskHistory, tasks]);
   const doneCount = doneHistoryTasks.length;
+
+  const dailyProgress = useMemo(
+    () => buildDailyTaskProgress(tasks, taskHistory, taskAgeNow),
+    [taskAgeNow, taskHistory, tasks],
+  );
+  const categoryOptions = useMemo(() => Array.from(new Set(
+    [...tasks, ...taskHistory]
+      .map((task) => task.category?.trim())
+      .filter((category): category is string => Boolean(category)),
+  )).sort((left, right) => left.localeCompare(right)), [taskHistory, tasks]);
+  const taskFilters = useMemo(() => ({
+    query: searchQuery,
+    importantOnly,
+    repeatingOnly,
+    category: categoryFilter,
+  }), [categoryFilter, importantOnly, repeatingOnly, searchQuery]);
 
   const sevenDayTaskStats = useMemo(
     () => buildSevenDayTaskStats(taskHistory, taskAgeNow),
@@ -1397,14 +1509,51 @@ export default function Home() {
     });
     return timestamps;
   }, [taskHistory, tasks]);
+  const matchingOpenTasks = useMemo(() => allOpenTasks.filter((task) => taskMatchesFilters(task, taskFilters)), [allOpenTasks, taskFilters]);
+  const matchingDoneTasks = useMemo(() => doneHistoryTasks.filter((task) => taskMatchesFilters(task, taskFilters)), [doneHistoryTasks, taskFilters]);
+  const actionableOpenTasks = useMemo(() => matchingOpenTasks.filter((task) => isTaskActionable(task, taskAgeNow)), [matchingOpenTasks, taskAgeNow]);
   const filteredTasks = useMemo(() => {
-    if (filter === "done") return doneHistoryTasks;
-    return sortTasksNewestFirst(tasks
-      .filter((task) => !task.completed || task.id === celebratingTaskId)
-      .filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id)));
-  }, [celebratingTaskId, dismissedTaskIdSet, doneHistoryTasks, filter, tasks]);
+    if (filter === "done") return matchingDoneTasks;
+    return actionableOpenTasks.filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id));
+  }, [actionableOpenTasks, celebratingTaskId, dismissedTaskIdSet, filter, matchingDoneTasks]);
+  const upcomingTasks = useMemo(() => matchingOpenTasks.filter((task) => !isTaskActionable(task, taskAgeNow)), [matchingOpenTasks, taskAgeNow]);
+  const filteredMatchingCount = filter === "done" ? matchingDoneTasks.length : matchingOpenTasks.length;
+  const visibleFilteredTasks = filteredTasks.slice(0, visibleTaskLimit);
+  const visibleUpcomingTasks = upcomingTasks.slice(0, visibleTaskLimit);
+  const hasActiveFilters = Boolean(searchQuery.trim() || importantOnly || repeatingOnly || categoryFilter);
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setImportantOnly(false);
+    setRepeatingOnly(false);
+    setCategoryFilter("");
+  }, []);
+  useEffect(() => {
+    setVisibleTaskLimit(30);
+  }, [categoryFilter, filter, importantOnly, repeatingOnly, searchQuery]);
 
-  const wheelTaskPool = wheelCandidates.length ? wheelCandidates : openTasks;
+  const emptyStateTitle = filter === "done"
+    ? doneHistoryTasks.length ? "NO MATCHES." : "NOTHING FINISHED YET."
+    : openCount === 0
+      ? "CLEAN SLATE."
+      : matchingOpenTasks.length === 0
+        ? "NO MATCHES."
+        : actionableOpenTasks.length === 0
+          ? "NO READY TASKS."
+          : "CELEBRATION IN PROGRESS.";
+  const emptyStateCopy = filter === "done"
+    ? doneHistoryTasks.length ? "Try another title, category, or filter." : "Check off a task and it will land here."
+    : openCount === 0
+      ? "Add a task above to start the board."
+      : matchingOpenTasks.length === 0
+        ? "Try another title, category, or filter."
+        : actionableOpenTasks.length === 0
+          ? "Upcoming repeating work is kept below in its collapsed schedule."
+          : "The last move is still finishing. Your task will return shortly.";
+
+  const wheelEligibleTasks = useMemo(() => filter === "open"
+    ? actionableOpenTasks.filter((task) => task.id === celebratingTaskId || !dismissedTaskIdSet.has(task.id))
+    : [], [actionableOpenTasks, celebratingTaskId, dismissedTaskIdSet, filter]);
+  const wheelTaskPool = wheelCandidates.length ? wheelCandidates : wheelEligibleTasks;
   const wheelColorGradient = useMemo(() => buildWheelGradient(wheelTaskPool), [wheelTaskPool]);
   const wheelFocusTaskId = wheelChallenge?.taskId ?? pendingWheelTaskId;
   const wheelFocusTask = wheelFocusTaskId
@@ -1431,11 +1580,11 @@ export default function Home() {
 
     if (wheelPhase === "list") {
       setFocusEntryMode(wheelChallenge.source);
-      setWheelCandidates((current) => current.length ? current : openTasks);
+       setWheelCandidates((current) => current.length ? current : wheelEligibleTasks);
       setPendingWheelTaskId(activeTask.id);
       setWheelPhase("challenge");
     }
-  }, [openTasks, setWheelChallenge, tasks, wheelChallenge, wheelPhase]);
+  }, [setWheelChallenge, tasks, wheelChallenge, wheelEligibleTasks, wheelPhase]);
 
   function publishTranscriptPreview() {
     const preview = [voiceBufferRef.current.trim(), voiceInterimRef.current.trim()]
@@ -1594,9 +1743,13 @@ export default function Home() {
   }
 
   function spinTheWheel() {
-    const eligibleTasks = tasks.filter((task) => !task.completed);
+    const eligibleTasks = wheelEligibleTasks;
     if (!eligibleTasks.length) {
-      setNotice("Add an open task before you spin the wheel.");
+      setNotice(filter === "done"
+        ? "Switch to TO DO to choose an actionable task."
+        : hasActiveFilters
+          ? "No filtered actionable tasks are ready for the wheel."
+          : "Add an open task before you spin the wheel.");
       return;
     }
 
@@ -1674,7 +1827,7 @@ export default function Home() {
 
   function focusTaskDirectly(taskId: string) {
     const selectedTask = tasks.find((task) => task.id === taskId);
-    if (!selectedTask || selectedTask.completed) {
+    if (!selectedTask || !isTaskActionable(selectedTask, Date.now())) {
       setNotice("Choose an open task to start a focus clock.");
       return;
     }
@@ -1721,8 +1874,9 @@ export default function Home() {
       setNotice("Give me a little more to work with — mention the things you need to do.");
       return;
     }
-    const existingKeys = new Set(tasks.map((task) => taskKey(task.title)));
-    const additions = nextTasks.filter((task) => !existingKeys.has(taskKey(task.title)));
+    // IDs, not titles, define task identity. A repeated occurrence and two
+    // valid requests with the same wording must remain separate records.
+    const additions = nextTasks;
     const isDemoList = tasks.length === starterTasks.length && tasks.every((task, index) => (
       task.id === starterTasks[index]?.id && task.completed === starterTasks[index]?.completed
     ));
@@ -1732,7 +1886,9 @@ export default function Home() {
       return;
     }
 
-    setTasks([...(isDemoList ? [] : tasks), ...additions]);
+    const nextBoard = [...(isDemoList ? [] : tasks), ...additions];
+    setTasks(nextBoard);
+    setTaskHistory((current) => mergeTaskHistory(current, additions, Date.now()));
     setFilter("open");
     setNotice(`${additions.length} new ${additions.length === 1 ? "task" : "tasks"} added. Your dictated text is still here.`);
   }
@@ -1993,6 +2149,87 @@ export default function Home() {
     }
   }
 
+  function saveTaskDetails(id: string, draft: TaskDetailsDraft) {
+    const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
+    if (!task) return;
+    const title = draft.title.trim();
+    if (!title) {
+      setNotice("A task needs a title before it can be saved.");
+      return;
+    }
+
+    const now = Date.now();
+    let nextTasks: Task[] = tasks.map((item) => ({ ...item, recurrence: item.recurrence ? { ...item.recurrence } : null }));
+    let nextHistory: TaskHistoryEntry[] = taskHistory.map((entry) => ({ ...entry, recurrence: entry.recurrence ? { ...entry.recurrence } : null }));
+    const currentSeriesId = task.recurrence?.seriesId ?? null;
+    const existingHistoryEntry = nextHistory.find((entry) => entry.id === id);
+    if (draft.repeat === "none" && currentSeriesId) {
+      const stopped = stopRecurringSeries(nextTasks, nextHistory, currentSeriesId, task.completed ? null : id, now);
+      nextTasks = stopped.tasks;
+      nextHistory = stopped.history;
+    }
+
+    const recurrenceDetails = recurrenceFromTaskDraft(draft, task, now);
+    const updated = {
+      ...task,
+      createdAt: task.createdAt ?? existingHistoryEntry?.createdAt ?? now,
+      completed: task.completed,
+      completedAt: task.completed ? task.completedAt ?? existingHistoryEntry?.completedAt ?? now : null,
+      title,
+      category: draft.category.trim().replace(/\s+/g, " ").slice(0, 32) || null,
+      important: draft.important,
+      recurrence: recurrenceDetails.recurrence,
+      scheduledAt: recurrenceDetails.scheduledAt,
+      occurrenceIndex: recurrenceDetails.occurrenceIndex,
+      historyOnly: false,
+    };
+    if (task.completed) {
+      if (nextTasks.some((item) => item.id === id)) {
+        nextTasks = nextTasks.map((item) => item.id === id ? { ...updated } : item);
+      } else if (recurrenceDetails.recurrence) {
+        // Editing a history-only DONE row can intentionally restart its series,
+        // but a metadata/title edit must never silently reopen a completed record.
+        nextTasks = [...nextTasks, { ...updated }];
+      }
+      nextHistory = [
+        ...nextHistory.filter((entry) => entry.id !== id),
+        {
+          ...updated,
+          historyOnly: true,
+          createdAt: updated.createdAt ?? now,
+          completedAt: updated.completedAt ?? now,
+        },
+      ];
+      nextHistory = mergeTaskHistory(nextHistory, nextTasks, now);
+    } else {
+      if (nextTasks.some((item) => item.id === id)) {
+        nextTasks = nextTasks.map((item) => item.id === id ? { ...updated } : item);
+      } else {
+        nextTasks = [...nextTasks, { ...updated, completed: false, completedAt: null }];
+      }
+      nextHistory = mergeTaskHistory(nextHistory.filter((entry) => entry.id !== id), nextTasks, now);
+    }
+    setTasks(nextTasks);
+    setTaskHistory(nextHistory);
+    setUndoRemoveAll(null);
+    setRemoveAllConfirmOpen(false);
+    setFilter(task.completed ? "done" : "open");
+    setNotice(updated.recurrence
+      ? `${title} now repeats ${updated.recurrence.frequency === "daily" ? "daily" : "hourly"}.`
+      : `${title} saved as a one-off task.`);
+  }
+
+  function stopRepeating(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    const seriesId = task?.recurrence?.seriesId;
+    if (!task || !seriesId) return;
+    const now = Date.now();
+    const stopped = stopRecurringSeries(tasks, taskHistory, seriesId, task.completed ? null : id, now);
+    setTasks(stopped.tasks);
+    setTaskHistory(stopped.history);
+    setNotice(`Repeating stopped for ${task.title}. The current task stays on your board.`);
+  }
+
   function clearUndoCompletion() {
     setUndoCompletion(null);
   }
@@ -2005,20 +2242,9 @@ export default function Home() {
     const activeTask = tasks.find((task) => task.id === action.id);
     if (!activeTask || !activeTask.completed) return;
 
-    setTasks((current) => current.map((task) => (
-      task.id === action.id ? { ...task, completed: false, completedAt: null } : task
-    )));
-    setTaskHistory((current) => {
-      if (!action.previousHistory) return current.filter((entry) => entry.id !== action.id);
-      const restored = { ...action.previousHistory, completed: false, completedAt: null };
-      let restoredInPlace = false;
-      const next = current.map((entry) => {
-        if (entry.id !== action.id) return entry;
-        restoredInPlace = true;
-        return restored;
-      });
-      return restoredInPlace ? next : [...next, restored];
-    });
+    const reopened = reopenOccurrence(tasks, taskHistory, action.id, Date.now());
+    setTasks(reopened.tasks);
+    setTaskHistory(reopened.history);
     setDismissedTaskIds((current) => action.wasDismissed
       ? current
       : current.filter((taskId) => taskId !== action.id));
@@ -2045,7 +2271,8 @@ export default function Home() {
     if (undoRemoveAll) setUndoRemoveAll(null);
     setRemoveAllConfirmOpen(false);
     const task = tasks.find((item) => item.id === id) ?? doneHistoryTasks.find((item) => item.id === id);
-    const willComplete = Boolean(task && !task.completed);
+    if (!task) return;
+    const willComplete = !task.completed;
     const isWheelFocusTask = willComplete && wheelChallenge?.taskId === id;
     const completionTimestamp = willComplete ? Date.now() : null;
 
@@ -2053,33 +2280,41 @@ export default function Home() {
       window.clearTimeout(celebrationTimerRef.current);
       celebrationTimerRef.current = null;
     }
-    setTasks((current) => {
-      if (current.some((item) => item.id === id)) {
-        return current.map((item) => (item.id === id
-          ? {
-              ...item,
-              completed: !item.completed,
-              completedAt: item.completed ? null : completionTimestamp,
-            }
-          : item));
-      }
-      if (!task || !task.completed) return current;
-      return [...current, {
-        id: task.id,
-        title: task.title,
-        color: task.color,
-        completed: false,
-        createdAt: task.createdAt ?? taskHistory.find((entry) => entry.id === task.id)?.createdAt ?? Date.now(),
-        completedAt: null,
-      }];
-    });
+    if (!willComplete) {
+      const reopened = reopenOccurrence(tasks, taskHistory, id, Date.now());
+      setTasks(reopened.tasks);
+      setTaskHistory(reopened.history);
+      if (undoCompletion?.id === id) clearUndoCompletion();
+      lastCompletionAtRef.current = 0;
+      setCombo(0);
+      setDismissedTaskIds((current) => current.filter((taskId) => taskId !== id));
+      setCelebratingTaskId(null);
+      setNotice("Task reopened. Later completed occurrences stay in DONE.");
+      return;
+    }
+
+    const nextTasks = tasks.some((item) => item.id === id)
+      ? tasks.map((item) => item.id === id
+        ? { ...item, completed: true, completedAt: completionTimestamp }
+        : item)
+      : [...tasks, {
+          ...task,
+          completed: true,
+          completedAt: completionTimestamp,
+          historyOnly: false,
+        }];
+    setTasks(nextTasks);
+    setTaskHistory((current) => mergeTaskHistory(current, nextTasks, completionTimestamp ?? Date.now()));
 
     if (willComplete) {
       setUndoCompletion({
         id,
         title: task?.title ?? "Task",
+        previousTask: tasks.find((item) => item.id === id) ?? null,
         previousHistory: taskHistory.find((entry) => entry.id === id) ?? null,
         wasDismissed: dismissedTaskIdSet.has(id),
+        seriesId: task.recurrence?.seriesId ?? null,
+        occurrenceIndex: task.occurrenceIndex ?? null,
       });
       const previousPercent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
       const nextDoneCount = completedCount + 1;
@@ -2139,16 +2374,6 @@ export default function Home() {
         setCelebratingTaskId(null);
         celebrationTimerRef.current = null;
       }, appSettings.celebrationsEnabled ? 1050 : 0);
-    } else {
-      if (undoCompletion?.id === id) clearUndoCompletion();
-      setTaskHistory((current) => current.filter((entry) => entry.id !== id));
-      lastCompletionAtRef.current = 0;
-      setCombo(0);
-      setDismissedTaskIds((current) => {
-        return current.includes(id) ? current.filter((taskId) => taskId !== id) : current;
-      });
-      setCelebratingTaskId(null);
-      setNotice("Task reopened.");
     }
   }
 
@@ -2177,8 +2402,14 @@ export default function Home() {
       setWheelSettingsOpen(false);
     }
 
-    setTasks((current) => current.filter((item) => item.id !== id));
-    setTaskHistory((current) => current.filter((entry) => entry.id !== id));
+    const now = Date.now();
+    const stopped = task.recurrence?.seriesId
+      ? stopRecurringSeries(tasks, taskHistory, task.recurrence.seriesId, null, now)
+      : { tasks, history: taskHistory };
+    const nextTasks = stopped.tasks.filter((item) => item.id !== id);
+    const nextHistory = mergeTaskHistory(stopped.history.filter((entry) => entry.id !== id), nextTasks, now);
+    setTasks(nextTasks);
+    setTaskHistory(nextHistory);
     setDismissedTaskIds((current) => current.filter((taskId) => taskId !== id));
     setNotice(`Deleted "${task.title}" without completing it.`);
   }
@@ -2189,19 +2420,38 @@ export default function Home() {
     if (!title) return;
     if (undoRemoveAll) setUndoRemoveAll(null);
     setRemoveAllConfirmOpen(false);
-    setTasks((current) => [
-      ...current,
-      {
-        id: createId(),
-        title,
-        color: colors[current.length % colors.length],
-        completed: false,
-        createdAt: Date.now(),
-        completedAt: null,
-      },
-    ]);
+    const now = Date.now();
+    const draft: TaskDetailsDraft = {
+      title,
+      category: newTaskCategory,
+      important: newTaskImportant,
+      repeat: newTaskRepeat,
+      dailyTime: newTaskDailyTime,
+      hourlyStart: newTaskHourlyStart,
+    };
+    const recurrenceDetails = recurrenceFromTaskDraft(draft, null, now);
+    const taskToAdd: Task = {
+      id: createId(),
+      title,
+      color: colors[tasks.length % colors.length],
+      completed: false,
+      createdAt: now,
+      completedAt: null,
+      important: newTaskImportant,
+      category: newTaskCategory.trim().replace(/\s+/g, " ").slice(0, 32) || null,
+      recurrence: recurrenceDetails.recurrence,
+      scheduledAt: recurrenceDetails.scheduledAt,
+      occurrenceIndex: recurrenceDetails.occurrenceIndex,
+    };
+    setTasks((current) => [...current, taskToAdd]);
+    setTaskHistory((current) => mergeTaskHistory(current, [taskToAdd], now));
     setNewTask("");
-    setNotice("Added to the list.");
+    setNewTaskRepeat("none");
+    setNewTaskCategory("");
+    setNewTaskImportant(false);
+    setNotice(recurrenceDetails.recurrence
+      ? `Added ${title} with a ${recurrenceDetails.recurrence.frequency} schedule.`
+      : "Added to the list.");
   }
 
   function requestClearAllTasks() {
@@ -2218,7 +2468,18 @@ export default function Home() {
       filter,
     });
     clearUndoCompletion();
-    setTaskHistory((current) => mergeTaskHistory(current, tasks));
+    const now = Date.now();
+    let clearedTasks = tasks;
+    let clearedHistory = mergeTaskHistory(taskHistory, tasks, now);
+    const seriesIds = Array.from(new Set(clearedTasks
+      .map((task) => task.recurrence?.seriesId)
+      .filter((seriesId): seriesId is string => Boolean(seriesId))));
+    seriesIds.forEach((seriesId) => {
+      const stopped = stopRecurringSeries(clearedTasks, clearedHistory, seriesId, null, now);
+      clearedTasks = stopped.tasks;
+      clearedHistory = stopped.history;
+    });
+    setTaskHistory(clearedHistory);
     wheelRunIdRef.current += 1;
     clearWheelTimers();
     setTasks([]);
@@ -2256,7 +2517,7 @@ export default function Home() {
 
   function exportTaskHistory() {
     const records = mergeTaskHistory(taskHistory, tasks);
-    const contents = formatTaskHistory(records);
+    const contents = formatRecurringTaskHistory(records);
     setTaskHistory(records);
 
     if (window.DictaTaskAndroid?.exportTaskHistory) {
@@ -2279,6 +2540,8 @@ export default function Home() {
   toggleTaskRef.current = toggleTask;
   focusTaskRef.current = focusTaskDirectly;
   deleteTaskRef.current = deleteTask;
+  saveTaskDetailsRef.current = saveTaskDetails;
+  stopRepeatingRef.current = stopRepeating;
 
   return (
     <main className={`app-shell juice-shell theme-${theme} ${milestone ? "has-milestone" : ""} ${celebratingTaskId ? "is-screen-celebrating" : ""}`} id="top">
@@ -2388,12 +2651,37 @@ export default function Home() {
               <Icon name="arrow" />
             </button>
           </form>
+          <details className="new-task-advanced">
+            <summary><span>ADVANCED TASK OPTIONS</span><small>{newTaskRepeat === "none" ? "REPEAT OFF" : newTaskRepeat === "daily" ? `DAILY AT ${newTaskDailyTime}` : "HOURLY SLOTS"}</small></summary>
+            <div className="new-task-advanced-fields">
+              <label>
+                <span>REPEAT</span>
+                <select value={newTaskRepeat} onChange={(event) => setNewTaskRepeat(event.target.value as RepeatSelection)} aria-label="Repeat new task">
+                  <option value="none">OFF</option>
+                  <option value="daily">DAILY</option>
+                  <option value="hourly">HOURLY</option>
+                </select>
+              </label>
+              {newTaskRepeat === "daily" && <label><span>DAILY AT LOCAL TIME</span><input type="time" value={newTaskDailyTime} onChange={(event) => setNewTaskDailyTime(event.target.value)} aria-label="New task daily local time" /></label>}
+              {newTaskRepeat === "hourly" && <label><span>HOURLY START</span><input type="datetime-local" value={newTaskHourlyStart} onChange={(event) => setNewTaskHourlyStart(event.target.value)} aria-label="New task hourly schedule start" /></label>}
+              <label><span>CATEGORY <small>(OPTIONAL)</small></span><input value={newTaskCategory} maxLength={32} onChange={(event) => setNewTaskCategory(event.target.value)} placeholder="e.g. HOME" aria-label="New task category" /></label>
+              <label className="new-task-important"><span>IMPORTANT</span><input type="checkbox" checked={newTaskImportant} onChange={(event) => setNewTaskImportant(event.target.checked)} /><i aria-hidden="true" /></label>
+            </div>
+          </details>
           <span className="transcript-end-divider" aria-hidden="true" />
         </article>
 
         <article className={`tasks-card card-shadow juice-panel ${wheelPhase !== "list" ? "is-wheel-mode" : ""} ${wheelPhase === "converging" ? "is-wheel-converging" : ""}`}>
           <div className={`task-board-flip ${wheelPhase !== "list" ? "is-wheel-revealed" : ""}`}>
             <div className="task-board-face task-board-face-front" aria-hidden={wheelPhase !== "list"}>
+              <section className="progress-strip" aria-label="Today's task progress">
+                <div className="progress-strip-heading">
+                  <div><span>TODAY'S RUNWAY</span><strong>{dailyProgress.completedToday} DONE TODAY · {dailyProgress.ready} READY</strong></div>
+                  <span>{dailyProgress.denominator ? `${dailyProgress.percentage}% MOVING` : tasks.length ? "NO READY WORK" : "EMPTY BOARD"}</span>
+                </div>
+                <div className="progress-strip-track" role="progressbar" aria-label={`${dailyProgress.completedToday} done today out of ${dailyProgress.denominator} total progress items`} aria-valuemin={0} aria-valuemax={dailyProgress.denominator || 1} aria-valuenow={dailyProgress.completedToday}><span style={{ width: `${dailyProgress.percentage}%` }} /></div>
+                <small>{tasks.length ? (dailyProgress.ready ? "Ready tasks stay here until their scheduled time arrives." : "Add or schedule a task to put something on deck.") : "Your board is empty. Add a task above to get moving."}</small>
+              </section>
               <div className="task-toolbar">
                 <div className="filter-tabs" role="group" aria-label="Filter tasks">
                   {(["open", "done"] as Filter[]).map((item) => (
@@ -2410,6 +2698,17 @@ export default function Home() {
                   ))}
                 </div>
                 <span className="task-sort">AUTO-SORTED ↕</span>
+              </div>
+
+              <div className="task-search-row">
+                <label className="task-search-field"><span>SEARCH ALL {filter === "done" ? "DONE" : "TO DO"}</span><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Find by title…" aria-label={`Search ${filter === "done" ? "done" : "to do"} task titles`} /></label>
+                <span className="task-match-count">{filteredMatchingCount} MATCHING</span>
+                {hasActiveFilters && <button type="button" className="clear-task-filters" onClick={clearFilters}>CLEAR FILTERS</button>}
+              </div>
+              <div className="task-filter-row" aria-label="Task filters">
+                <button type="button" className={importantOnly ? "is-active" : ""} aria-pressed={importantOnly} onClick={() => setImportantOnly((value) => !value)}>IMPORTANT</button>
+                <button type="button" className={repeatingOnly ? "is-active" : ""} aria-pressed={repeatingOnly} onClick={() => setRepeatingOnly((value) => !value)}>REPEATING</button>
+                <label><span>CATEGORY</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter by category"><option value="">ALL</option>{categoryOptions.map((category) => <option value={category} key={category}>{category}</option>)}</select></label>
               </div>
 
               {undoCompletion && (
@@ -2442,29 +2741,43 @@ export default function Home() {
 
               <div className="task-list">
                 {filteredTasks.length ? (
-                  filteredTasks.map((task, index) => (
+                  visibleFilteredTasks.map((task, index) => (
                     <TaskRow
                       key={task.id}
                       task={task}
                       index={index}
+                      now={taskAgeNow}
                       daysOpen={task.completed
                         ? getTaskOpenDays(task.completedAt, taskAgeNow)
                         : getTaskOpenDays(task.createdAt ?? createdAtByTaskId.get(task.id), taskAgeNow)}
                       showTaskAge={appSettings.showTaskAge}
+                      actionable={isTaskActionable(task, taskAgeNow)}
                       celebrating={celebratingTaskId === task.id}
                       onToggle={handleTaskToggle}
                       onFocus={handleTaskFocus}
                       onDelete={handleTaskDelete}
+                      onSaveDetails={handleTaskDetailsSave}
+                      onStopRepeating={handleStopRepeating}
                     />
                   ))
                 ) : (
                   <div className="empty-state">
                     <span className="empty-icon"><Icon name="check" /></span>
-                    <strong>{filter === "done" ? "Nothing finished yet." : "Clean slate."}</strong>
-                    <span>{filter === "done" ? "Check off a task and it will land here." : "Everything in this view is already handled."}</span>
+                    <strong>{emptyStateTitle}</strong>
+                    <span>{emptyStateCopy}</span>
                   </div>
                 )}
               </div>
+              {filteredTasks.length > visibleTaskLimit && <button type="button" className="show-more-tasks" onClick={() => setVisibleTaskLimit((limit) => limit + 30)}>SHOW 30 MORE · {filteredTasks.length - visibleTaskLimit} LEFT</button>}
+              {filter === "open" && upcomingTasks.length > 0 && (
+                <details className="upcoming-section">
+                  <summary><span>UPCOMING REPEATING WORK</span><strong>{upcomingTasks.length} {upcomingTasks.length === 1 ? "TASK" : "TASKS"}</strong><small>Collapsed until due</small></summary>
+                  <div className="upcoming-task-list">
+                    {visibleUpcomingTasks.map((task) => <UpcomingTaskRow key={task.id} task={task} now={taskAgeNow} onSave={handleTaskDetailsSave} onStop={handleStopRepeating} onDelete={handleTaskDelete} />)}
+                  </div>
+                  {upcomingTasks.length > visibleTaskLimit && <button type="button" className="show-more-tasks" onClick={() => setVisibleTaskLimit((limit) => limit + 30)}>SHOW MORE UPCOMING</button>}
+                </details>
+              )}
 
               <div className="task-actions task-actions-footer" aria-label="Task list actions">
                 <button className="clear-button wheel-settings-button" type="button" onClick={() => setView("settings")}>
@@ -2591,7 +2904,7 @@ export default function Home() {
               className="clear-button wheel-launch-button"
               type="button"
               onClick={spinTheWheel}
-              disabled={!openCount}
+              disabled={!wheelEligibleTasks.length}
               aria-label="Spin the wheel to choose an open task"
             >
               <span className="wheel-launch-art" aria-hidden="true"><img src="./dictatask-wheel-face.jpg" alt="" /></span>
