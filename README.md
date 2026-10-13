@@ -2,6 +2,8 @@
 
 ![DictaTask task board on Android](docs/screenshots/task-board.png)
 
+**[Get the latest Android APK](https://github.com/remriel/dictatask-android-native/releases/latest)** · [See screenshots](#see-it-in-action) · [Build from source](#build-locally)
+
 DictaTask is a local-first Android task board for turning a quick voice note—or a pasted transcript—into one clean list of things to do. It is built for fast, tactile use on a phone, with a bold 90s neo-brutalist visual system and no cloud account required.
 
 The app UI is bundled into the APK. `MainActivity` serves the compiled React interface from the APK through `WebViewAssetLoader`, blocks external navigation, and stores the task board locally on the device. `INTERNET` is declared only for the user-enabled Groq transcription request; the normal app flow stays local.
@@ -35,7 +37,7 @@ These screenshots show the current Android-first interface at a 390px mobile vie
 
 ## Download
 
-The latest internal-review APK is available from the [v1.5.34 GitHub release](https://github.com/remriel/dictatask-android-native/releases/tag/v1.5.34).
+Download the latest APK from [GitHub Releases](https://github.com/remriel/dictatask-android-native/releases/latest). These builds are intended for independent installation and testing.
 
 > Release builds are Android debug-signed for internal review. A Play Store release must be signed with the repository owner’s protected release key.
 
@@ -67,9 +69,10 @@ Copy-Item app\build\outputs\apk\release\app-release.apk dist\DictaTask.apk -Forc
 
 The optimized APK is written to `app/build/outputs/apk/release/app-release.apk`. The release build runs offline after the web bundle is generated; no runtime network connection is needed.
 
-## Current release
+## Latest build
 
-- Version: `1.5.34`
-- Version code: `20`
-- APK: `DictaTask-v1.5.34-complete-color-themes.apk`
-- Branch: `main`
+Get the current version, APK filename, and release notes from [the latest release](https://github.com/remriel/dictatask-android-native/releases/latest). Release details can change independently of this README.
+
+## Related productivity tool
+
+- [Ovo Timer](https://github.com/remriel/ovo-timer-android): an interactive Android and Windows countdown timer.
