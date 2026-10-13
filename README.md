@@ -1,5 +1,7 @@
 # DictaTask for Android
 
+![DictaTask task board on Android](docs/screenshots/task-board.png)
+
 DictaTask is a local-first Android task board for turning a quick voice note—or a pasted transcript—into one clean list of things to do. It is built for fast, tactile use on a phone, with a bold 90s neo-brutalist visual system and no cloud account required.
 
 The app UI is bundled into the APK. `MainActivity` serves the compiled React interface from the APK through `WebViewAssetLoader`, blocks external navigation, and stores the task board locally on the device. `INTERNET` is declared only for the user-enabled Groq transcription request; the normal app flow stays local.
