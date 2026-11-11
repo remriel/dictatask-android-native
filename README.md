@@ -76,3 +76,5 @@ Get the current version, APK filename, and release notes from [the latest releas
 ## Related productivity tool
 
 - [Ovo Timer](https://github.com/remriel/ovo-timer-android): an interactive Android and Windows countdown timer.
+
+If you find this project useful, you can [buy me a coffee](https://buymeacoffee.com/remriel).
